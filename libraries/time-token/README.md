@@ -4,6 +4,7 @@ Upon checking the token a timeout can be enforced.  Emailed tokens have the time
 
 A token with data is basically stateless so it may not be necessary to store in a database it until the user returns it and it validates.  The validation must be done server-side where brute-force API protection should be implemented.  The token uses 10 byte token for validation giving odds of guessing 10^24 (1e+24).
 
+This is a binary token, most likely you will need to apply your own encoding.  A base 58 encoded token is about 30 characters long with no data, but with an email address is about 50 characters long.
 > 89dipACBipnwFLPXa9JL5ducZAYpG5cWTHdbQFZZLN7e
 
 # Install
@@ -11,7 +12,6 @@ A token with data is basically stateless so it may not be necessary to store in 
 ~/your-project
 $ npm link ~/graphene/libraries/time-token
 ```
->>>>>>> updates
 
 # Usage
 ```javascript
@@ -25,4 +25,4 @@ assert.equal(true, result.valid)
 assert.equal("seed", result.seed)
 assert.equal(null, result.error)
 ```
-This is a binary token, most likely you will need to apply your own encoding.  A base 58 encoded token is about 30 characters long with no data, but with an email address is about 50 characters long.
+
