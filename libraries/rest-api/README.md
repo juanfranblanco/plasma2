@@ -23,7 +23,7 @@ var dispatch = action => {
 
 var app = express()
 app.get("/:methodName", restApi.get(api, dispatch))
-app.get("/:methodName", restApi.post(api, dispatch))
+app.post("/:methodName", restApi.post(api, dispatch))
 ```
 
 # GET Request
