@@ -1,3 +1,7 @@
 Root development and deployment environment Cryptonomex JavaScript libraries and programs.
 
-See [BUILD](BUILD.md).
+[./libraries](./libraries)
+
+[./programs](./programs)
+
+[./BUILD.md](BUILD.md)
