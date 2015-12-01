@@ -1,0 +1,21 @@
+{
+  "name": "plasma",
+  "version": "1.0.0",
+  "description": "Root development and deployment environment Cryptonomex JavaScript libraries and programs.",
+  "scripts": {
+    "doc": "esdoc -c esdoc.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jcalfee/plasma.git"
+  },
+  "author": "jcalfee",
+  "license": "BSD-2-Clause-FreeBSD",
+  "bugs": {
+    "url": "https://github.com/jcalfee/plasma/issues"
+  },
+  "homepage": "https://cryptonomex.com",
+  "dependencies": {
+    "esdoc": "^0.4.3"
+  }
+}
