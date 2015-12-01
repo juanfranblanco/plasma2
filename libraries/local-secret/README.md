@@ -1,10 +1,10 @@
 Create or access a local secret string as follows:
 ```js
-import local_secret from "@graphene/local-secret"`
+import local_secret from "@graphene/local-secret"
 ```
 or
 ```js
-var local_secret = require("@graphene/local-secret").default`
+var local_secret = require("@graphene/local-secret").default
 ```
 
 The import above may generate a message like this (standard error):
