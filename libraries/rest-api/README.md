@@ -3,24 +3,25 @@
 import * as restApi from "@graphene/rest-api"
 import express from 'express'
 
-var app = express()
-
-// Get Request (the action function is optional)
-app.get("/:methodName", restApi.get({
+var api = {
     apiCall_1: function({ param1, param2, filename }) {
         return { type: "API_CALL_1", param1, param2, filename }
     },
     apiCall_2: function({ param }) {
         return { type: "API_CALL_2", param }
     }
-}, action => {
+}
+var dispatch = action => {
     if(action.type === "API_CALL_1")
         // Return the HTTP STATUS "OK"
         action.rest_api.ok()
     else if(action.type === "API_CALL_2")
         // Return the HTTP STATUS "..." (must be a valid HTTP status name string)
         action.rest_api.response("See Other", {message: "Deprecated, see API_CALL_1"})
-}))
+}
+var app = express()
+app.get("/:methodName", restApi.get(api, dispatch))
+app.get("/:methodName", restApi.post(api, dispatch))
 ```
 
 # GET Request
