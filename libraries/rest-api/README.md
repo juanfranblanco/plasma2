@@ -11,6 +11,7 @@ var api = {
         return { type: "API_CALL_2", param }
     }
 }
+
 var dispatch = action => {
     if(action.type === "API_CALL_1")
         // Return the HTTP STATUS "OK"
@@ -19,6 +20,7 @@ var dispatch = action => {
         // Return the HTTP STATUS "..." (must be a valid HTTP status name string)
         action.rest_api.response("See Other", {message: "Deprecated, see API_CALL_1"})
 }
+
 var app = express()
 app.get("/:methodName", restApi.get(api, dispatch))
 app.get("/:methodName", restApi.post(api, dispatch))
