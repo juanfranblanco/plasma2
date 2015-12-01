@@ -1,6 +1,8 @@
 import crypto from "crypto"
 import local_secret from "@graphene/local-secret"
 
+const expire_min = ()=> process.env.npm_config__graphene_time_token_expire_min || 10
+
 /**
     Create a time-based token created by combining the `local_secret` node configuration value and the 
     provided seed parameter.
@@ -45,8 +47,8 @@ export function checkToken(token, seed = null) {
     let then = parseInt(then_string)
     // Subtract the algorithm create date (14484919) to make the number smaller
     let now = Math.floor( Date.now()/(100*1000) ) - 14484919
-    const expire_in_min = process.env.npm_package_config_expire_in_min
-    if( (now - then) >= expire_in_min ) {
+    if( expire_min() == null ) throw new Error("Misconfigured, node config set expire_min")
+    if( (now - then) >= expire_min() ) {
         return { valid: false,  seed: null, error: "expired" }
     }
     let token_verify = crypto.createHash("sha1")

@@ -4,6 +4,9 @@
   "description": "Library used to generate a server-side token which may be emailed and then statelessly verified on the server.",
   "keywords": "verify email",
   "main": "index.js",
+  "config": {
+    "expire_min": 10
+  },
   "dependencies": {
     "@graphene/local-secret": "^1.0.0"
   },

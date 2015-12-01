@@ -39,30 +39,30 @@ describe('rsa-token', () => {
         done()
     })
     it('expired_token', done => {
-        let old_expire = process.env.npm_config_gph_expire_in_min
+        let old_expire = process.env.npm_config__graphene_time_token_expire_min
         try {
-            process.env.npm_config_gph_expire_in_min = 0
+            process.env.npm_config__graphene_time_token_expire_min = 0
             let token = createToken("seed")
             let result = checkToken(token)
             assert.equal(false, result.valid)
             assert.equal(null, result.seed)
             assert.equal("expired", result.error)
         } finally {
-            process.env.npm_config_gph_expire_in_min = old_expire
+            process.env.npm_config__graphene_time_token_expire_min = old_expire
             done()
         }
     })
     it('non_expired_token', done => {
-        let old_expire = process.env.npm_config_gph_expire_in_min
+        let old_expire = process.env.npm_config__graphene_time_token_expire_min
         try {
-            process.env.npm_config_gph_expire_in_min = 1
+            process.env.npm_config__graphene_time_token_expire_min = 1
             let token = createToken("seed")
             let result = checkToken(token)
             assert.equal(true, result.valid)
             assert.equal("seed", result.seed)
             assert.equal(null, result.error)
         } finally {
-            process.env.npm_config_gph_expire_in_min = old_expire
+            process.env.npm_config__graphene_time_token_expire_min = old_expire
             done()
         }
     })

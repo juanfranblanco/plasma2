@@ -1,0 +1,8 @@
+To: alice@example.com
+From: james@jcalfee.info
+Subject: Verify your wallet backup token
+Date: Tue Dec  1 13:07:14 CST 2015
+Content-Type: text/html
+
+<p>Click here to <a href="https://bitshares.org/wallet/#/walletSyncCode/89dipACBipnwFLPXa9JL5ducZAYpG5cWTHdbQFZZLN7e">validate</a> your email.</p>
+<p><small>Token: 89dipACBipnwFLPXa9JL5ducZAYpG5cWTHdbQFZZLN7e</small></p>

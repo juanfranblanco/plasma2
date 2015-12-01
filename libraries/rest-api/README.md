@@ -1,4 +1,16 @@
 # Express JS REST to API middleware.
+
+# Configuration (this will be used in another package using this library)
+```bash
+# Example upload limit config:
+npm config set @graphene/rest-api:fields 1024
+npm config set @graphene/rest-api:fieldSize $((20 * 1024))
+npm config set @graphene/rest-api:files 10
+npm config set @graphene/rest-api:fileSize $((1000 * 1024))
+```
+See [busboy](https://www.npmjs.com/package/busboy)
+
+# Usage
 ```js
 import * as restApi from "@graphene/rest-api"
 import express from 'express'
