@@ -8,6 +8,8 @@ This is a binary token, most likely you will need to apply your own encoding.
 A base 58 encoded token is about 30 characters long, with an email address
 is about 50 characters long.
 
+> 89dipACBipnwFLPXa9JL5ducZAYpG5cWTHdbQFZZLN7e
+
 # Install
 TODO: npm i @graphene/time-token
 
