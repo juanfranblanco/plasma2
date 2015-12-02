@@ -7,9 +7,9 @@ npm config set @graphene/wallet-server:rest_ip_requests_per_hour 10
 
 # Email - tokens have the time in them, expire_min is tested when verifying
 npm config set @graphene/time-token:expire_min 10
-# wallet-server configuration ./package.json => { config }
+# wallet-server configuration, see ./package.json => { config }
 npm config set @graphene/wallet-server:mail_from alice@examples.com
-# Email configuration ./bin/email.sh
+# Email configuration, see ./bin/email.sh
 npm config set @graphene/wallet-server:mail_script ./bin/email.sh
 
 # See https://www.npmjs.com/package/busboy and @graphene/rest-api package
