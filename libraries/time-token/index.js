@@ -13,7 +13,7 @@ const expire_min = ()=> process.env.npm_config__graphene_time_token_expire_min |
     @return {string} token - binary (you will probably need to encode this)
 */
 export function createToken(seed, include_seed = true) {
-    if( ! seed || typeof seed !== 'string' ) throw new Error("Required parameter: {string} seed")
+    if( ! seed || typeof seed !== 'string' ) throw new Error("Missing required parameter: {string} seed")
     // Subtract the algorithm create date (14484919) to make the number smaller.
     // Indicating which minute the hash was created lets the validation know
     // without guessing which minute to validate against.
@@ -36,14 +36,14 @@ export function createToken(seed, include_seed = true) {
     @return {object} result - { valid: boolean, seed: string, error: [null|"unmatched"|"expired"] } 
 */
 export function checkToken(token, seed = null) {
-    if( ! token || typeof token !== 'string' ) throw new Error("Required parameter: {string} token")
+    if( ! token || typeof token !== 'string' ) throw new Error("Missing required parameter: {string} token")
     let raw_token = token.substring(0, 10)
     token = token.substring(10, token.length)
     let split = token.split('\t', 2)
     let then_string = split[0]
     let token_seed = split.length === 2 ? split[1] : seed
     if( ! token_seed || typeof token_seed !== 'string' )
-        throw new Error("Required parameter or embedded token value: {string} seed")
+        throw new Error("Missing required parameter or embedded token value: {string} seed")
     let then = parseInt(then_string)
     // Subtract the algorithm create date (14484919) to make the number smaller
     let now = Math.floor( Date.now()/(100*1000) ) - 14484919

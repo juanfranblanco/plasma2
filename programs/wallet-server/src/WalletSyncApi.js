@@ -10,6 +10,7 @@
     @arg {string} email
 */
 export function requestCode({ email }) {
+    if( invalidEmail(email) ) throw ["invalid email", email]
     return { type: "requestCode", email }
 }
 
@@ -69,3 +70,8 @@ export function saveWallet({ encrypted_data, signature }) {
 export function changePassword({ encrypted_data, old_signature, new_signature }) {
     return { type: "changePassword", encrypted_data, old_signature, new_signature }
 }
+
+// No spaces, only one @ symbol, any character for the email name (not completely complient but safe),
+// only valid domain name characters...  Single letter domain is allowed, top level domain has at
+// least 2 characters.
+var invalidEmail = email => ! email || ! /^[^ ^@.]+@[a-z0-9][\.a-z0-9_-]*\.[a-z0-9]{2,}$/i.test( email )

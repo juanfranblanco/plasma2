@@ -1,5 +1,6 @@
 
 import createServer from "../src/server"
+import * as WaterlineDb from "../src/WaterlineDb"
 
 /** This is a hack to start the server in development mode.  More work is needed. */
 describe('wallet server', () => {
@@ -8,7 +9,7 @@ describe('wallet server', () => {
             global.running_server.close(()=>{ 
                 let { server } = createServer()
                 global.running_server = server
-                done()
+                WaterlineDb.close( ()=>{ done() })
             })
         } else {
             let { server } = createServer()
