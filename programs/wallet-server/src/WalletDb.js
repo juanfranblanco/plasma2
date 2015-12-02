@@ -8,7 +8,7 @@ export function createWallet(email, encrypted_data, signature, resolve) {
         let hash = crypto.createHash("sha1").update(encrypted_data).digest('binary')
         Wallet.create({ email, pubkey, encrypted_data, signature, hash })
             .then(wallet =>{ resolve({ id: wallet.id }) })
-            .catch(error =>{ throw error })
+            .catch(error =>{ console.error(1,error) })
     })
 }
 // email: { type: string, required, unique, index },

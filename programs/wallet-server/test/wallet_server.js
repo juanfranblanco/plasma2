@@ -1,4 +1,3 @@
-
 import createServer from "../src/server"
 import * as WaterlineDb from "../src/WaterlineDb"
 
