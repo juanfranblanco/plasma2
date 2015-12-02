@@ -15,3 +15,15 @@ npm config set @graphene/rest-api:files 10
 npm config set @graphene/rest-api:fileSize $((1000 * 1024))
 ```
 
+# Setup the database
+
+## MySQL
+```bash
+sudo apt-get install mysql-server
+# https://github.com/balderdashy/sails-mysql
+npm install sails-mysql
+#npm config set @graphene/wallet-server:
+```
+
+## In-Memory
+npm install waterline sails-memory

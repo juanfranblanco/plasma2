@@ -10,6 +10,13 @@ const uploadLimit = {
     headerPairs: process.env.npm_config__graphene_rest_api_headerPairs || 110
 }
 
+/** Simple HTTP status callbacks used to reply to the client */
+function reply( res, action ) {
+    action.reply = ( message, data ) =>{ httpResponse( res, message, data ) }
+    action.reply.ok = data =>{ httpResponse( res, "OK", data ) }
+    action.reply.badRequest = data =>{ httpResponse( res, "Bad Request", data ) }
+}
+
 /**
     Middleware for the Express Js GET requests.  The Express JS URL pattern needs to have
     a methodName variable.
@@ -19,7 +26,7 @@ const uploadLimit = {
 
     ```javascript
     var myApi = { myMethod: ({ var1 }) => { return { action: 'name', ... } } }
-    var dispatch = action => { action.ok({ result: 123 }) }
+    var dispatch = action => { action.reply.ok({ result: 123 }) }
     app.get("/:methodName", restApi.get(myApi, dispatch))
     ```
     ```bash
@@ -41,7 +48,7 @@ export const get = (api, dispatch) => (req, res) => {
             return
         }
         // Allow the reducer to reply with a message
-        addResponseSugar( res, action )
+        reply( res, action )
         dispatch( action )
     } catch(error) {
         console.error("GET error", error, error.stack)
@@ -54,7 +61,7 @@ export const get = (api, dispatch) => (req, res) => {
     
     ```javascript
     var myApi = { upload: function({ filename, var1, var2 }) { ...  }}
-    var dispatch = action => { action.ok({ result: 123 }) }
+    var dispatch = action => { action.reply.ok({ result: 123 }) }
     app.post("/*", restApi.post(myApi, dispatch))
     ```
     ```bash
@@ -95,7 +102,7 @@ export const post = (api, dispatch) => (req, res) => {
                 return
             }
             // Allow the reducer to reply with a message
-            addResponseSugar( res, action )
+            reply( res, action )
             dispatch( action )
         } catch(error) {
             console.error("POST error", error, error.stack)
@@ -117,17 +124,11 @@ for(let code in http.STATUS_CODES) response_codes[http.STATUS_CODES[code].toLowe
 export function httpResponse(res, message, data = {}) {
     let code = response_codes[message.toLowerCase()]
     if( ! code ) throw 'Unknown HTTP Status message: ' + message
+    if(typeof data !== 'object') data = { message: data }
     data.code = code
-    data.message = message
+    data.code_description = message
     res.status(code).json( data )
 }
 
-/** Simple HTTP status callbacks used to reply to the client */
-function addResponseSugar( res, action ) {
-    action.rest_api = {
-        response: ( message, data ) =>{ httpResponse( res, message, data ) },
-        ok: data =>{ httpResponse( res, "OK", data ) }
-    }
-}
 /** @typedef expressjs.Request - {@link http://expressjs.com/4x/api.html#req}
 */

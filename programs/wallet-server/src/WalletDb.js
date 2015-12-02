@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import Waterline from "waterline"
 
-const adapter = "sails-memory"//"sails-mysql"
+const adapter = "sails-memory"
 // const adapter = "sails-mysql"
 var sailsDbAdapter = require(adapter)
 
@@ -39,7 +39,8 @@ var waterlineConfig = {
 waterlineConfig.adapters[adapter] = sailsDbAdapter
 var Wallet
 waterline.initialize(waterlineConfig, (err, ontology) => {
-    if (err) return console.error(err)
+    if (err) console.error(err)
+    console.log("ontology", ontology)
     Wallet = ontology.collections.wallet
 })
 

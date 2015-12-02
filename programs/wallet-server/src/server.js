@@ -29,23 +29,29 @@ export default function createServer() {
     var app = express()
 
     // Limit number of requests per hour by IP
-    console.log("Limit by IP address", ratelimitConfig)
+    console.log("Limit by IP address", {
+        max: ratelimitConfig.max,
+        duration: ratelimitConfig.duration/1000/60+' min'
+    })
     app.use(limit(ratelimitConfig))
-    
-    app.get("/debug/:methodName", restApi.get({
-        checkToken: function({ token }) {
-            token = bs58.decode(token)
-            token = new Buffer(token).toString('binary')
-            return {type: 'checkToken', result: checkToken(token)}
+    {
+        let debugApi = {
+            checkToken: function({ code }) {
+                token = bs58.decode(token)
+                token = new Buffer(token).toString('binary')
+                return {type: 'checkToken', result: checkToken(token)}
+            }
         }
-    }, action => {
-        switch(action.type) {
-        case 'checkToken':
-            if(action.result.valid === true) action.rest_api.ok()
-            else action.rest_api.response("Unauthorized", {result: action.result.error})
-            break
+        let debugDispatch = action => {
+            switch(action.type) {
+            case 'checkToken':
+                if(action.result.valid === true) action.rest_api.ok()
+                else action.rest_api.response("Unauthorized", {result: action.result.error})
+                break
+            }
         }
-    }))
+        app.get("/debug/:methodName", restApi.get(debugApi, debugDispatch))
+    }
     app.get("/:methodName", restApi.get(walletSyncApi, store.dispatch))
     app.post("/:methodName", restApi.post(walletSyncApi, store.dispatch))
     let server = app.listen(npm_package_config_rest_port)

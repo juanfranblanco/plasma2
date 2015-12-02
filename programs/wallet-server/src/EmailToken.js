@@ -2,8 +2,8 @@ import { createToken } from "@graphene/time-token"
 import { spawn } from "child_process"
 import bs58 from "bs58"
 
-export default function emailToken(mail_to) {
-    let token = createToken(mail_to)
+export default function emailToken(mail_to, include_seed) {
+    let token = createToken(mail_to, include_seed)
     token = bs58.encode(new Buffer(token, 'binary'))
     const mail_from = process.env.npm_package_config_mail_from
     const mail_subject = process.env.npm_package_config_mail_subject

@@ -25,12 +25,13 @@ var api = {
 }
 
 var dispatch = action => {
+    let reply = action.reply
     if(action.type === "API_CALL_1")
         // Return the HTTP STATUS "OK"
-        action.rest_api.ok()
+        reply.ok()
     else if(action.type === "API_CALL_2")
         // Return the HTTP STATUS "..." (must be a valid HTTP status name string)
-        action.rest_api.response("See Other", {message: "Deprecated, see API_CALL_1"})
+        reply("See Other", {message: "Deprecated, see API_CALL_1"})
 }
 
 var app = express()
