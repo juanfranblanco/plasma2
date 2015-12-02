@@ -13,6 +13,7 @@ promisify( repl_instance )
 for (var obj in replApi)
     repl_instance.context[obj] = replApi[obj]
 
-repl_instance.on("exit", ()=> { })
+repl_instance.on("exit", ()=>{ replApi.stop() })
 var hist_file = process.env.HOME + "/.wallet_server_history";
 repl_history(repl_instance, hist_file);
+replApi.start()

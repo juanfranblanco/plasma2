@@ -79,7 +79,7 @@ export const post = (api, dispatch) => (req, res) => {
             console.error('Expecting mimetype application/octet-stream',fieldname, file, filename, encoding, mimetype)
         let buffer
         file.on('data', (data) => { buffer = data })
-        file.on('end', () => { params[filename] = buffer })
+        file.on('end', () => { params[filename] = buffer.toString('binary') })
     })
     busboy.on('field', (fieldname, val, fieldnameTruncated, valTruncated, encoding, mimetype) => {
         if( mimetype !== 'text/plain' )
