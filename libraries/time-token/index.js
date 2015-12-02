@@ -36,7 +36,7 @@ export function createToken(seed, include_seed = true) {
     @return {object} result - { valid: boolean, seed: string, error: [null|"unmatched"|"expired"] } 
 */
 export function checkToken(token, seed = null) {
-    if( ! token || typeof token !== 'string' ) throw new Error("Missing required parameter: {string} token")
+    if( ! token || typeof token !== 'string' ) throw new Error("Required parameter: {string} token", typeof token)
     let raw_token = token.substring(0, 10)
     token = token.substring(10, token.length)
     let split = token.split('\t', 2)

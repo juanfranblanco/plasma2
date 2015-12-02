@@ -1,8 +1,9 @@
 import crypto from "crypto"
 import Waterline from "waterline"
+import connections from "../config/connections"
 
-const adapter = "sails-memory"
-// const adapter = "sails-mysql"
+// const adapter = "sails-memory"
+const adapter = "sails-mysql"
 var sailsDbAdapter = require(adapter)
 
 export function close(resolve) {
@@ -21,19 +22,15 @@ export function instance(resolve) {
         identity: "wallet", connection: 'default', adapter,
         attributes: {
             email: { type: string, required, unique, index },
-            pubkey: { type: 'binary', required, unique, index },
-            encrypted_data: { type: 'binary', required },
-            signature: { type: 'binary', required },
-            hash_sha1: { type: 'binary', required, size: 20 }
+            // pubkey: { type: 'binary', required, unique, index },
+            // encrypted_data: { type: 'binary', required },
+            // signature: { type: 'binary', required },
+            // hash_sha1: { type: 'binary', required, size: 20 }
         }
     })
     waterline.loadCollection(walletCollection)
-    var waterlineConfig = {
-        adapters: { },
-        connections: {
-            default: { adapter }
-        }
-    }
+    var waterlineConfig = { adapters: { }, connections }
+    waterlineConfig.connections.default = { adapter }
     waterlineConfig.adapters[adapter] = sailsDbAdapter
     waterline.initialize(waterlineConfig, (err, ontology) => {
         if (err) { console.error(err); return }

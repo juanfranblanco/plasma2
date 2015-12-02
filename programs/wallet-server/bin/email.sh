@@ -8,7 +8,7 @@ token=${3?token}
 token_url=${4?token url}
 subject=${5?email subject}
 
-cat<<EndOfMail | tee mail.out | ssmtp "$to"
+cat<<EndOfMail | ssmtp "$to"
 To: $to
 From: $from
 Subject: $subject

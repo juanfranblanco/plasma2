@@ -11,3 +11,8 @@ export function createWallet(email, encrypted_data, signature, resolve) {
             .catch(error =>{ throw error })
     })
 }
+// email: { type: string, required, unique, index },
+// pubkey: { type: 'binary', required, unique, index },
+// encrypted_data: { type: 'binary', required },
+// signature: { type: 'binary', required },
+// hash_sha1: { type: 'binary', required, size: 20 }

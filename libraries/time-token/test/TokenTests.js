@@ -1,7 +1,7 @@
 import {createToken, checkToken} from '../index'
 import assert from "assert"
 
-describe('rsa-token', () => {
+describe('time-token', () => {
     it('seeded_token', done => {
         let token = createToken("seed")
         assert.equal(19, token.length)

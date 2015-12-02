@@ -1,3 +1,4 @@
+import bs58 from "bs58"
 import * as WalletSyncApi from './WalletSyncApi'
 import emailToken from "./EmailToken"
 import { checkToken } from "@graphene/time-token"
@@ -13,7 +14,7 @@ export default function reducer(state, action) {
         switch( action.type ) {
             case 'requestCode':
                 let { email } = action
-                let p = emailToken(email, true)
+                let p = emailToken(email)
                 p.on('close', (code, signal) =>{
                     if( code === 0 ) {
                         reply.ok()
@@ -25,12 +26,14 @@ export default function reducer(state, action) {
                 break
             case 'createWallet':
                 let { code, encrypted_data, signature } = action
+                code = new Buffer( bs58.decode(code) ).toString( 'binary' )
                 let result = checkToken( code )
                 if( ! result.valid ) {
                     reply("Unauthorized", {message: result.error})
                     break
                 }
-                WalletDb.createWallet(result.email, encrypted_data, signature,
+                let email_from_seed = result.seed
+                WalletDb.createWallet(email_from_seed, encrypted_data, signature,
                     resolve =>{ reply.ok(resolve) })
                 break
             default:

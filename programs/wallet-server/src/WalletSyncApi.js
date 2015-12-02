@@ -6,7 +6,7 @@
     ```bash
     curl http://localhost:9080/requestCode?email=alice@example.com
     ```
-    @see {string} code - in email
+    @see {string} code - base58 encoded string (arrives in email)
     @arg {string} email
 */
 export function requestCode({ email }) {
