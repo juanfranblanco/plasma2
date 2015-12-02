@@ -25,8 +25,8 @@ export function instance(ontology) {
             email: { type: string, required},//, unique, index },
             pubkey: { type: 'binary', required},//, unique, index },
             encrypted_data: { type: 'binary', required },
-            // signature: { type: 'binary', required },
-            // hash_sha1: { type: 'binary', required, size: 20 }
+            signature: { type: 'binary', required },
+            hash_sha1: { type: 'binary', required, size: 20 }
         }
     })
     waterline.loadCollection(walletCollection)
