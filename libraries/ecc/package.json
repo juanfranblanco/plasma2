@@ -1,18 +1,24 @@
 {
-  "name": "@graphene/time-token",
+  "name": "@graphene/ecc",
   "version": "1.0.0",
-  "description": "Generate server-side token (with optional payload) which may be emailed or QR encoded then verified on the server.  Tokens can be expired.",
-  "keywords": "verify email",
+  "description": "Elliptic curve cryptography functions",
+  "keywords": "ECC, Private Key, Public Key, Cryptographic Signature, AES, Encryption, Decryption",
   "main": "index.js",
   "config": {
-    "expire_min": 10
-  },
-  "dependencies": {
-    "@graphene/local-secret": "^1.0.0"
+    "address_prefix": "GPH"
   },
   "scripts": {
     "test": "mocha --compilers js:babel-core/register --recursive",
     "test:watch": "npm test -- --watch"
+  },
+  "dependencies": {
+    "bigi": "^1.4.1",
+    "bs58": "^3.0.0",
+    "bytebuffer": "^5.0.0",
+    "crypto-js": "^3.1.5",
+    "ecurve": "^1.0.2",
+    "secp256k1": "^2.0.7",
+    "secure-random": "^1.1.1"
   },
   "author": "cryptonomex",
   "license": "BSD-2-Clause-FreeBSD",

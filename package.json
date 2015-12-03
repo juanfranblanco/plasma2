@@ -9,7 +9,7 @@
     "type": "git",
     "url": "git+https://github.com/jcalfee/plasma.git"
   },
-  "author": "jcalfee",
+  "author": "cryptonomex",
   "license": "BSD-2-Clause-FreeBSD",
   "bugs": {
     "url": "https://github.com/jcalfee/plasma/issues"

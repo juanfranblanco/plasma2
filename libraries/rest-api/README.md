@@ -1,6 +1,7 @@
 # Express JS REST to API middleware.
 
 # Configuration (this will be used in another package using this library)
+Run these if you need to change something.
 ```bash
 # Example upload limit config:
 npm config set @graphene/rest-api:fields 1024
@@ -56,3 +57,5 @@ curl -X POST -F "fileupload=@myfile.bin;filename=myfile" -F param1=1111 -F param
 # For valid `action.rest_api.response(string, ...)` strings see:
 node -p "require('http').STATUS_CODES"
 ```
+
+* [Build](BUILD.md)

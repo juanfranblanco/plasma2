@@ -4,7 +4,7 @@
   "description": "Create or access a saved local secret token",
   "keywords": "secret, token",
   "main": "index.js",
-  "author": "jcalfee",
+  "author": "cryptonomex",
   "license": "BSD-2-Clause-FreeBSD",
   "devDependencies": {
     "babel-cli": "^6.2.0",

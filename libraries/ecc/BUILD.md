@@ -1,10 +1,10 @@
 ```bash
-npm link ../local-secret
+npm link ../hash
 npm i --production
 ```
 or
 ```bash
-npm link ../local-secret
+npm link ../hash
 npm i
 npm test
 ```

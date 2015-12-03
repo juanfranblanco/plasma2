@@ -18,7 +18,7 @@ export function instance(ontology) {
         return
     }
     var waterline = new Waterline()
-    var index = true, required = true, unique = true, string='string', binary='binary'     
+    const index = true, required = true, unique = true, string='string', binary='binary'     
     var walletCollection = Waterline.Collection.extend({
         identity: "wallet", connection: 'default', adapter,
         attributes: {
@@ -37,7 +37,3 @@ export function instance(ontology) {
         ontology( global.waterline_ontology = _ontology )
     })
 }
-
-
-
-

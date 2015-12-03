@@ -7,7 +7,7 @@
   "dependencies": {
     "busboy": "^0.2.12"
   },
-  "author": "jcalfee",
+  "author": "cryptonomex",
   "license": "BSD-2-Clause-FreeBSD",
   "babel": {
     "presets": [
