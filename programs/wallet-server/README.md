@@ -21,9 +21,13 @@ Update `./.npmrc` if you need to change something:
 ```
 For more, see "config" in [package.json](./package.json)
 
-## Database
+# Commands
 
-### MySQL (work in progress)
+See "scripts" in [package.json](./package.json)
+
+# Database
+
+## MySQL (work in progress)
 ```bash
 sudo apt-get install mysql-server
 # https://github.com/balderdashy/sails-mysql
@@ -31,7 +35,7 @@ npm install sails-mysql
 #npm config set @graphene/wallet-server:
 ```
 
-### In-Memory
+## In-Memory
 ```bash
 npm install waterline sails-memory
 ```

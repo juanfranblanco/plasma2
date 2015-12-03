@@ -38,6 +38,7 @@ module.exports = {
             repl_instance.context[obj] = module.exports[obj]
 
         repl_instance.on("exit", ()=>{ module.exports.stop() })
+        console.log("Command line history saved: ~/.wallet_server_history")
         var hist_file = process.env.HOME + "/.wallet_server_history";
         repl_history(repl_instance, hist_file);
         module.exports.start( done )

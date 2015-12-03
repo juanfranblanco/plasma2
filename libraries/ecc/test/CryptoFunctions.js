@@ -2,11 +2,9 @@ import { Aes, PrivateKey, PublicKey} from ".."
 import assert from "assert"
 
 /**
-    @see https://code.google.com/p/crypto-js/#The_Cipher_Input
 */
 describe("AES", function() {
     
-    // wallet.json backup under 'encrypted_key'  
     var encrypted_key = 
         "37fd6a251d262ec4c25343016a024a3aec543b7a43a208bf66bc80640dff" +
         "8ac8d52ae4ad7500d067c90f26189f9ee6050a13c087d430d24b88e713f1" + 
