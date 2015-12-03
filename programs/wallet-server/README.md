@@ -1,6 +1,6 @@
 
 # Configure
-Create ./.npmrc if you need to change something (for more, see ./package.json):
+Create ./.npmrc if you need to change something:
 >./.npmrc
 ```sh
 # Server Port
@@ -20,6 +20,7 @@ Create ./.npmrc if you need to change something (for more, see ./package.json):
 @graphene/rest-api:files = 10
 @graphene/rest-api:fileSize = 1024000
 ```
+For more, see [package.json](./package.json)
 
 ## Database
 
