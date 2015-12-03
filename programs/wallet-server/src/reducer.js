@@ -2,7 +2,7 @@ import bs58 from "bs58"
 import * as WalletSyncApi from './WalletSyncApi'
 import emailToken from "./EmailToken"
 import { checkToken } from "@graphene/time-token"
-import * as WalletDb from "./WalletDb"
+import {Wallet} from "./db/models.js"
 
 //const TRACE = true
 
@@ -33,8 +33,16 @@ export default function reducer(state, action) {
                     break
                 }
                 let email_from_seed = result.seed
-                WalletDb.createWallet(email_from_seed, encrypted_data, signature,
-                    resolve =>{ reply.ok(resolve) })
+                let pubkey = "BTSabc"
+                let hash_sha1 = crypto.createHash("sha1").update(encrypted_data).digest('base64')
+                Wallet.create({
+                    email: email_from_seed,
+                    pubkey: pubkey,
+                    encrypted_data: encrypted_data,
+                    signature: signature,
+                    hash_sha1: hash_sha1
+                })
+                reply.ok(resolve)
                 break
             default:
                 reply("Not Implemented")
