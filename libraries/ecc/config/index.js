@@ -1,8 +1,9 @@
 /**
 # Configure
-Run these if you need to change something.
+Create ./.npmrc if you need to change something:
+>./.npmrc
 ```bash
-npm config set @graphene/ecc:default_address_prefix GPH
+@graphene/ecc:default_address_prefix=GPH
 ```
 */
 module.exports = {
