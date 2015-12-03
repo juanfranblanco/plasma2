@@ -5,8 +5,9 @@ import {createToken, checkToken} from "@graphene/time-token"`
 ```
 
 # Configure
-Create `./.npmrc` if you need to change something:
+Update `./.npmrc` if you need to change something:
 ```sh
+# Tokens have the time in them, expire_min is tested when verifying
 @graphene/time-token:expire_min = 10
 ```
 

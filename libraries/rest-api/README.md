@@ -1,7 +1,7 @@
 # Express JS REST to API middleware.
 
 # Configure
-Create `./.npmrc` if you need to change something:
+Update `./.npmrc` if you need to change something:
 ```sh
 # Example upload limit configuration:
 @graphene/rest-api:fields = 1024

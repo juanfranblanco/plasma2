@@ -1,6 +1,6 @@
 
 # Configure
-Create `./.npmrc` if you need to change something:
+Update `./.npmrc` if you need to change something:
 ```sh
 # Server Port
 @graphene/wallet-server:rest_port = 9080
