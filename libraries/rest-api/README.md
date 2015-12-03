@@ -1,13 +1,13 @@
 # Express JS REST to API middleware.
 
-# Configuration (this will be used in another package using this library)
-Run these if you need to change something.
-```bash
-# Example upload limit config:
-npm config set @graphene/rest-api:fields 1024
-npm config set @graphene/rest-api:fieldSize $((20 * 1024))
-npm config set @graphene/rest-api:files 10
-npm config set @graphene/rest-api:fileSize $((1000 * 1024))
+# Configure
+Create `./.npmrc` if you need to change something:
+```sh
+# Example upload limit configuration:
+@graphene/rest-api:fields = 1024
+@graphene/rest-api:fieldSize = 20480
+@graphene/rest-api:files = 10
+@graphene/rest-api:fileSize = 1024000
 ```
 See [busboy](https://www.npmjs.com/package/busboy)
 

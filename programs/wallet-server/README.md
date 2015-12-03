@@ -1,7 +1,6 @@
 
 # Configure
-Create ./.npmrc if you need to change something:
->./.npmrc
+Create `./.npmrc` if you need to change something:
 ```sh
 # Server Port
 @graphene/wallet-server:rest_port = 9080
@@ -20,7 +19,7 @@ Create ./.npmrc if you need to change something:
 @graphene/rest-api:files = 10
 @graphene/rest-api:fileSize = 1024000
 ```
-For more, see [package.json](./package.json)
+For more, see "config" in [package.json](./package.json)
 
 ## Database
 
