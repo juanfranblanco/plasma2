@@ -8,10 +8,11 @@ var hash = require('@graphene/hash');
 /** Provides symetric encrypt and decrypt via AES. */
 class Aes {
 
+    /** @private */
     constructor(iv, key) { this.iv = iv, this.key = key; }
-        
-    clear() {return this.iv = this.key = undefined; }
     
+    /** This is an excellent way to ensure that all references to Aes can not operate anymore (example: a wallet becomes locked).  An application should ensure there is only one Aes object instance for a given secret `seed`. */
+    clear() {return this.iv = this.key = undefined; }
     
     /** @arg {string} seed - secret seed may be used to encrypt or decrypt. */
     static fromSeed(seed) {
@@ -22,7 +23,7 @@ class Aes {
         return Aes.fromSha512(_hash);
     };
     
-    /** @arg {string} hash - A 128 byte string, typically one would call {@link fromSeed} instead. */
+    /** @arg {string} hash - A 128 byte hex string, typically one would call {@link fromSeed} instead. */
     static fromSha512(hash) {
         assert.equal(hash.length, 128, `A Sha512 in HEX should be 128 characters long, instead got ${hash.length}`);
         var iv = CryptoJS.enc.Hex.parse(hash.substring(64, 96));
@@ -31,10 +32,11 @@ class Aes {
     };
     
     /** 
+        @throws {Error} - "Invalid Key, ..."
         @arg {PrivateKey} private_key - required and used for decryption
         @arg {PublicKey} public_key - required and used to calcualte the shared secret
         @arg {string} [nonce = ""] optional but should always be provided and be unique when re-using the same private/public keys more than once.  This nonce is not a secret.
-        @arg {string|Buffer} message - Encrypted message with a checksum suffix
+        @arg {string|Buffer} message - Encrypted message containing a checksum
         @return {Buffer}
     */
     static decrypt_with_checksum(private_key, public_key, nonce = "", message) {
@@ -82,7 +84,9 @@ class Aes {
         return plaintext;
     };
     
-    /** Identical to {@link decrypt_with_checksum} but used to encrypt */
+    /** Identical to {@link decrypt_with_checksum} but used to encrypt.  Should not throw an error.
+        @return {Buffer} message - Encrypted message which includes a checksum
+    */
     static encrypt_with_checksum(private_key, public_key, nonce = "", message) {
         
         if (!Buffer.isBuffer(message)) {
