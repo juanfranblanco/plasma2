@@ -3,6 +3,9 @@ var config = require('../config');
 var hash = require('@graphene/hash');
 var base58 = require('bs58');
 
+/** Addresses are shortened non-reversable hashes of a public key.  The full PublicKey is preferred.
+    @deprecated
+*/
 class Address {
 
     constructor(addy) { this.addy = addy; }

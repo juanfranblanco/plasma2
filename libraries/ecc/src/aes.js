@@ -5,20 +5,15 @@ var ByteBuffer = require("bytebuffer");
 var Long = ByteBuffer.Long;
 var hash = require('@graphene/hash');
 
+/** Provides symetric encrypt and decrypt via AES. */
 class Aes {
 
     constructor(iv, key) { this.iv = iv, this.key = key; }
         
     clear() {return this.iv = this.key = undefined; }
     
-    // TODO arg should be a binary type... HEX works best with crypto-js
-    static fromSha512(hash) {
-        assert.equal(hash.length, 128, `A Sha512 in HEX should be 128 characters long, instead got ${hash.length}`);
-        var iv = CryptoJS.enc.Hex.parse(hash.substring(64, 96));
-        var key = CryptoJS.enc.Hex.parse(hash.substring(0, 64));
-        return new Aes(iv, key);
-    };
     
+    /** @arg {string} seed - secret seed may be used to encrypt or decrypt. */
     static fromSeed(seed) {
         if (seed === undefined) { throw new Error("seed is required"); }
         var _hash = hash.sha512(seed);
@@ -27,7 +22,21 @@ class Aes {
         return Aes.fromSha512(_hash);
     };
     
-    //#* nonce is optional (null or empty string)
+    /** @arg {string} hash - A 128 byte string, typically one would call {@link fromSeed} instead. */
+    static fromSha512(hash) {
+        assert.equal(hash.length, 128, `A Sha512 in HEX should be 128 characters long, instead got ${hash.length}`);
+        var iv = CryptoJS.enc.Hex.parse(hash.substring(64, 96));
+        var key = CryptoJS.enc.Hex.parse(hash.substring(0, 64));
+        return new Aes(iv, key);
+    };
+    
+    /** 
+        @arg {PrivateKey} private_key - required and used for decryption
+        @arg {PublicKey} public_key - required and used to calcualte the shared secret
+        @arg {string} [nonce = ""] optional but should always be provided and be unique when re-using the same private/public keys more than once.  This nonce is not a secret.
+        @arg {string|Buffer} message - Encrypted message with a checksum suffix
+        @return {Buffer}
+    */
     static decrypt_with_checksum(private_key, public_key, nonce = "", message) {
         
         if (!Buffer.isBuffer(message)) {
@@ -73,6 +82,7 @@ class Aes {
         return plaintext;
     };
     
+    /** Identical to {@link decrypt_with_checksum} but used to encrypt */
     static encrypt_with_checksum(private_key, public_key, nonce = "", message) {
         
         if (!Buffer.isBuffer(message)) {
@@ -102,18 +112,21 @@ class Aes {
         return encrypt(payload);
     };
     
+    /** @private */
     _decrypt_word_array(cipher) {
         // https://code.google.com/p/crypto-js/#Custom_Key_and_IV
         // see wallet_records.cpp master_key::decrypt_key
         return CryptoJS.AES.decrypt({ ciphertext: cipher, salt: null}, this.key, {iv: this.iv});
     }
     
+    /** @private */
     _encrypt_word_array(plaintext) {
         //https://code.google.com/p/crypto-js/issues/detail?id=85
         var cipher = CryptoJS.AES.encrypt(plaintext, this.key, {iv: this.iv});
         return CryptoJS.enc.Base64.parse(cipher.toString());
     }
 
+    /** @private */
     decrypt(cipher_buffer) {
         if (typeof cipher_buffer === "string") {
             cipher_buffer = new Buffer(cipher_buffer, 'binary');
@@ -126,7 +139,8 @@ class Aes {
         var hex = this.decryptHex(cipher_buffer.toString('hex'));
         return new Buffer(hex, 'hex');
     }
-        
+    
+    /** @private */
     encrypt(plaintext) {
         if (typeof plaintext === "string") {
             plaintext = new Buffer(plaintext, 'binary');
@@ -140,6 +154,10 @@ class Aes {
         return new Buffer(hex, 'hex');
     }
 
+    /** This method does not use a checksum, the returned data must be validated some other way.
+        @arg {string|Buffer} plaintext
+        @return {string} hex
+    */
     encryptToHex(plaintext) {
         if (typeof plaintext === "string") {
             plaintext = new Buffer(plaintext, 'binary');
@@ -151,7 +169,11 @@ class Aes {
         // hex is the only common format
         return this.encryptHex(plaintext.toString('hex'));
     }
-        
+    
+    /** This method does not use a checksum, the returned data must be validated some other way.
+        @arg {string} cipher - hex
+        @return {string} binary (could easily be readable text)
+    */
     decryptHex(cipher) {
         assert(cipher, "Missing cipher text");
         // Convert data into word arrays (used by Crypto)
@@ -160,6 +182,10 @@ class Aes {
         return CryptoJS.enc.Hex.stringify(plainwords);
     }
     
+    /** This method does not use a checksum, the returned data must be validated some other way.
+        @arg {string} cipher - hex
+        @return {Buffer} encoded as specified by the parameter
+    */
     decryptHexToBuffer(cipher) {
         assert(cipher, "Missing cipher text");
         // Convert data into word arrays (used by Crypto)
@@ -169,13 +195,20 @@ class Aes {
         return new Buffer(plainhex, 'hex');
     }
     
-    decryptHexToText(cipher) {
-        return this.decryptHexToBuffer(cipher).toString('binary');
+    /** This method does not use a checksum, the returned data must be validated some other way.
+        @arg {string} cipher - hex
+        @arg {string} [encoding = 'binary'] - a valid Buffer encoding
+        @return {String} encoded as specified by the parameter
+    */
+    decryptHexToText(cipher, encoding = 'binary') {
+        return this.decryptHexToBuffer(cipher).toString(encoding);
     }
     
+    /** This method does not use a checksum, the returned data must be validated some other way.
+        @arg {string} plainhex - hex format
+        @return {String} hex
+    */
     encryptHex(plainhex) {
-        //assert plainhex, "Missing plain text"
-        //console.log('... plainhex',plainhex)
         var plain_array = CryptoJS.enc.Hex.parse(plainhex);
         var cipher_array = this._encrypt_word_array(plain_array);
         return CryptoJS.enc.Hex.stringify(cipher_array);
