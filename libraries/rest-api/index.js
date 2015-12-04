@@ -15,7 +15,17 @@ function reply( res, action ) {
     action.reply = ( message, data ) =>{
         if( message.then ) {// Promise
             message
-                .then( data =>{ httpResponse(res, "OK", data) })
+                .then( data =>{
+                    if( typeof data === 'string' ) {
+                        // Try to convert a valid reponse strings into a code: like 'Not Modified'
+                        let code = response_codes[data.toLowerCase()]
+                        if( code != null ) {
+                            httpResponse(res, data)
+                            return
+                        }
+                    }
+                    httpResponse(res, "OK", data)
+                })
                 .catch( error =>{ httpResponse(res, "Bad Request", error) })
             return
         }

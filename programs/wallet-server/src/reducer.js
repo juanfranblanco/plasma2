@@ -38,10 +38,7 @@ export default function reducer(state, action) {
             case 'fetchWallet':
                 let { public_key, local_hash } = action
                 // let fetch_result = WalletDb.fetchWallet( public_key, local_hash )
-                var r = Wallet.findOne({
-                    where: {public_key, local_hash: { $ne: local_hash } }
-                }).then( wallet => {
-                    console.log("wallet", wallet)
+                var r = Wallet.findOne({ where: {public_key, local_hash: { $ne: local_hash } } }).then( wallet => {
                     if( ! wallet ) return "Not Modified"
                     let { email, public_key, signature, local_hash } = wallet
                     return {
