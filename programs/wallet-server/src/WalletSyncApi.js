@@ -36,7 +36,7 @@ export function createWallet({ code, encrypted_data, signature }) {
     @arg {string} [fetchWallet.local_hash = null] - base64 sha1 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
     @return {string} encrypted_data - base64
 */
-export function fetchWallet({ public_key, local_hash = null }) {
+export function fetchWallet({ public_key, local_hash }) {
     return { type: "fetchWallet", public_key, local_hash }
 }
 

@@ -18,7 +18,7 @@ npm i
 ```bash
 #  Assumes your user is the default root (with no password)
 mysqladmin -u root create wallet_server
-node run src/db/models.js
+node src/db/models.js
 ```
 
 # Commands

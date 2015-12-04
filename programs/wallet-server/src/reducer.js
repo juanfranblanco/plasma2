@@ -3,6 +3,7 @@ import { checkToken } from "@graphene/time-token"
 import emailToken from "./EmailToken"
 import * as WalletSyncApi from './WalletSyncApi'
 import * as WalletDb from "./WalletDb"
+import {Wallet} from "./db/models.js"
 
 export default function reducer(state, action) {
     if( /redux/.test(action.type) ) return state
@@ -31,8 +32,24 @@ export default function reducer(state, action) {
                     break
                 }
                 let email_from_seed = result.seed
-                let create_result = WalletDb.createWallet(email_from_seed, encrypted_data, signature)
-                reply(create_result)
+                var r = WalletDb.createWallet(email_from_seed, encrypted_data, signature)
+                reply(r)
+                break
+            case 'fetchWallet':
+                let { public_key, local_hash } = action
+                // let fetch_result = WalletDb.fetchWallet( public_key, local_hash )
+                var r = Wallet.findOne({
+                    where: {public_key, local_hash: { $ne: local_hash } }
+                }).then( wallet => {
+                    console.log("wallet", wallet)
+                    if( ! wallet ) return "Not Modified"
+                    let { email, public_key, signature, local_hash } = wallet
+                    return {
+                        email, public_key, signature, local_hash,
+                        encrypted_data: wallet.encrypted_data.toString('base64'),
+                    }
+                })
+                reply(r)
                 break
             default:
                 reply("Not Implemented")
