@@ -29,7 +29,7 @@
     "start": "babel-node ./index.js",
     "test": "mocha --compilers js:babel-core/register --recursive",
     "test:watch": "npm test -- --watch",
-    "dev": "mocha --compilers js:babel-core/register ./index_dev.js --watch"
+    "cli": "babel-node ./src/Repl.js"
   },
   "author": "cryptonomex",
   "license": "BSD-2-Clause-FreeBSD",

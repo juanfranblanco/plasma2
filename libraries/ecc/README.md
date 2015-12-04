@@ -2,7 +2,7 @@
 Private Key, Public Key, Cryptographic Signature, AES, Encryption / Decryption
 
 ```js
-import {Address, Aes, PrivateKey, PublicKey, Signature} from "@graphene/ecc"`
+import {Address, Aes, PrivateKey, PublicKey, Signature} from "@graphene/ecc"
 ```
 
 # Configure

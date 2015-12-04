@@ -1,13 +1,14 @@
 import repl from "repl"
 import repl_history from "repl.history"
 import { promisify} from "repl-promised"
-// import * as WaterlineDb from "./WaterlineDb"
 import createServer from "./server"
+
+import {Address, Aes, PrivateKey, PublicKey, Signature} from "@graphene/ecc"
 
 module.exports = {
     
-    ontology: ()=>{ return global.ontology },
-    collections: ()=>{ return global.ontology.collections },
+    Address, Aes, PrivateKey, PublicKey, Signature,
+    
     start: done =>{
         if( global.server ) {
             module.exports.stop(_done =>{ module.exports.start(done) })
@@ -15,10 +16,6 @@ module.exports = {
         } 
         global.server = createServer().server
         if( done ) done()
-        // WaterlineDb.instance( ontology =>{
-        //     global.ontology = ontology
-        //     if( done ) done()
-        // })
     },
     stop: done =>{
         if( global.server ) {
@@ -44,5 +41,11 @@ module.exports = {
         var hist_file = process.env.HOME + "/.wallet_server_history";
         repl_history(repl_instance, hist_file);
         module.exports.start( done )
+    },
+    help: ()=> {
+        for (var obj in module.exports) {
+            if( obj === 'cli' ) continue
+            console.log(obj)
+        }
     }
 }
