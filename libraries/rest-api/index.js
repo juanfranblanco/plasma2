@@ -12,7 +12,14 @@ const uploadLimit = {
 
 /** Simple HTTP status callbacks used to reply to the client */
 function reply( res, action ) {
-    action.reply = ( message, data ) =>{ httpResponse( res, message, data ) }
+    action.reply = ( message, data ) =>{
+        if( message.then ) {// Promise
+            message.then( data =>{ httpResponse( res, "OK", data ) })
+                .catch( error =>{ httpResponse( res, "Bad Request", error) })
+            return
+        }
+        httpResponse( res, message, data )
+    }
     action.reply.ok = data =>{ httpResponse( res, "OK", data ) }
     action.reply.badRequest = data =>{ httpResponse( res, "Bad Request", data ) }
 }

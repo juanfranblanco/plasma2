@@ -31,11 +31,8 @@ export default function reducer(state, action) {
                     break
                 }
                 let email_from_seed = result.seed
-                WalletDb.createWallet(email_from_seed, encrypted_data, signature, resolve => {
-                    if( resolve ) { reply.ok(); return }
-                    console.log("resolve", resolve)
-                })
-                
+                let create_result = WalletDb.createWallet(email_from_seed, encrypted_data, signature)
+                reply(create_result)
                 break
             default:
                 reply("Not Implemented")
