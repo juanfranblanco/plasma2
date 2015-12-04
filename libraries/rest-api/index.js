@@ -14,8 +14,9 @@ const uploadLimit = {
 function reply( res, action ) {
     action.reply = ( message, data ) =>{
         if( message.then ) {// Promise
-            message.then( data =>{ httpResponse( res, "OK", data ) })
-                .catch( error =>{ httpResponse( res, "Bad Request", error) })
+            message
+                .then( data =>{ httpResponse(res, "OK", data) })
+                .catch( error =>{ httpResponse(res, "Bad Request", error) })
             return
         }
         httpResponse( res, message, data )
