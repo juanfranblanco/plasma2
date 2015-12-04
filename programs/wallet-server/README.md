@@ -1,3 +1,29 @@
+# Setup
+Visit each library below and see BUILD.md
+
+Make a link to the libraries (so changes in the library are seen without needing to publish)
+```bash
+npm link ../../libraries/time-token
+npm link ../../libraries/rest-api
+npm link ../../libraries/ecc
+npm link ../../libraries/hash
+```
+
+Install
+```bash
+npm i
+```
+
+# Database
+```bash
+#  Assumes your user is the default root (with no password)
+mysqladmin -u root create wallet_server
+node run src/db/models.js
+```
+
+# Commands
+See "scripts" in [package.json](./package.json)
+Basically this are `npm start` or `npm run [dev|test|test:watch]`
 
 # Configure
 Update `./.npmrc` if you need to change something:
@@ -21,21 +47,3 @@ Update `./.npmrc` if you need to change something:
 ```
 For more, see "config" in [package.json](./package.json)
 
-# Commands
-
-See "scripts" in [package.json](./package.json)
-
-# Database
-
-## MySQL (work in progress)
-```bash
-sudo apt-get install mysql-server
-# https://github.com/balderdashy/sails-mysql
-npm install sails-mysql
-#npm config set @graphene/wallet-server:
-```
-
-## In-Memory
-```bash
-npm install waterline sails-memory
-```

@@ -1,45 +1,54 @@
 var crypto = require('crypto')
 
-function hash160(buffer) {
-  return ripemd160(sha256(buffer))
+/** @arg {string|Buffer} data
+    @arg {string} [digest = null] - 'hex', 'binary' or 'base64'
+    @return {string|Buffer} - Buffer when digest is null, or string
+*/
+function sha1(data, encoding) {
+    return crypto.createHash('sha1').update(data).digest(encoding)
 }
 
-function hash256(buffer) {
-  return sha256(sha256(buffer))
+/** @arg {string|Buffer} data
+    @arg {string} [digest = null] - 'hex', 'binary' or 'base64'
+    @return {string|Buffer} - Buffer when digest is null, or string
+*/
+function sha256(data, encoding) {
+    return crypto.createHash('sha256').update(data).digest(encoding)
 }
 
-function ripemd160(buffer) {
-  return crypto.createHash('rmd160').update(buffer).digest()
+/** @arg {string|Buffer} data
+    @arg {string} [digest = null] - 'hex', 'binary' or 'base64'
+    @return {string|Buffer} - Buffer when digest is null, or string
+*/
+function sha512(data, encoding) {
+    return crypto.createHash('sha512').update(data).digest(encoding)
 }
 
-function sha1(buffer) {
-  return crypto.createHash('sha1').update(buffer).digest()
-}
-
-function sha256(buffer) {
-  return crypto.createHash('sha256').update(buffer).digest()
-}
-
-function sha512(buffer) {
-  return crypto.createHash('sha512').update(buffer).digest()
-}
-
-// FIXME: Name not consistent with others
-function HmacSHA256(buffer, secret) {
-  return crypto.createHmac('sha256', secret).update(buffer).digest()
-}
-
-function HmacSHA512(buffer, secret) {
-  return crypto.createHmac('sha512', secret).update(buffer).digest()
-}
+// function ripemd160(data, encoding = null) {
+//   return crypto.createHash('rmd160').update(data, encoding).digest()
+// }
+// function hash160(buffer) {
+//   return ripemd160(sha256(buffer))
+// }
+// 
+// function hash256(buffer) {
+//   return sha256(sha256(buffer))
+// }
+// function HmacSHA256(buffer, secret) {
+//   return crypto.createHmac('sha256', secret).update(buffer).digest()
+// }
+// 
+// function HmacSHA512(buffer, secret) {
+//   return crypto.createHmac('sha512', secret).update(buffer).digest()
+// }
 
 module.exports = {
-  ripemd160: ripemd160,
-  sha1: sha1,
-  sha256: sha256,
-  sha512: sha512,
-  hash160: hash160,
-  hash256: hash256,
-  HmacSHA256: HmacSHA256,
-  HmacSHA512: HmacSHA512
+    sha1: sha1,
+    sha256: sha256,
+    sha512: sha512
+    // hash160: hash160,
+    // hash256: hash256,
+    // ripemd160: ripemd160,
+    // HmacSHA256: HmacSHA256,
+    // HmacSHA512: HmacSHA512
 }

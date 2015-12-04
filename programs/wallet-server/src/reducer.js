@@ -1,10 +1,8 @@
 import bs58 from "bs58"
-import * as WalletSyncApi from './WalletSyncApi'
-import emailToken from "./EmailToken"
 import { checkToken } from "@graphene/time-token"
-import {Wallet} from "./db/models.js"
-
-//const TRACE = true
+import emailToken from "./EmailToken"
+import * as WalletSyncApi from './WalletSyncApi'
+import * as WalletDb from "./WalletDb"
 
 export default function reducer(state, action) {
     if( /redux/.test(action.type) ) return state
@@ -33,16 +31,11 @@ export default function reducer(state, action) {
                     break
                 }
                 let email_from_seed = result.seed
-                let pubkey = "BTSabc"
-                let hash_sha1 = crypto.createHash("sha1").update(encrypted_data).digest('base64')
-                Wallet.create({
-                    email: email_from_seed,
-                    pubkey: pubkey,
-                    encrypted_data: encrypted_data,
-                    signature: signature,
-                    hash_sha1: hash_sha1
+                WalletDb.createWallet(email_from_seed, encrypted_data, signature, resolve => {
+                    if( resolve ) { reply.ok(); return }
+                    console.log("resolve", resolve)
                 })
-                reply.ok(resolve)
+                
                 break
             default:
                 reply("Not Implemented")

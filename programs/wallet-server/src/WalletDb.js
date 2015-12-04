@@ -1,18 +1,22 @@
 import crypto from "crypto"
-import * as WaterlineDb from "./WaterlineDb"
+import hash from "@graphene/hash"
+import {Wallet} from "./db/models.js"
 
 export function createWallet(email, encrypted_data, signature, resolve) {
-    WaterlineDb.instance( ontology => {
-        var Wallet = ontology.collections.wallet
-        let pubkey = ""
-        let hash_sha1 = crypto.createHash("sha1").update(encrypted_data).digest('binary')
-        Wallet.create({ email, pubkey, encrypted_data, signature, hash_sha1 })
-            .then(wallet =>{ resolve({ id: wallet.id }) })
-            .catch(error =>{ console.error(1,error) })
-    })
+    let pubkey = "BTSabc"
+    let hash_sha1 = hash.sha1(encrypted_data, 'base64')
+    Wallet
+        .create({ email, pubkey, encrypted_data, signature, hash_sha1 })
+        .then(()=>{ resolve(true) })
+        .catch( error => {
+            resolve({
+                error: validation_error.message,
+                errors: validation_error.errors
+            })
+        })
 }
-// email: { type: string, required, unique, index },
-// pubkey: { type: 'binary', required, unique, index },
-// encrypted_data: { type: 'binary', required },
-// signature: { type: 'binary', required },
-// hash_sha1: { type: 'binary', required, size: 20 }
+// email: { type: Sequelize.STRING, allowNull: false, unique: true },
+// pubkey: { type: Sequelize.STRING, allowNull: false, unique: true },
+// encrypted_data: { type: Sequelize.BLOB, allowNull: false },
+// signature: { type: Sequelize.STRING, allowNull: false },
+// hash_sha1: { type: Sequelize.STRING, allowNull: false }

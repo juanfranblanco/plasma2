@@ -1,7 +1,7 @@
 import repl from "repl"
 import repl_history from "repl.history"
 import { promisify} from "repl-promised"
-import * as WaterlineDb from "./WaterlineDb"
+// import * as WaterlineDb from "./WaterlineDb"
 import createServer from "./server"
 
 module.exports = {
@@ -14,17 +14,19 @@ module.exports = {
             return
         } 
         global.server = createServer().server
-        WaterlineDb.instance( ontology =>{
-            global.ontology = ontology
-            if( done ) done()
-        })
+        if( done ) done()
+        // WaterlineDb.instance( ontology =>{
+        //     global.ontology = ontology
+        //     if( done ) done()
+        // })
     },
     stop: done =>{
         if( global.server ) {
             global.server.close()
             global.server = null
         }
-        WaterlineDb.close( ()=>{ if( done ) done() })
+        if( done ) done()
+        // WaterlineDb.close( ()=>{ if( done ) done() })
     },
     cli: done =>{
         var repl_instance = repl.start({
@@ -44,4 +46,3 @@ module.exports = {
         module.exports.start( done )
     }
 }
-

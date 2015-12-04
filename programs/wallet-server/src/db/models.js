@@ -9,7 +9,8 @@ var Wallet = connection.define('wallets', {
     hash_sha1: { type: Sequelize.STRING, allowNull: false }
 });
 
-if (require.main === module) { // recreate dabase when running locally
+// recreate dabase when running locally, example: node src/db/models.js
+if (require.main === module) { 
     Wallet.sync({force: true}).then(function (res) {
         console.log("-- table wallets created -->", res);
     });
