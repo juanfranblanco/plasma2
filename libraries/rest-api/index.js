@@ -120,7 +120,7 @@ export const post = (api, dispatch) => (req, res) => {
     req.pipe(busboy)
 }
 
-// httpResponseSugar helpers..  Create: response_codes = { "Accepted": 202, ...}
+// httpResponse helpers..  Create: response_codes = { "Accepted": 202, ...}
 var response_codes = {}
 for(let code in http.STATUS_CODES) response_codes[http.STATUS_CODES[code].toLowerCase()] = code
 
@@ -132,7 +132,7 @@ for(let code in http.STATUS_CODES) response_codes[http.STATUS_CODES[code].toLowe
 export function httpResponse(res, message, data = {}) {
     let code = response_codes[message.toLowerCase()]
     if( ! code ) throw 'Unknown HTTP Status message: ' + message
-    if(typeof data !== 'object') data = { message: data }
+    if(data == null || typeof data !== 'object') data = { message: data }
     data.code = code
     data.code_description = message
     res.status(code).json( data )
