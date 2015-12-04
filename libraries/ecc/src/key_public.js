@@ -42,7 +42,13 @@ class PublicKey {
     return hash.ripemd160(pub_sha);
   }
 
+  /** Alias for {@link toPublicKeyString} */
+  toString(address_prefix = config.address_prefix) {
+      return this.toPublicKeyString(address_prefix)
+  }
+  
   /**
+      @arg {string} [address_prefix = config.address_prefix]
       @return {string} Full public key
   */
   toPublicKeyString(address_prefix = config.address_prefix) {
