@@ -11,9 +11,9 @@ class Signature {
         this.r = r1;
         this.s = s1;
         this.i = i1;
-        assert.equal(this.r !== null, true, 'Missing parameter');
-        assert.equal(this.s !== null, true, 'Missing parameter');
-        assert.equal(this.i !== null, true, 'Missing parameter');
+        assert.equal(this.r != null, true, 'Missing parameter');
+        assert.equal(this.s != null, true, 'Missing parameter');
+        assert.equal(this.i != null, true, 'Missing parameter');
     }
 
     static fromBuffer(buf) {
@@ -39,6 +39,9 @@ class Signature {
         return this.recoverPublicKey(hash.sha256(buffer));
     };
 
+    /**
+        @return {PublicKey}
+    */
     recoverPublicKey(sha256_buffer) {
         var Q, e, i;
         e = BigInteger.fromBuffer(sha256_buffer);
@@ -49,28 +52,37 @@ class Signature {
     };
 
 
-    /*
-    @param {Buffer}
-    @param {./PrivateKey}
-    @param {./PublicKey} optional for performance
-    @return {./Signature}
+    /**
+        @param {Buffer} buf
+        @param {PrivateKey} private_key
+        @return {Signature}
     */
-
-    static signBuffer(buf, private_key, public_key) {
-        var _hash, der, e, ecsignature, i, lenR, lenS, nonce;
+    static signBuffer(buf, private_key) {
+        var _hash = hash.sha256(buf);
+        return Signature.signBufferSha256(_hash, private_key)
+    }
+    
+    /** Sign a buffer of exactally 32 bytes in size (sha256(text))
+        @param {Buffer} buf - 32 bytes binary
+        @param {PrivateKey} private_key
+        @return {Signature}
+    */
+    static signBufferSha256(buf_sha256, private_key) {
+        if( buf_sha256.length !== 32 || ! Buffer.isBuffer(buf_sha256) )
+            throw new Error("buf_sha256: 32 byte buffer requred")
+        var der, e, ecsignature, i, lenR, lenS, nonce;
         i = null;
         nonce = 0;
-        _hash = hash.sha256(buf);
-        e = BigInteger.fromBuffer(_hash);
+        e = BigInteger.fromBuffer(buf_sha256);
         while (true) {
-          ecsignature = ecdsa.sign(curve, _hash, private_key.d, nonce++);
+          ecsignature = ecdsa.sign(curve, buf_sha256, private_key.d, nonce++);
           der = ecsignature.toDER();
           lenR = der[3];
           lenS = der[5 + lenR];
           if (lenR === 32 && lenS === 32) {
             i = ecdsa.calcPubKeyRecoveryParam(curve, e, ecsignature, private_key.toPublicKey().Q);
-            i += 4;
-            i += 27;
+            i += 4;  // compressed
+            i += 27; // compact
             break;
           }
           if (nonce % 10 === 0) {
@@ -86,14 +98,12 @@ class Signature {
 
 
     /**
-    @param {Buffer} un-hashed
-    @param {./PublicKey}
-    @return {boolean}
+        @param {Buffer} un-hashed
+        @param {./PublicKey}
+        @return {boolean}
     */
-
     verifyBuffer(buf, public_key) {
-        var _hash;
-        _hash = hash.sha256(buf);
+        var _hash = hash.sha256(buf);
         return this.verifyHash(_hash, public_key);
     };
 
@@ -126,7 +136,7 @@ class Signature {
     static signHex(hex, private_key) {
         var buf;
         buf = new Buffer(hex, 'hex');
-        return this.signBuffer(buf, private_key);
+        return Signature.signBuffer(buf, private_key);
     };
 
     verifyHex(hex, public_key) {

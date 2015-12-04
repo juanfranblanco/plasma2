@@ -38,7 +38,7 @@ export default function reducer(state, action) {
                 reply("Not Implemented")
         }
     } catch(error) {
-        console_error(action.type, error)
+        console_error(action.type, error, error.stack)
         reply.badRequest(error)
     }
     return state

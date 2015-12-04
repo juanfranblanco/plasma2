@@ -23,7 +23,8 @@ node run src/db/models.js
 
 # Commands
 See "scripts" in [package.json](./package.json)
-Basically this are `npm start` or `npm run [dev|test|test:watch]`
+
+Example: `npm start` or `npm run [cli|test|test:watch|dev]`
 
 # Configure
 Update `./.npmrc` if you need to change something:

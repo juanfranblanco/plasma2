@@ -6,6 +6,7 @@ console.log("Press Enter to see the prompt, press Ctrl+C several times to exit."
 describe('wallet server', () => {
     it('run_server', done => {
         replApi.cli()
+        replApi.start()
         done()
     })
 })
