@@ -30,7 +30,7 @@ class PublicKey {
   toUncompressed() {
     var buf = this.Q.getEncoded(false);
     var point = ecurve.Point.decodeFrom(secp256k1, buf);
-    return fromPoint(point);
+    return PublicKey.fromPoint(point);
   }
 
   /** bts::blockchain::address (unique but not a full public key) */

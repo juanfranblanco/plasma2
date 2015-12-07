@@ -7,7 +7,6 @@ var assert = require('assert');
 var hash = require('@graphene/hash');
 
 var PublicKey = require('./key_public');
-var Aes = require('./aes');
 
 class PrivateKey {
 

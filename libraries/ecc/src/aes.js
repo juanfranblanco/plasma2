@@ -56,12 +56,12 @@ class Aes {
         //     S: S
         // })
         
-        var aes = fromSeed(Buffer.concat([
+        var aes = Aes.fromSeed(Buffer.concat([
             // A null or empty string nonce will not effect the hash
             new Buffer(""+nonce), 
             new Buffer(S.toString('hex'))
         ]));
-        var planebuffer = decrypt(message);
+        var planebuffer = aes.decrypt(message);
         if (!(planebuffer.length >= 4)) {
             throw new Error("Invalid key, could not decrypt message(1)");
         }
@@ -104,7 +104,7 @@ class Aes {
         //     S: S
         // })
         
-        var aes = fromSeed(Buffer.concat([
+        var aes = Aes.fromSeed(Buffer.concat([
             // A null or empty string nonce will not effect the hash
             new Buffer(""+nonce),
             new Buffer(S.toString('hex'))
@@ -113,7 +113,7 @@ class Aes {
         var checksum = hash.sha256(message).slice(0,4);
         var payload = Buffer.concat([checksum, message]);
         // DEBUG console.log('... payload',payload.toString())
-        return encrypt(payload);
+        return aes.encrypt(payload);
     };
     
     /** @private */
@@ -130,21 +130,27 @@ class Aes {
         return CryptoJS.enc.Base64.parse(cipher.toString());
     }
 
-    /** @private */
-    decrypt(cipher_buffer) {
-        if (typeof cipher_buffer === "string") {
-            cipher_buffer = new Buffer(cipher_buffer, 'binary');
+    /** This method does not use a checksum, the returned data must be validated some other way.
+        @arg {string} ciphertext
+        @return {Buffer} binary
+    */
+    decrypt(ciphertext) {
+        if (typeof ciphertext === "string") {
+            ciphertext = new Buffer(ciphertext, 'binary');
         }
-        if (!Buffer.isBuffer(cipher_buffer)) {
+        if (!Buffer.isBuffer(ciphertext)) {
             throw new Error("buffer required");
         }
-        assert(cipher_buffer, "Missing cipher text");
+        assert(ciphertext, "Missing cipher text");
         // hex is the only common format
-        var hex = this.decryptHex(cipher_buffer.toString('hex'));
+        var hex = this.decryptHex(ciphertext.toString('hex'));
         return new Buffer(hex, 'hex');
     }
     
-    /** @private */
+    /** This method does not use a checksum, the returned data must be validated some other way.
+        @arg {string} plaintext
+        @return {Buffer} binary
+    */
     encrypt(plaintext) {
         if (typeof plaintext === "string") {
             plaintext = new Buffer(plaintext, 'binary');

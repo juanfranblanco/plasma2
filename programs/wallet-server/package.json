@@ -39,6 +39,7 @@
     "babel-core": "^6.2.0",
     "babel-node-debug": "^1.3.0",
     "babel-preset-es2015": "^6.1.18",
+    "chai": "^3.4.1",
     "form-data": "^1.0.0-rc3",
     "mocha": "^2.3.4",
     "node-fetch": "^1.3.3"
