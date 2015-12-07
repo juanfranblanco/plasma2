@@ -36,12 +36,14 @@ describe('Wallet database', () => {
             "http://localhost:"+port+ `/createWallet`,
             { method: 'POST', body })
             .then( res => {
+                assert.equal("OK", res.statusText)
                 assert.equal(200, res.status)
+                assert.equal(true, res.ok)
                 return res.json()
             })
             .then( json => {
-                assert.equal(200, json.code)
                 assert.equal("OK", json.code_description)
+                assert.equal(200, json.code)
                 assert.equal(private_key.toPublicKey().toString(), json.public_key)
                 // console.log("json", json, hash.sha1(encrypted_data.toString('binary')).toString('base64'))
                 assert.equal(local_hash, json.local_hash)
@@ -57,14 +59,13 @@ describe('Wallet database', () => {
         let local_hash = null//hash.sha1(encrypted_data.toString('binary')).toString('base64')
         fetch("http://localhost:"+port+ `/fetchWallet?public_key=${public_key}&local_hash=${local_hash}`)
             .then( res => {
-                assert.equal(true, res.ok)
-                assert.equal(200, res.status)
                 assert.equal("OK", res.statusText)
+                assert.equal(200, res.status)
                 return res.json().then( e=>{console.log('e',e); return e})
             }).
             then( json => {
-                assert.equal(200, json.code)
                 assert.equal("OK", json.code_description)
+                assert.equal(200, json.code)
                 assert.equal('alice@example.bitbucket', json.email)
                 assert.equal(public_key, json.public_key)
                 assert.equal(130, json.signature.length)
@@ -80,12 +81,83 @@ describe('Wallet database', () => {
         let local_hash = hash.sha1(encrypted_data.toString('binary')).toString('base64')
         fetch("http://localhost:"+port+ `/fetchWallet?public_key=${public_key}&local_hash=${local_hash}`)
             .then( res => {
-                // assert.equal(true, res.ok)
-                assert.equal(304, res.status)
                 assert.equal("Not Modified", res.statusText)
+                assert.equal(304, res.status)
                 done()
             }).catch( error =>{ console.error(error, error.stack); throw error })
     })
+    
+    it('saveWallet', done => {
+        var private_key = PrivateKey.fromSeed("")
+        let encrypted_data = Aes.fromSeed("").encrypt("data2")
+        let signature = Signature.signBuffer(encrypted_data, private_key)
+        let body = new FormData()
+        body.append('signature', signature.toHex())
+        body.append('encrypted_data', encrypted_data.toString('binary'))
+        fetch(
+            "http://localhost:"+port+ `/saveWallet`,
+            { method: 'POST', body })
+            .then( res => {
+                assert.equal("OK", res.statusText)
+                assert.equal(200, res.status)
+                done()
+            })
+            .catch( error =>{ console.error(error); throw error })
+    })
+    
+    it('fetchWallet (newly saved)', done => {
+        let public_key = PrivateKey.fromSeed("").toPublicKey().toString()
+        let encrypted_data = Aes.fromSeed("").encrypt("data2")
+        let local_hash = hash.sha1(encrypted_data.toString('binary')).toString('base64')
+        fetch("http://localhost:"+port+ `/fetchWallet?public_key=${public_key}&local_hash=${local_hash}`)
+            .then( res => {
+                assert.equal("Not Modified", res.statusText)
+                assert.equal(304, res.status)
+                done()
+            }).catch( error =>{ console.error(error, error.stack); throw error })
+    })
+    
+    it('saveWallet (unknown key)', done => {
+        var private_key = PrivateKey.fromSeed("nobody")
+        let encrypted_data = Aes.fromSeed("").encrypt("data2")
+        let signature = Signature.signBuffer(encrypted_data, private_key)
+        let body = new FormData()
+        body.append('signature', signature.toHex())
+        body.append('encrypted_data', encrypted_data.toString('binary'))
+        fetch(
+            "http://localhost:"+port+ `/saveWallet`,
+            { method: 'POST', body })
+            .then( res => {
+                assert.equal("Bad Request", res.statusText)
+                assert.equal(400, res.status)
+                done()
+            })
+            .catch( error =>{ console.error(error); throw error })
+    })
+    
+    // When the user changes their password, this changes need to change the password for the encrypted data too.  So, changePassword(encrypted_data, old_signature, new_signature) does not work.  There is no way to find the old public key (only the new one) .. Instead, we could change old_signature to old_public_key...
+    // it('changePassword', done => {
+    //     let old_private_key = PrivateKey.fromSeed("")
+    //     let old_encrypted_data = Aes.fromSeed("").encrypt("data2")
+    //     let old_signature = Signature.signBuffer(old_encrypted_data, old_private_key)
+    //     
+    //     let new_private_key = PrivateKey.fromSeed("2")
+    //     let new_encrypted_data = Aes.fromSeed("").encrypt("data2")
+    //     let new_signature = Signature.signBuffer(old_encrypted_data, old_private_key)
+    //     
+    //     // let body = new FormData()
+    //     // body.append('encrypted_data', encrypted_data.toString('binary'))
+    //     // body.append('old_signature', signature.toHex())
+    //     // fetch(
+    //     //     "http://localhost:"+port+ `/saveWallet`,
+    //     //     { method: 'POST', body })
+    //     //     .then( res => {
+    //     //         assert.equal("Bad Request", res.statusText)
+    //     //         assert.equal(400, res.status)
+    //     //         done()
+    //     //     })
+    //     //     .catch( error =>{ console.error(error); throw error })
+    // })
     
     
     /** End of the wallet tests, clean-up... */

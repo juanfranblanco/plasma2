@@ -12,7 +12,7 @@ export default function reducer(state, action) {
     try {
         switch( action.type ) {
             case 'requestCode':
-                let { email } = action
+                var { email } = action
                 let p = emailToken(email)
                 p.on('close', (code, signal) =>{
                     if( code === 0 ) {
@@ -24,7 +24,7 @@ export default function reducer(state, action) {
                 })
                 break
             case 'createWallet':
-                let { code, encrypted_data, signature } = action
+                var { code, encrypted_data, signature } = action
                 code = new Buffer( bs58.decode(code) ).toString( 'binary' )
                 let result = checkToken( code )
                 if( ! result.valid ) {
@@ -36,7 +36,7 @@ export default function reducer(state, action) {
                 reply(r)
                 break
             case 'fetchWallet':
-                let { public_key, local_hash } = action
+                var { public_key, local_hash } = action
                 // let fetch_result = WalletDb.fetchWallet( public_key, local_hash )
                 var r = Wallet
                     .findOne({ where: {public_key, local_hash: { $ne: local_hash } } })
@@ -49,6 +49,11 @@ export default function reducer(state, action) {
                         encrypted_data: wallet.encrypted_data.toString('base64'),
                     }
                 })
+                reply(r)
+                break
+            case 'saveWallet':
+                var { encrypted_data, signature } = action
+                var r = WalletDb.saveWallet(encrypted_data, signature)
                 reply(r)
                 break
             default:

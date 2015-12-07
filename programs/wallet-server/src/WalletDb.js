@@ -23,3 +23,24 @@ export function createWallet(email, encrypted_data, signature) {
             local_hash
         } })
 }
+
+/**
+    @arg {Buffer} encrypted_data - binary
+    @arg {string} signature - hex
+*/
+export function saveWallet(encrypted_data, signature) {
+    let sig = Signature.fromBuffer(new Buffer(signature, 'hex'))
+    let public_key = sig.recoverPublicKeyFromBuffer(encrypted_data)
+    if( ! sig.verifyBuffer(encrypted_data, public_key))
+        return Promise.reject("signature_verify")
+
+    let pubkey = public_key.toString()
+    let local_hash = hash.sha1(encrypted_data, 'base64')
+    return Wallet.findOne({where: {public_key: pubkey}}).then( wallet =>{
+        wallet.encrypted_data = encrypted_data
+        wallet.local_hash = local_hash
+        return wallet.save().then( wallet => {
+            return "OK"
+        })
+    })
+}
