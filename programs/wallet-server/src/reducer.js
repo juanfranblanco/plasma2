@@ -32,8 +32,7 @@ export default function reducer(state, action) {
                     break
                 }
                 let email_from_seed = result.seed
-                var r = WalletDb.createWallet(email_from_seed, encrypted_data, signature)
-                reply(r)
+                reply( WalletDb.createWallet(email_from_seed, encrypted_data, signature) )
                 break
             case 'fetchWallet':
                 var { public_key, local_hash } = action
@@ -53,8 +52,7 @@ export default function reducer(state, action) {
                 break
             case 'saveWallet':
                 var { encrypted_data, signature } = action
-                var r = WalletDb.saveWallet(encrypted_data, signature)
-                reply(r)
+                reply( WalletDb.saveWallet(encrypted_data, signature) )
                 break
             case 'changePassword':
                 reply( WalletDb.changePassword(action) )
@@ -63,7 +61,7 @@ export default function reducer(state, action) {
                 reply("Not Implemented")
         }
     } catch(error) {
-        console_error(action.type, error, error.stack)
+        console_error('ERROR', action.type, error, error.stack)
         reply.badRequest(error)
     }
     return state

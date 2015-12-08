@@ -46,13 +46,30 @@ export function saveWallet(encrypted_data, signature) {
 }
 
 export function changePassword({ original_local_hash, original_signature, new_encrypted_data, new_signature }) {
+    let original_pubkey
     {
         let sig = Signature.fromBuffer(new Buffer(original_signature, 'hex'))
-        let hash = new Buffer(original_local_hash, 'hex')
-        let public_key = sig.recoverPublicKey(hash)
-        if( ! sig.verifyHash(hash, public_key))
+        let local_hash = new Buffer(original_local_hash, 'hex')
+        let public_key = sig.recoverPublicKey(local_hash)
+        if( ! sig.verifyHash(local_hash, public_key))
             return Promise.reject("signature_verify (original)")
-        
+        original_pubkey = public_key.toString()
     }
-    return Promise.resolve()
+    let new_local_hash
+    {
+        let sig = Signature.fromBuffer(new Buffer(new_signature, 'hex'))
+        let local_hash = hash.sha256(new_encrypted_data)
+        let public_key = sig.recoverPublicKey(local_hash)
+        if( ! sig.verifyHash(local_hash, public_key))
+            return Promise.reject("signature_verify (new)")
+        new_local_hash = local_hash
+    }
+    return Wallet.findOne({where: {public_key: original_pubkey}}).then( wallet =>{
+        if( ! wallet ) return "Not Found"
+        wallet.encrypted_data = new_encrypted_data
+        wallet.local_hash = new_local_hash
+        return wallet.save().then( wallet => {
+            return "OK"
+        })
+    })
 }

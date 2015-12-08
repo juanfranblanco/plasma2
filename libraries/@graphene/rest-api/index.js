@@ -26,7 +26,10 @@ function reply( res, action ) {
                     }
                     httpResponse(res, "OK", data)
                 })
-                .catch( error =>{ httpResponse(res, "Bad Request", error) })
+                .catch( error =>{
+                    console.log("ERROR", error)
+                    httpResponse(res, "Bad Request", error)
+                })
             return
         }
         httpResponse( res, message, data )
