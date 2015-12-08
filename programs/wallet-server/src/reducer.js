@@ -56,6 +56,9 @@ export default function reducer(state, action) {
                 var r = WalletDb.saveWallet(encrypted_data, signature)
                 reply(r)
                 break
+            case 'changePassword':
+                reply( WalletDb.changePassword(action) )
+                break
             default:
                 reply("Not Implemented")
         }

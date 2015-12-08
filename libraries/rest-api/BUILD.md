@@ -1,3 +1,3 @@
 ```bash
-npm i --production
+npm i
 ```

@@ -67,8 +67,8 @@ export function saveWallet({ encrypted_data, signature }) {
     @arg {string} param.old_signature - base64
     @arg {string} param.new_signature - base64
 */
-export function changePassword({ encrypted_data, old_signature, new_signature }) {
-    return { type: "changePassword", encrypted_data, old_signature, new_signature }
+export function changePassword({ original_local_hash, original_signature, new_encrypted_data, new_signature }) {
+    return { type: "changePassword", original_local_hash, original_signature, new_encrypted_data, new_signature }
 }
 
 // No spaces, only one @ symbol, any character for the email name (not completely complient but safe),

@@ -4,7 +4,7 @@ import assert from "assert"
 describe('time-token', () => {
     it('seeded_token', done => {
         let token = createToken("seed")
-        assert.equal(19, token.length)
+        assert.equal(20, token.length)
         let result = checkToken(token)
         assert.equal(true, result.valid)
         assert.equal("seed", result.seed)
@@ -13,7 +13,7 @@ describe('time-token', () => {
     })
     it('non_seeded_token', done => {
         let token = createToken("seed", false)
-        assert.equal(14, token.length)
+        assert.equal(15, token.length)
         let result = checkToken(token, "seed")
         assert.equal(true, result.valid)
         assert.equal("seed", result.seed)
