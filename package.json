@@ -17,5 +17,10 @@
   "homepage": "https://cryptonomex.com",
   "dependencies": {
     "esdoc": "^0.4.3"
+  },
+  "devDependencies": {
+    "babel-core": "^6.3.15",
+    "babel-loader": "^6.2.0",
+    "babel-preset-es2015": "^6.3.13"
   }
 }
