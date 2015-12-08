@@ -1,14 +1,16 @@
 
 # Libraries
 ```bash
-cd ./libraries/...
-less BUILD.md
+npm install
+NODE_PATH="$(pwd)/node_modules:$(pwd)/libraries"
+PATH="$(pwd)/node_modules/.bin:$PATH"
 ```
 
 # Programs
 ```bash
-cd ./programs/...
-less BUILD.md
+cd programs/wallet-server
+npm install
+# see "scripts" in ./package.json
 ```
 
 # ESDoc (beta)
