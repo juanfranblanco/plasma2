@@ -7,13 +7,17 @@ import createMiddleware from './middleware'
 import * as walletSyncApi from "./WalletSyncApi"
 import * as restApi from "@graphene/rest-api"
 import {checkToken} from "@graphene/time-token"
+import cors from "express-cors"
 
 const {
     /** Server listen port */
     npm_package_config_rest_port,
     
     /** Limit the number of wallet requests it accepts per IP address to a fixed number per hour. */
-    npm_package_config_rest_ip_requests_per_hour
+    npm_package_config_rest_ip_requests_per_hour,
+    
+    /** A array of valid Access-Control-Allow-Origin value like: ['example.com'] or ["*"] */
+    npm_package_config_allow_origins
     
 } = process.env
 
@@ -27,6 +31,9 @@ export default function createServer() {
     const store = createStoreWithMiddleware( reducer )
 
     var app = express()
+    
+    console.log("Allowed Origins", JSON.parse(npm_package_config_allow_origins))
+    app.use(cors({ allowedOrigins: JSON.parse(npm_package_config_allow_origins) }))
 
     // Limit number of requests per hour by IP
     console.log("Limit by IP address", {

@@ -8,9 +8,8 @@ PATH="$(pwd)/node_modules/.bin:$PATH"
 
 # Programs
 ```bash
+# see README.md
 cd programs/wallet-server
-npm install
-# see "scripts" in ./package.json
 ```
 
 # ESDoc (beta)
