@@ -219,7 +219,7 @@ function deleteWallet(private_key_seed, done) {
     let pubkey = PrivateKey.fromSeed(private_key_seed).toPublicKey().toString()
     Wallet.findOne({where: {public_key: pubkey}})
         .then( wallet =>{
-            console.log("TEST deleteWallet", pubkey, wallet === null)
+            console.log("TEST deleteWallet", pubkey, wallet !== null)
             if( ! wallet ) { done(); return }
             wallet.destroy().then(()=>{ done() })
         })
