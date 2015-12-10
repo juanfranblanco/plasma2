@@ -13,7 +13,7 @@ export default function reducer(state, action) {
         switch( action.type ) {
             case 'requestCode':
                 var { email } = action
-                let p = emailToken(email)
+                let p = emailToken(email, false)
                 p.on('close', (code, signal) =>{
                     if( code === 0 ) {
                         reply.ok()
@@ -31,8 +31,7 @@ export default function reducer(state, action) {
                     reply("Unauthorized", {message: result.error})
                     break
                 }
-                let email_from_seed = result.seed
-                reply( WalletDb.createWallet(email_from_seed, encrypted_data, signature) )
+                reply( WalletDb.createWallet(encrypted_data, signature) )
                 break
             case 'fetchWallet':
                 var { public_key, local_hash } = action
@@ -51,11 +50,14 @@ export default function reducer(state, action) {
                 reply(r)
                 break
             case 'saveWallet':
-                var { encrypted_data, signature } = action
-                reply( WalletDb.saveWallet(encrypted_data, signature) )
+                var { original_local_hash, encrypted_data, signature } = action
+                reply( WalletDb.saveWallet(original_local_hash, encrypted_data, signature) )
                 break
             case 'changePassword':
                 reply( WalletDb.changePassword(action) )
+                break
+            case 'deleteWallet':
+                reply( WalletDb.deleteWallet(action) )
                 break
             default:
                 reply("Not Implemented")

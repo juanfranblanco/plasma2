@@ -33,7 +33,7 @@ export function createWallet({ code, encrypted_data, signature }) {
 /** Requesting AND validating a new code will invalidate a prior code.  
     @arg {Object} fetchWallet - Values from API call
     @arg {string} fetchWallet.public_key - derived from {@link createWallet.signature}
-    @arg {string} [fetchWallet.local_hash = null] - base64 sha1 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
+    @arg {string} [fetchWallet.local_hash = null] - base64 sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
     @return {string} encrypted_data - base64
 */
 export function fetchWallet({ public_key, local_hash }) {
@@ -52,12 +52,13 @@ export function fetchWallet({ public_key, local_hash }) {
     @property {string} access_log[].date
 */
 /** @arg {Object} saveWallet - Values from API call
-    @arg {string} saveWallet.encrypted_data - base64
+    @arg {string} local_hash base64 hash of the wallet being replaced.  A bad request will occure if this does not match.
+    @arg {string} saveWallet.encrypted_data - binary
     @arg {string} saveWallet.signature - base64
     @return {WalletStatistics>}
 */
-export function saveWallet({ encrypted_data, signature }) {
-    return { type: "saveWallet", encrypted_data, signature }
+export function saveWallet({ original_local_hash, encrypted_data, signature }) {
+    return { type: "saveWallet", original_local_hash, encrypted_data, signature }
 }
 
 /** After this call the public key used to lookup this wallet will be the one derived from new_signature and encrypted_data. A wallet must exist at the old_public_key derived from old_signature.
@@ -69,6 +70,14 @@ export function saveWallet({ encrypted_data, signature }) {
 */
 export function changePassword({ original_local_hash, original_signature, new_encrypted_data, new_signature }) {
     return { type: "changePassword", original_local_hash, original_signature, new_encrypted_data, new_signature }
+}
+
+/** Permanently remove a wallet.
+    @arg {string} deleteWallet.local_hash - base64 sha256 encrypted_data
+    @arg {string} deleteWallet.signature - base64
+*/
+export function deleteWallet({ local_hash, signature }) {
+    return { type: "deleteWallet", local_hash, signature }
 }
 
 // No spaces, only one @ symbol, any character for the email name (not completely complient but safe),

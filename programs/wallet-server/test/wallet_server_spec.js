@@ -15,15 +15,15 @@ const port = process.env.npm_package_config_rest_port
 describe('Wallet database', () => {
 
     before( done =>{
-        replApi.start(done)
-        // clean up from a failed run
-        Wallet.findOne({where: {email: "alice@example.bitbucket"}})
-            .then( wallet =>{ wallet.destroy().then(()=>{ done() })})
+        replApi.start(() => 
+            // clean up from a failed run
+            deleteWallet("", ()=> deleteWallet("2", done))
+        )
     })
 
     it('createWallet', done => {
         let code = createToken("alice@example.bitbucket")
-        var private_key = PrivateKey.fromSeed("")
+        let private_key = PrivateKey.fromSeed("")
         let encrypted_data = Aes.fromSeed("").encrypt("data")
         let local_hash = hash.sha256(encrypted_data, 'base64')
         let signature = Signature.signBuffer(encrypted_data, private_key)
@@ -64,7 +64,6 @@ describe('Wallet database', () => {
             then( json => {
                 assert.equal("OK", json.code_description)
                 assert.equal(200, json.code)
-                assert.equal('alice@example.bitbucket', json.email)
                 assert.equal(public_key, json.public_key)
                 assert.equal(130, json.signature.length)
                 assert(json.local_hash)
@@ -86,10 +85,12 @@ describe('Wallet database', () => {
     })
     
     it('saveWallet', done => {
-        var private_key = PrivateKey.fromSeed("")
+        let original_local_hash = hash.sha256(Aes.fromSeed("").encrypt("data"), 'base64')
+        let private_key = PrivateKey.fromSeed("")
         let encrypted_data = Aes.fromSeed("").encrypt("data2")
         let signature = Signature.signBuffer(encrypted_data, private_key)
         let body = new FormData()
+        body.append('original_local_hash', original_local_hash)
         body.append('signature', signature.toHex())
         body.append('encrypted_data', encrypted_data.toString('binary'))
         fetch(
@@ -98,6 +99,26 @@ describe('Wallet database', () => {
             .then( res => {
                 assert.equal("OK", res.statusText)
                 assert.equal(200, res.status)
+                done()
+            })
+            .catch( error =>{ console.error(error); throw error })
+    })
+    
+    it('saveWallet (conflict)', done => {
+        let original_local_hash = hash.sha256(Aes.fromSeed("").encrypt("conflict"), 'base64')
+        let private_key = PrivateKey.fromSeed("")
+        let encrypted_data = Aes.fromSeed("").encrypt("data2")
+        let signature = Signature.signBuffer(encrypted_data, private_key)
+        let body = new FormData()
+        body.append('original_local_hash', original_local_hash)
+        body.append('signature', signature.toHex())
+        body.append('encrypted_data', encrypted_data.toString('binary'))
+        fetch(
+            "http://localhost:"+port+ `/saveWallet`,
+            { method: 'POST', body })
+            .then( res => {
+                assert.equal("Conflict", res.statusText)
+                assert.equal(409, res.status)
                 done()
             })
             .catch( error =>{ console.error(error); throw error })
@@ -174,9 +195,32 @@ describe('Wallet database', () => {
 
     /** End of the wallet tests, clean-up... */
     it('deleteWallet', done=>{
-        // clean up from a failed run
-        Wallet.findOne({where: {email: "alice@example.bitbucket"}})
-            .then( wallet =>{ wallet.destroy().then(()=>{ done() })})
+        let private_key = PrivateKey.fromSeed("2")
+        let encrypted_data = Aes.fromSeed("2").encrypt("data2")
+        let local_hash = hash.sha256(encrypted_data)
+        let sig = Signature.signBufferSha256(local_hash, private_key)
+        let body = new FormData()
+        body.append('local_hash', local_hash.toString('base64'))
+        body.append('signature', sig.toHex())
+        fetch(
+            "http://localhost:"+port+ `/deleteWallet`,
+            { method: 'POST', body })
+            .then( res => {
+                assert.equal(res.statusText, "OK")
+                assert.equal(res.status, 200)
+                done()
+            })
+            .catch( error =>{ console.error(error); throw error })
     })
-    
+
 })
+
+function deleteWallet(private_key_seed, done) {
+    let pubkey = PrivateKey.fromSeed(private_key_seed).toPublicKey().toString()
+    Wallet.findOne({where: {public_key: pubkey}})
+        .then( wallet =>{
+            console.log("TEST deleteWallet", pubkey, wallet === null)
+            if( ! wallet ) { done(); return }
+            wallet.destroy().then(()=>{ done() })
+        })
+}
