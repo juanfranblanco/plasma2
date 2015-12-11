@@ -10,34 +10,6 @@ const uploadLimit = {
     headerPairs: process.env.npm_config__graphene_rest_api_headerPairs || 110
 }
 
-/** Simple HTTP status callbacks used to reply to the client */
-function reply( res, action ) {
-    action.reply = ( message, data ) =>{
-        if( message.then ) {// Promise
-            message
-                .then( data =>{
-                    if( typeof data === 'string' ) {
-                        // Try to convert a valid reponse strings into a code: like 'Not Modified'
-                        let code = response_codes[data.toLowerCase()]
-                        if( code != null ) {
-                            httpResponse(res, data)
-                            return
-                        }
-                    }
-                    httpResponse(res, "OK", data)
-                })
-                .catch( error =>{
-                    console.log("ERROR", error)
-                    httpResponse(res, "Bad Request", error)
-                })
-            return
-        }
-        httpResponse( res, message, data )
-    }
-    action.reply.ok = data =>{ httpResponse( res, "OK", data ) }
-    action.reply.badRequest = data =>{ httpResponse( res, "Bad Request", data ) }
-}
-
 /**
     Middleware for the Express Js GET requests.  The Express JS URL pattern needs to have
     a methodName variable.
@@ -131,6 +103,35 @@ export const post = (api, dispatch) => (req, res) => {
         }
     })
     req.pipe(busboy)
+}
+
+/** Simple HTTP status callbacks used to reply to the client */
+function reply( res, action ) {
+    action.reply = ( message, data ) =>{
+        if( message.then ) {// Promise
+            message
+                .then( data =>{
+                    if( typeof data === 'string' ) {
+                        // Try to convert a valid reponse strings into a code: like 'Not Modified'
+                        let code = response_codes[data.toLowerCase()]
+                        if( code != null ) {
+                            httpResponse(res, data)
+                            return
+                        }
+                    }
+                    let code_description = data.code_description || "OK"
+                    httpResponse(res, code_description, data)
+                })
+                .catch( error =>{
+                    console.log("ERROR", error)
+                    httpResponse(res, "Bad Request", error)
+                })
+            return
+        }
+        httpResponse( res, message, data )
+    }
+    action.reply.ok = data =>{ httpResponse( res, "OK", data ) }
+    action.reply.badRequest = data =>{ httpResponse( res, "Bad Request", data ) }
 }
 
 // httpResponse helpers..  Create: response_codes = { "Accepted": 202, ...}

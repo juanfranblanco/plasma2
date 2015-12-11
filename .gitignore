@@ -1,3 +1,4 @@
-**/node_modules
-**/out
+.npmrc
 npm-debug.log
+node_modules
+out

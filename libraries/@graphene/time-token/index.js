@@ -1,5 +1,6 @@
 import crypto from "crypto"
 import local_secret from "@graphene/local-secret"
+import bs58 from "bs58"
 
 const expire_min = ()=> process.env.npm_config__graphene_time_token_expire_min || 10
 
@@ -10,7 +11,7 @@ const expire_min = ()=> process.env.npm_config__graphene_time_token_expire_min |
     @arg {string} seed - unique value such as an email address
     @arg {boolean} [include_seed - include this seed in the token as a public value (this is easily visable by
     decoding the token).  If this is `true`, the {@link checkToken} method will not require this seed value.
-    @return {string} token - binary (you will probably need to encode this)
+    @return {string} token - base58 (you will probably need to encode this)
 */
 export function createToken(seed, include_seed = true) {
     if( ! seed || typeof seed !== 'string' ) throw new Error("Missing required parameter: {string} seed")
@@ -27,16 +28,17 @@ export function createToken(seed, include_seed = true) {
         .substring(0, 10)
     newToken += now_string
     if( include_seed ) newToken += '\t' + seed
-    return newToken
+    return bs58.encode(new Buffer(newToken, 'binary'))
 }
 
 /**
-    @arg {string} token - binary string token provided by calling {@link createToken}
+    @arg {string} token - bs58 string token provided by calling {@link createToken}
     @arg {string} [seed = null] - used to create this token or `null` if the token has the seed embedded within
     @return {object} result - { valid: boolean, seed: string, error: [null|"unmatched"|"expired"] } 
 */
 export function checkToken(token, seed = null) {
     if( ! token || typeof token !== 'string' ) throw new Error("Required parameter: {string} token", typeof token)
+    token = new Buffer( bs58.decode(token) ).toString( 'binary' )//array to binary
     let raw_token = token.substring(0, 10)
     token = token.substring(10, token.length)
     let split = token.split('\t', 2)

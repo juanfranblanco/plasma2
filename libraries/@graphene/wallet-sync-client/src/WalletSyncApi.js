@@ -1,17 +1,23 @@
-/** A protocol between the web browser and the server for storing and retrieving data.
+/** A protocol between the web browser and the server for storing and retrieving data.  
+
     @see [Wallet Server Architecture]{@link https://github.com/cryptonomex/graphene/wiki/Wallet-Server-Architecture}
 */
 
+// All methods should create and return a serilizable action object (an object that has at least a type string)
+
 /**
+    Email an authorization code for use in {@link createWallet}.  The code will expire after a period of time.
     ```bash
     curl http://localhost:9080/requestCode?email=alice@example.com
     ```
-    @see {string} code - base58 encoded string (arrives in email)
-    @arg {string} email
+    @arg {Object} requestCode
+    @arg {string} requestCode.email
+    @arg {string} requestCode.public_key - In {@link createWallet}, this must match the coresponding private signing key.
 */
-export function requestCode({ email }) {
+export function requestCode({ email, public_key }) {
     if( invalidEmail(email) ) throw ["invalid email", email]
-    return { type: "requestCode", email }
+    public_key = toString(req(public_key, 'public_key'))
+    return { type: "requestCode", email, public_key }
 }
 
 /** 
@@ -23,10 +29,14 @@ export function requestCode({ email }) {
     ```
     @arg {Object} createWallet - Values from API call
     @arg {string} createWallet.code - from {@link requestCode}
-    @arg {string} createWallet.encrypted_data - Binary string
-    @arg {string} createWallet.signature - Binary string
+    @arg {string} createWallet.encrypted_data - base64 string
+    @arg {string} createWallet.signature - base64 string
+    @return {Promise} object - {code: 200, code_description: "OK",
+        local_hash: "base64 string sha256(encrypted_data)" }
  */
 export function createWallet({ code, encrypted_data, signature }) {
+    encrypted_data = toBase64(req(encrypted_data, 'encrypted_data'))
+    signature = toBase64(req(signature, 'signature'))
     return { type: "createWallet", code, encrypted_data, signature }
 }
 
@@ -34,9 +44,10 @@ export function createWallet({ code, encrypted_data, signature }) {
     @arg {Object} fetchWallet - Values from API call
     @arg {string} fetchWallet.public_key - derived from {@link createWallet.signature}
     @arg {string} [fetchWallet.local_hash = null] - base64 sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
-    @return {string} encrypted_data - base64
 */
 export function fetchWallet({ public_key, local_hash }) {
+    public_key = toString(req(public_key, 'public_key'))
+    local_hash = toBase64(local_hash)
     return { type: "fetchWallet", public_key, local_hash }
 }
 
@@ -53,11 +64,14 @@ export function fetchWallet({ public_key, local_hash }) {
 */
 /** @arg {Object} saveWallet - Values from API call
     @arg {string} local_hash base64 hash of the wallet being replaced.  A bad request will occure if this does not match.
-    @arg {string} saveWallet.encrypted_data - binary
+    @arg {string} saveWallet.encrypted_data - base64
     @arg {string} saveWallet.signature - base64
     @return {WalletStatistics>}
 */
 export function saveWallet({ original_local_hash, encrypted_data, signature }) {
+    original_local_hash = toBase64(req(original_local_hash, 'original_local_hash'))
+    encrypted_data = toBase64(req(encrypted_data, 'encrypted_data'))
+    signature = toBase64(req(signature, 'signature'))
     return { type: "saveWallet", original_local_hash, encrypted_data, signature }
 }
 
@@ -69,6 +83,10 @@ export function saveWallet({ original_local_hash, encrypted_data, signature }) {
     @arg {string} param.new_signature - base64
 */
 export function changePassword({ original_local_hash, original_signature, new_encrypted_data, new_signature }) {
+    original_local_hash = toBase64(req(original_local_hash, 'original_local_hash'))
+    original_signature = toBase64(req(original_signature, 'original_signature'))
+    new_encrypted_data = toBase64(req(new_encrypted_data, 'new_encrypted_data'))
+    new_signature = toBase64(req(new_signature, 'new_signature'))
     return { type: "changePassword", original_local_hash, original_signature, new_encrypted_data, new_signature }
 }
 
@@ -77,6 +95,8 @@ export function changePassword({ original_local_hash, original_signature, new_en
     @arg {string} deleteWallet.signature - base64
 */
 export function deleteWallet({ local_hash, signature }) {
+    local_hash = toBase64(req(local_hash, 'local_hash'))
+    signature = toBase64(req(signature, 'signature'))
     return { type: "deleteWallet", local_hash, signature }
 }
 
@@ -84,3 +104,15 @@ export function deleteWallet({ local_hash, signature }) {
 // only valid domain name characters...  Single letter domain is allowed, top level domain has at
 // least 2 characters.
 var invalidEmail = email => ! email || ! /^[^ ^@.]+@[a-z0-9][\.a-z0-9_-]*\.[a-z0-9]{2,}$/i.test( email )
+
+var toBase64 = data => data == null ? data :
+    data["toBuffer"] ? data.toBuffer().toString('base64') :
+    Buffer.isBuffer(data) ? data.toString('base64') : data
+
+var toString = data => data == null ? data :
+    data["toString"] ? data.toString() : data // PublicKey.toString()
+
+function req(data, field_name) {
+    if( data == null ) throw "Missing required field: " + field_name
+    return data
+}

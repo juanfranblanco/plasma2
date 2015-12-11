@@ -1,7 +1,6 @@
-import bs58 from "bs58"
 import { checkToken } from "@graphene/time-token"
 import emailToken from "./EmailToken"
-import * as WalletSyncApi from './WalletSyncApi'
+import { WalletSyncApi } from '@graphene/wallet-sync-client'
 import * as WalletDb from "./WalletDb"
 import {Wallet} from "./db/models.js"
 
@@ -12,8 +11,10 @@ export default function reducer(state, action) {
     try {
         switch( action.type ) {
             case 'requestCode':
-                var { email } = action
-                let p = emailToken(email, false)
+                var { email, public_key } = action
+                // pk is tested in createWallet ( result.seed )
+                var pk = public_key.substring(public_key.length - 13)
+                let p = emailToken(email, pk)
                 p.on('close', (code, signal) =>{
                     if( code === 0 ) {
                         reply.ok()
@@ -25,26 +26,25 @@ export default function reducer(state, action) {
                 break
             case 'createWallet':
                 var { code, encrypted_data, signature } = action
-                code = new Buffer( bs58.decode(code) ).toString( 'binary' )
                 let result = checkToken( code )
                 if( ! result.valid ) {
                     reply("Unauthorized", {message: result.error})
                     break
                 }
-                reply( WalletDb.createWallet(encrypted_data, signature) )
+                reply( WalletDb.createWallet(encrypted_data, signature, result.seed) )
                 break
             case 'fetchWallet':
                 var { public_key, local_hash } = action
-                // let fetch_result = WalletDb.fetchWallet( public_key, local_hash )
+                console.log("local_hash", local_hash)
                 var r = Wallet
-                    .findOne({ where: {public_key, local_hash: { $ne: local_hash } } })
+                    .findOne({ where: {public_key, local_hash: { $ne: (local_hash||'') } } })
                     .then
                 ( wallet => {
                     if( ! wallet ) return "Not Modified"
                     let { email, public_key, signature, local_hash } = wallet
                     return {
-                        email, public_key, signature, local_hash,
                         encrypted_data: wallet.encrypted_data.toString('base64'),
+                        created: wallet.createdAt, updated: wallet.updatedAt
                     }
                 })
                 reply(r)
