@@ -3,18 +3,18 @@ import emailToken from "./EmailToken"
 import { WalletSyncApi } from '@graphene/wallet-sync-client'
 import * as WalletDb from "./WalletDb"
 import {Wallet} from "./db/models.js"
+import hash from "@graphene/hash"
 
 export default function reducer(state, action) {
     if( /redux/.test(action.type) ) return state
-    //console_error("reducer\t", action.type)
+    // console_error("reducer\t", action.type)
     let reply = action.reply
     try {
         switch( action.type ) {
             case 'requestCode':
                 var { email, public_key } = action
-                // pk is tested in createWallet ( result.seed )
-                var pk = public_key.substring(public_key.length - 13)
-                let p = emailToken(email, pk)
+                // Embed the sha1 of the email, this is requored to limit 1 wallet per email
+                let p = emailToken(email, hash.sha1(email, 'base64'))
                 p.on('close', (code, signal) =>{
                     if( code === 0 ) {
                         reply.ok()
@@ -31,13 +31,14 @@ export default function reducer(state, action) {
                     reply("Unauthorized", {message: result.error})
                     break
                 }
-                reply( WalletDb.createWallet(encrypted_data, signature, result.seed) )
+                var email_sha1 = result.seed
+                reply( WalletDb.createWallet(encrypted_data, signature, email_sha1) )
                 break
             case 'fetchWallet':
                 var { public_key, local_hash } = action
-                console.log("local_hash", local_hash)
+                local_hash = new Buffer(local_hash || '').toString('base64')
                 var r = Wallet
-                    .findOne({ where: {public_key, local_hash: { $ne: (local_hash||'') } } })
+                    .findOne({ where: {public_key, local_hash: { $ne: local_hash } } })
                     .then
                 ( wallet => {
                     if( ! wallet ) return "Not Modified"

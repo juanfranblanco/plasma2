@@ -5,81 +5,69 @@ import hash from "@graphene/hash"
 import FormData from "form-data"
 import bs58 from "bs58"
 import walletFetch from "../src/fetch"
-import * as WalletSyncApi from "../src/WalletSyncApi"
+import WalletSyncServer from "../src/WalletSyncServer"
 
-const port = process.env.npm_package_config_server_port
 const host = process.env.npm_package_config_server_host
+const port = process.env.npm_package_config_server_port
+
+const server = new WalletSyncServer(host, port)
+const private_key = PrivateKey.fromSeed("")
+const public_key = private_key.toPublicKey().toString()
+const code = createToken(private_key.toPublicKey().toString())
+const encrypted_data = Aes.fromSeed("").encrypt("data")
+const local_hash = hash.sha256(encrypted_data)
+const signature = Signature.signBuffer(encrypted_data, private_key)
 
 /** These test may depend on each other.  For example: createWallet is the setup for walletFetchWallet, etc...  */
 describe('Wallet sync client', () => {
 
     before( done =>{
         // clean up from a failed run
-        deleteWallet("", "data").then(
-            ()=> deleteWallet("2", "data2").then(
-                ()=>{ done() } ) )
+        var p1 = deleteWallet("", "data")
+        var p2 = deleteWallet("2", "data2")
+        Promise.all([ p1, p2 ])
+            .catch( error =>{ if(error.res.statusText !== 'Not Found') {
+                console.error(error, error.stack); throw error }})
+            .then(()=>{ done() })
     })
 
     it('createWallet', done => {
-        let private_key = PrivateKey.fromSeed("")
-        let code = createToken(private_key.toPublicKey().toString())
-        let encrypted_data = Aes.fromSeed("").encrypt("data")
-        let signature = Signature.signBuffer(encrypted_data, private_key)
-        let action = WalletSyncApi.createWallet({ code, encrypted_data, signature })
-        walletFetch(host, port, action).then( res => assertRes(res, "OK").json() ).then( json => {
-            assert.equal(json.local_hash, hash.sha256(encrypted_data, 'base64'), 'local_hash')
-            assert(new Date(json.created), 'created')
-            done()
-        })
-        .catch( error =>{ console.error(error); throw error })
+        server.createWallet(code, encrypted_data, signature).then( ()=> done() )
+            .catch( error =>{ console.error(error, error.stack); throw error })
     })
 
     it('fetchWallet (Recovery)', done => {
-        let public_key = PrivateKey.fromSeed("").toPublicKey().toString()
         let local_hash = null // recovery, the local_hash is not known
-        let action = WalletSyncApi.fetchWallet({ public_key, local_hash })
-        walletFetch(host, port, action).then( res => assertRes(res, "OK").json() ).then( json => {
-            let encrypted_data = Aes.fromSeed("").encrypt("data").toString('base64')
-            assert.equal(encrypted_data, json.encrypted_data, 'encrypted_data')
-            assert(new Date(json.created), 'created')
-            assert(new Date(json.updated), 'updated')
-            done()
-        })
-        .catch( error =>{ console.error(error, error.stack); throw error })
-    })
-    
-    it('fetchWallet (Not Modified)', done => {
-        let public_key = PrivateKey.fromSeed("").toPublicKey().toString()
-        let encrypted_data = Aes.fromSeed("").encrypt("data")
-        let local_hash = hash.sha256(encrypted_data)
-        let action = WalletSyncApi.fetchWallet({ public_key, local_hash })
-        walletFetch(host, port, action).then( res =>{ assertRes(res, "Not Modified"); done() })
+        server.fetchWallet(public_key, local_hash).then(()=>{ done() })
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
     
+    it('fetchWallet (Not Modified)', done => {
+        server.fetchWallet(public_key, local_hash)
+        .catch( error =>{ if(error.res.statusText !== 'Not Modified') {
+            console.error(error, error.stack); throw error }})
+        .then(()=>{ done() })
+    })
+    
     it('saveWallet', done => {
-        let original_local_hash = hash.sha256(Aes.fromSeed("").encrypt("data"))
-        let private_key = PrivateKey.fromSeed("")
+        let original_local_hash = local_hash
         let encrypted_data = Aes.fromSeed("").encrypt("data2")
         let signature = Signature.signBuffer(encrypted_data, private_key)
-        let action = WalletSyncApi.saveWallet({ original_local_hash, encrypted_data, signature })
-        walletFetch(host, port, action).then( res => assertRes(res, "OK" ).json() ).then( json => {
+        server.saveWallet( original_local_hash, encrypted_data, signature ).then( json =>{
             assert.equal(json.local_hash, hash.sha256(encrypted_data, 'base64'), 'local_hash')
             assert(json.updated, 'updated')
             done()
-        })
-        .catch( error =>{ console.error(error); throw error })
+        }).catch( error =>{ console.error(error, error.stack); throw error })
     })
-
+    
     it('saveWallet (Conflict)', done => {
         // original hash will not match
         let original_local_hash = hash.sha256(Aes.fromSeed("").encrypt("Conflict"))
-        let private_key = PrivateKey.fromSeed("")
         let encrypted_data = Aes.fromSeed("").encrypt("data2")
         let signature = Signature.signBuffer(encrypted_data, private_key)
-        let action = WalletSyncApi.saveWallet({ original_local_hash, encrypted_data, signature })
-        walletFetch(host, port, action).then( res =>{ assertRes(res, "Conflict" ); done() })
-            .catch( error =>{ console.error(error); throw error })
+        server.saveWallet( original_local_hash, encrypted_data, signature )
+            .catch( error =>{ if(error.res.statusText === 'Conflict') done()
+                else console.log(error, error.stack) })
     })
 
     it('saveWallet (Unknown key)', done => {
@@ -88,9 +76,9 @@ describe('Wallet sync client', () => {
         let original_local_hash = hash.sha256(Aes.fromSeed("").encrypt("data2"))
         let encrypted_data = Aes.fromSeed("").encrypt("data2")
         let signature = Signature.signBuffer(encrypted_data, private_key)
-        let action = WalletSyncApi.saveWallet({ original_local_hash, encrypted_data, signature })
-        walletFetch(host, port, action).then( res =>{ assertRes(res, "Bad Request" ); done() })
-            .catch( error =>{ console.error(error); throw error })
+        server.saveWallet( original_local_hash, encrypted_data, signature )
+            .catch( error =>{ if(error.res.statusText === 'Not Found') done()
+                else console.log(error, error.stack) })
     })
 
     it('changePassword', done => {
@@ -101,10 +89,9 @@ describe('Wallet sync client', () => {
         let new_private_key = PrivateKey.fromSeed("2")
         let new_encrypted_data =  Aes.fromSeed("2").encrypt("data2")
         let new_signature = Signature.signBuffer(new_encrypted_data, new_private_key)
-        let action = WalletSyncApi.changePassword({
+        server.changePassword(
             original_local_hash, original_signature, new_encrypted_data, new_signature
-        })
-        walletFetch(host, port, action).then( res => assertRes(res, "OK" ).json() ).then( json => {
+        ).then( json => {
             assert.equal(json.local_hash, hash.sha256(new_encrypted_data, 'base64'), 'local_hash')
             assert(json.updated, 'updated')
             done()
@@ -118,7 +105,8 @@ describe('Wallet sync client', () => {
         let encrypted_data = Aes.fromSeed("2").encrypt("data2")
         let local_hash = hash.sha256(encrypted_data)
         let sig = Signature.signBufferSha256(local_hash, private_key)
-        deleteWallet("2", "data2").then(res =>{ assertRes(res, "OK" ); done() })
+        deleteWallet("2", "data2").then(() =>{ done() })
+            .catch( error =>{ console.error(error); throw error })
     })
 
 })
@@ -128,11 +116,5 @@ function deleteWallet(private_key_seed, wallet_data) {
     let encrypted_data = Aes.fromSeed(private_key_seed).encrypt(wallet_data)
     let local_hash = hash.sha256(encrypted_data)
     let signature = Signature.signBufferSha256(local_hash, private_key)
-    return walletFetch(host, port, WalletSyncApi.deleteWallet({ local_hash, signature }))
-}
-
-
-function assertRes(res, statusText) {
-    assert.equal(res.statusText, statusText)
-    return res
+    return server.deleteWallet( local_hash, signature )
 }
