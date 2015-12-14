@@ -10,6 +10,8 @@ const uploadLimit = {
     headerPairs: process.env.npm_config__graphene_rest_api_headerPairs || 110
 }
 
+const debug = process.env.npm_config__graphene_rest_api_debug || false
+
 /**
     Middleware for the Express Js GET requests.  The Express JS URL pattern needs to have
     a methodName variable.
@@ -29,7 +31,7 @@ const uploadLimit = {
 export const get = (api, dispatch) => (req, res) => {
     let methodFunction = api[req.params.methodName]
     if( ! methodFunction ) {
-        console.error("GET unknown method", req.params.methodName)
+        if( debug ) console.error("GET unknown method", req.params.methodName)
         httpResponse(res, "Bad Request", { error: "Unknown method" })
         return
     }
@@ -89,7 +91,7 @@ export const post = (api, dispatch) => (req, res) => {
                 return
             }
             let action = methodFunction( params )
-            console.log("POST", "action", req.params.methodName, action)
+            if( debug ) console.error("POST", "action", req.params.methodName, action)
             if( ! action || ! dispatch ) {
                 httpResponse( res, "OK" )
                 return

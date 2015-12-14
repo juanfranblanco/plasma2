@@ -8,6 +8,10 @@ Update `./.npmrc` if you need to change something:
 @graphene/rest-api:fieldSize = 20480
 @graphene/rest-api:files = 10
 @graphene/rest-api:fileSize = 1024000
+
+# Show GET and POST requests
+@graphene/rest-api:debug = false
+
 ```
 See [busboy](https://www.npmjs.com/package/busboy)
 
