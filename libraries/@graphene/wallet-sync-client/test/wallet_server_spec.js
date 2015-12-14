@@ -10,20 +10,21 @@ import WalletSyncServer from "../src/WalletSyncServer"
 const host = process.env.npm_package_config_server_host
 const port = process.env.npm_package_config_server_port
 
-// Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const server = new WalletSyncServer(host, port)
+
+// Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
 const public_key = private_key.toPublicKey().toString()
 const code = createToken(hash.sha1("alice@example.bitbucket", 'binary'))
 const encrypted_data = Aes.fromSeed("").encrypt("data")
 const local_hash = hash.sha256(encrypted_data)
-const signature = Signature.signBuffer(encrypted_data, private_key)
+const signature = Signature.signBufferSha256(local_hash, private_key)
 
 const private_key2 = PrivateKey.fromSeed("2")
 const encrypted_data2 = Aes.fromSeed("").encrypt("data2")
-const signature2 = Signature.signBuffer(encrypted_data2, private_key2)
-const local_hash2 = hash.sha256(encrypted_data)
-const signature_key1_enc2 = Signature.signBuffer(encrypted_data2, private_key)
+const local_hash2 = hash.sha256(encrypted_data2)
+const signature2 = Signature.signBufferSha256(local_hash2, private_key2)
+const signature_key1_enc2 = Signature.signBufferSha256(local_hash2, private_key)
 
 /** These test may depend on each other.  For example: createWallet is the setup for fetchWallet, etc...  */
 describe('Wallet sync client', () => {
@@ -68,7 +69,7 @@ describe('Wallet sync client', () => {
     
     it('saveWallet', done => {
         server.saveWallet( local_hash, encrypted_data2, signature_key1_enc2 ).then( json =>{
-            assert.equal(json.local_hash, hash.sha256(encrypted_data2, 'base64'), 'local_hash')
+            assert.equal(json.local_hash, local_hash2.toString('base64'), 'local_hash')
             assert(json.updated, 'updated')
             done()
         }).catch( error =>{ console.error(error, error.stack); throw error })
@@ -76,37 +77,21 @@ describe('Wallet sync client', () => {
     
     it('saveWallet (Conflict)', done => {
         // original hash will not match
-        let original_local_hash = hash.sha256(Aes.fromSeed("").encrypt("Conflict"))
-        let encrypted_data = encrypted_data2
-        let signature = Signature.signBuffer(encrypted_data, private_key)
-        server.saveWallet( original_local_hash, encrypted_data, signature )
+        server.saveWallet( local_hash, encrypted_data2, signature_key1_enc2 )
             .catch( error =>{ if(error.res.statusText === 'Conflict') done()
                 else console.log(error, error.stack) })
     })
 
     it('saveWallet (Unknown key)', done => {
-        // change "nobody" to "" and it should pass (should match createWallet's private key)
-        let private_key = PrivateKey.fromSeed("nobody")
-        let original_local_hash = hash.sha256(Aes.fromSeed("").encrypt("data2"))
-        let encrypted_data = Aes.fromSeed("").encrypt("data2")
-        let signature = Signature.signBuffer(encrypted_data, private_key)
-        server.saveWallet( original_local_hash, encrypted_data, signature )
+        // The "2" key is not on the server yet
+        server.saveWallet( local_hash2, encrypted_data2, signature2 )
             .catch( error =>{ if(error.res.statusText === 'Not Found') done()
                 else console.log(error, error.stack) })
     })
 
     it('changePassword', done => {
-        let original_private_key =  PrivateKey.fromSeed("")
-        let original_encrypted_data = Aes.fromSeed("").encrypt("data2")
-        let original_local_hash = hash.sha256(original_encrypted_data)
-        let original_signature = Signature.signBufferSha256(original_local_hash, original_private_key)
-        let new_private_key = PrivateKey.fromSeed("2")
-        let new_encrypted_data =  Aes.fromSeed("2").encrypt("data2")
-        let new_signature = Signature.signBuffer(new_encrypted_data, new_private_key)
-        server.changePassword(
-            original_local_hash, original_signature, new_encrypted_data, new_signature
-        ).then( json => {
-            assert.equal(json.local_hash, hash.sha256(new_encrypted_data, 'base64'), 'local_hash')
+        server.changePassword( local_hash, signature, encrypted_data2, signature2 ).then( json => {
+            assert.equal(json.local_hash, local_hash2.toString('base64'), 'local_hash')
             assert(json.updated, 'updated')
             done()
         })
@@ -115,10 +100,6 @@ describe('Wallet sync client', () => {
 
     /** End of the wallet tests, clean-up... */
     it('deleteWallet', done=>{
-        let private_key = PrivateKey.fromSeed("2")
-        let encrypted_data = Aes.fromSeed("2").encrypt("data2")
-        let local_hash = hash.sha256(encrypted_data)
-        let sig = Signature.signBufferSha256(local_hash, private_key)
         deleteWallet("2", "data2").then(() =>{ done() })
             .catch( error =>{ console.error(error); throw error })
     })
