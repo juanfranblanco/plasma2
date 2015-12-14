@@ -160,6 +160,12 @@ function req(data, field_name) {
 
 function assertRes(res, statusText) {
     try { assert.equal(res.statusText, statusText) }
-        catch(error) { throw { error, res } }
+        catch(error) {
+            // console.log("res", res)
+            throw { error, res: {
+                status: res.status, // HTTP Status Code
+                statusText: res.statusText // HTTP Status Text (matching Code)
+            }}
+        }
     return res
 }
