@@ -2,7 +2,7 @@ import nodeFetch from "node-fetch"
 import FormData from "form-data"
 
 /**
-    @arg {object} action - Action obtained from {@link ./WalletSyncApi.js}
+    @arg {object} action - Action obtained from {@link ./actions.js}
     @return {Promise} res - expressjs response object
 */
 export default function fetch(host, port, action) {

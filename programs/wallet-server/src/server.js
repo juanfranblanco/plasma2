@@ -4,7 +4,7 @@ import limit from 'express-better-ratelimit'
 import {createStore, applyMiddleware} from 'redux'
 import reducer from './reducer'
 import createMiddleware from './middleware'
-import * as WalletSyncApi from './WalletSyncApi'
+import * as actions from './actions'
 import * as restApi from "@graphene/rest-api"
 import {checkToken} from "@graphene/time-token"
 import cors from "express-cors"
@@ -41,8 +41,8 @@ export default function createServer() {
         duration: ratelimitConfig.duration/1000/60+' min'
     })
     app.use(limit(ratelimitConfig))
-    app.get("/:methodName", restApi.get(WalletSyncApi, store.dispatch))
-    app.post("/:methodName", restApi.post(WalletSyncApi, store.dispatch))
+    app.get("/:methodName", restApi.get(actions, store.dispatch))
+    app.post("/:methodName", restApi.post(actions, store.dispatch))
     let server = app.listen(npm_package_config_rest_port)
     server.on('listening', ()=>{ console.log('Server listening port %d', npm_package_config_rest_port) })
     server.on('close', ()=>{ console.log('Server closed port %d', npm_package_config_rest_port) })

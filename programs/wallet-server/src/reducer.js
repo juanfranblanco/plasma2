@@ -1,6 +1,5 @@
 import { checkToken } from "@graphene/time-token"
 import emailToken from "./EmailToken"
-import { WalletSyncApi } from '@graphene/wallet-sync-client'
 import * as WalletDb from "./WalletDb"
 import {Wallet} from "./db/models.js"
 import hash from "@graphene/hash"
