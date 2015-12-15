@@ -14,7 +14,9 @@ node src/db/models.js
 # Commands
 See "scripts" in [package.json](./package.json)
 
-Example: `npm start` or `npm run [cli|test|test:watch|dev]`
+Example: `npm start` or `npm run [cli|dev]`
+
+Unit tests are run from @graphene/wallet-sync-client..
 
 # Configure
 Update `./.npmrc` if you need to change something:
