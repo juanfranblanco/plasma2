@@ -18,7 +18,7 @@ export default class WalletSyncApi {
         curl http://localhost:9080/requestCode?email=alice@example.com
         ```
         @arg {string} email
-        @return {Promise}
+        @return {Promise} object { status: 200, statusText: "OK", expire_min: 10 }
     */
     requestCode(email) {
         if( invalidEmail(email) ) throw ["invalid email", email]
