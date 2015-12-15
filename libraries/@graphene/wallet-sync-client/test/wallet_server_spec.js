@@ -57,7 +57,7 @@ describe('Wallet sync client', () => {
             .then(()=> done() )
             .catch( error => console.error(error, error.stack) )
     })
-    
+
     it('fetchWallet (Recovery)', done => {
         let local_hash = null // recovery, the local_hash is not known
         server.fetchWallet(public_key, local_hash)
@@ -82,7 +82,7 @@ describe('Wallet sync client', () => {
             done()
         }).catch( error =>{ console.error(error, error.stack); throw error })
     })
-    
+
     it('saveWallet (Conflict)', done => {
         // original hash will not match
         server.saveWallet( local_hash, encrypted_data2, signature_key1_enc2 )

@@ -12,8 +12,6 @@ export default class WalletSyncApi {
         this.port = port
     }
 
-    // All methods should create and return a serilizable action object (an object that has at least a type string)
-
     /**
         Email an authorization code for use in {@link createWallet}.  The code will expire after a period of time.
         ```bash
@@ -32,10 +30,6 @@ export default class WalletSyncApi {
     /** 
         Create or save a wallet on the server.  The wallet will be saved on the server using the public_key derived from encrypted_data and signature.  This public key will be derived from the password but should additionally be seeded with the email address.
      
-        Note, the filename=encrypted_data is required.  This command is intended to pro
-        ```bash
-        curl -X POST -F "fileupload=@mywallet.bin;filename=encrypted_data" -F code=22 -F signature=01aaeeff http://localhost:9080/createWallet
-        ```
         @arg {string} code - from {@link requestCode}
         @arg {string} encrypted_data - base64 string
         @arg {string} signature - base64 string
@@ -59,24 +53,27 @@ export default class WalletSyncApi {
 
     /** @arg {string} public_key - derived from {@link createWallet.signature}
         @arg {Buffer|string} [local_hash = null] - binary sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
-        @return {Promise} object - {
+        @return {Promise} {
             status: 200, statusText: "OK",
             encrypted_data: "base64 string encrypted_data",
             created: "ISO Date String",
             updated: "ISO Date String"
-        }
+        } || {status: 304, statusText: "Not Modified" }
     */
     fetchWallet(public_key, local_hash) {
         public_key = toString(req(public_key, 'public_key'))
         local_hash = toBinary(local_hash)
         let action = { type: "fetchWallet", public_key, local_hash }
-        return walletFetch(this.host, this.port, action).then( res => res.json() ).then( json => {
+        return walletFetch(this.host, this.port, action)
+            .then( res => res.statusText === "Not Modified" ? res : res.json() )
+            .then( json => {
             // console.log("json", json)
-            assert(json.statusText === "OK" || json.statusText === "Not Modified",
-                'json.statusText === "OK" || json.statusText === "Not Modified"')
-            assert(json.encrypted_data, 'encrypted_data')
-            assert(json.created, 'created')
-            assert(json.updated, 'updated')
+            assert(/OK|Not Modified/.test(json.statusText), '/OK|Not Modified/.test(json.statusText)')
+            if(json.statusText === "OK") {
+                assert(json.encrypted_data, 'encrypted_data')
+                assert(json.created, 'created')
+                assert(json.updated, 'updated')
+            }
             return json
         })
     }
