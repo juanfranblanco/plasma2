@@ -36,7 +36,7 @@ export default class WalletSyncApi {
         @return {Promise} object - {
             status: 200, statusText: "OK",
             local_hash: "base64 string sha256(encrypted_data)",
-            created: "ISO Date String"
+            created: "{Date}"
         }
      */
     createWallet(code, encrypted_data, signature) {
@@ -45,9 +45,10 @@ export default class WalletSyncApi {
         let action = { type: "createWallet", code, encrypted_data, signature }
         return walletFetch(this.host, this.port, action).then( res => res.json() ).then( json => {
             assertRes(json, "OK", json)
-            assert(json.local_hash, 'local_hash')
-            assert(json.created, 'created')
-            return json
+            let { status, statusText, created, local_hash } = json
+            assert(local_hash, 'local_hash')
+            assert(created, 'created')
+            return { status, statusText, created, local_hash }
         })
     }
 
@@ -56,8 +57,8 @@ export default class WalletSyncApi {
         @return {Promise} {
             status: 200, statusText: "OK",
             encrypted_data: "base64 string encrypted_data",
-            created: "ISO Date String",
-            updated: "ISO Date String"
+            created: "{Date}",
+            updated: "{Date}"
         } || {status: 304, statusText: "Not Modified" }
     */
     fetchWallet(public_key, local_hash) {
@@ -67,40 +68,37 @@ export default class WalletSyncApi {
         return walletFetch(this.host, this.port, action)
             .then( res => res.statusText === "Not Modified" ? res : res.json() )
             .then( json => {
-            // console.log("json", json)
-            assert(/OK|Not Modified/.test(json.statusText), '/OK|Not Modified/.test(json.statusText)')
-            if(json.statusText === "OK") {
-                assert(json.encrypted_data, 'encrypted_data')
-                assert(json.created, 'created')
-                assert(json.updated, 'updated')
+            let { status, statusText, updated, created, encrypted_data } = json
+            assert(/OK|Not Modified/.test(statusText), '/OK|Not Modified/.test(statusText)')
+            if(statusText === "OK") {
+                assert(encrypted_data, 'encrypted_data')
+                assert(created, 'created')
+                assert(updated, 'updated')
+                return {status, statusText, updated, created, encrypted_data}
             }
-            return json
+            return {status, statusText}
         })
     }
 
-    /** @typedef Date - ISO 8601 as returned by `new Date().toISOString()` and read by `new Date(...)`.
-        Example: 2015-11-11T19:43:58.181Z
-        @type {string}
-    */
-    /** @typedef WalletStatistics
-        @type {object}
-        @property {Date} last_updated
-        @property {Object[]} access_log
-        @property {string} access_log[].ip_address - v4 or v6
-        @property {string} access_log[].date
-    */
-    /** @arg {Object} saveWallet - Values from API call
-        @arg {string} local_hash base64 hash of the wallet being replaced.  A bad request will occure if this does not match.
-        @arg {string} saveWallet.encrypted_data - base64
-        @arg {string} saveWallet.signature - base64
-        @return {WalletStatistics}
+    /** 
+        @arg {Buffer|string} original_local_hash - binary hash of the wallet being replaced.  A bad request will occure if this does not match.
+        @arg {Buffer|string} encrypted_data - binary
+        @arg {Signature|string} signature - binary
+        @return {Promise} { local_hash: "base64 sha256 encrypted_data",
+            updated: {Date}, status: 200, statusText: "OK" }
     */
     saveWallet(original_local_hash, encrypted_data, signature) {
         original_local_hash = toBinary(req(original_local_hash, 'original_local_hash'))
         encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
         signature = toBinary(req(signature, 'signature'))
         let action = { type: "saveWallet", original_local_hash, encrypted_data, signature }
-        return walletFetch(this.host, this.port, action).then( res => assertRes(res, "OK").json() )
+        return walletFetch(this.host, this.port, action).then( res => assertRes(res, "OK", res).json() )
+            .then( json => {
+            let { status, statusText, updated, local_hash } = json
+            assert(local_hash, 'local_hash')
+            assert(updated, 'updated')
+            return { status, statusText, updated, local_hash }
+        })
     }
 
     /** After this call the public key used to lookup this wallet will be the one derived from new_signature and encrypted_data. A wallet must exist at the old_public_key derived from old_signature.
@@ -109,6 +107,7 @@ export default class WalletSyncApi {
         @arg {string} param.encrypted_data - base64
         @arg {string} param.old_signature - base64
         @arg {string} param.new_signature - base64
+        @return {Promise} {status: 200, statusText: "OK", updated: "{Date}", local_hash}
     */
     changePassword(original_local_hash, original_signature, new_encrypted_data, new_signature) {
         original_local_hash = toBinary(req(original_local_hash, 'original_local_hash'))
@@ -117,6 +116,12 @@ export default class WalletSyncApi {
         new_signature = toBinary(req(new_signature, 'new_signature'))
         let action = { type: "changePassword", original_local_hash, original_signature, new_encrypted_data, new_signature }
         return walletFetch(this.host, this.port, action).then( res => assertRes(res, "OK").json() )
+            .then( json => {
+            let { status, statusText, updated, local_hash } = json
+            assert(updated, 'updated')
+            assert(local_hash, 'local_hash')
+            return {status, statusText, updated, local_hash}
+        })
     }
 
     /** Permanently remove a wallet.
@@ -130,9 +135,14 @@ export default class WalletSyncApi {
         let action = { type: "deleteWallet", local_hash, signature }
         return walletFetch(this.host, this.port, action)
             .then(res => assertRes(res, "OK" ))
+            .then( json => { return {status: 200, statusText: "OK"} })
     }
 }
 
+/** @typedef Date - ISO 8601 as returned by `new Date().toISOString()` and read by `new Date(...)`.
+    Example: 2015-11-11T19:43:58.181Z
+    @type {string}
+*/
 
 // No spaces, only one @ symbol, any character for the email name (not completely complient but safe),
 // only valid domain name characters...  Single letter domain is allowed, top level domain has at

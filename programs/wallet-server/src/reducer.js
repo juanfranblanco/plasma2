@@ -12,7 +12,7 @@ export default function reducer(state, action) {
         switch( action.type ) {
             case 'requestCode':
                 var { email } = action
-                // Embed the sha1 of the email, this is requored to limit 1 wallet per email
+                // Embed the sha1 of the email, this is required to limit 1 wallet per email
                 let p = emailToken(email, hash.sha1(email.trim().toLowerCase(), 'binary'))
                 p.on('close', (code, signal) =>{
                     if( code === 0 ) {
