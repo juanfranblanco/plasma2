@@ -47,6 +47,10 @@ export default function createServer() {
     let server = app.listen(npm_package_config_rest_port)
     server.on('listening', ()=>{ console.log('Server listening port %d', npm_package_config_rest_port) })
     server.on('close', ()=>{ console.log('Server closed port %d', npm_package_config_rest_port) })
-    server.on('error', error =>{ console.error(error) })
+    server.on('error', error =>{
+        console.error('wallet-server::createServer\t', error, error.stack)
+        console.error('wallet-server::createServer\trestart')
+        createServer()
+    })
     return { server, app }
 }

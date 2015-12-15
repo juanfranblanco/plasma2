@@ -1,4 +1,4 @@
-import { checkToken } from "@graphene/time-token"
+import { checkToken, expire_min } from "@graphene/time-token"
 import emailToken from "./EmailToken"
 import * as WalletDb from "./WalletDb"
 import {Wallet} from "./db/models.js"
@@ -16,7 +16,7 @@ export default function reducer(state, action) {
                 let p = emailToken(email, hash.sha1(email.trim().toLowerCase(), 'binary'))
                 p.on('close', (code, signal) =>{
                     if( code === 0 ) {
-                        reply.ok()
+                        reply("OK", {expire_min: expire_min()})
                         return
                     }
                     console_error("emailToken\tcode, signal, email", code, signal, email)

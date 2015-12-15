@@ -24,7 +24,12 @@ export default class WalletSyncApi {
         if( invalidEmail(email) ) throw ["invalid email", email]
         let action = { type: "requestCode", email }
         return walletFetch(this.host, this.port, action)
-            .then( res =>{ assertRes(res, "OK"); return true })
+            .then( res => res.json() ).then( json => {
+            assertRes(json, "OK")
+            let { status, statusText, expire_min } = json
+            assert(expire_min, 'expire_min')
+            return { status, statusText, expire_min }
+        })
     }
 
     /** 

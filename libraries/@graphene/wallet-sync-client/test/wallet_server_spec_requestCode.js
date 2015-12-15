@@ -13,7 +13,6 @@ const private_key = PrivateKey.fromSeed("")
 const public_key = private_key.toPublicKey().toString()
 
 describe('Email service', () => {
-
     it('requestCode', function(done) {
         this.timeout(5000)
         let email = "alice@example.bitbucket"

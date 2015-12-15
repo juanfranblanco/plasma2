@@ -2,7 +2,7 @@ import crypto from "crypto"
 import local_secret from "@graphene/local-secret"
 import bs58 from "bs58"
 
-const expire_min = ()=> process.env.npm_config__graphene_time_token_expire_min || 10
+export const expire_min = ()=> process.env.npm_config__graphene_time_token_expire_min || 10
 
 /**
     Create a time-based token created by combining the `local_secret` node configuration value and the 

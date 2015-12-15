@@ -28,7 +28,7 @@ const debug = process.env.npm_config__graphene_rest_api_debug || false
     curl http://localhost:9080/myMethod?var1=1111
     ```
 */
-export const get = (api, dispatch) => (req, res) => {
+export const get = (api, dispatch) => (req, res) => { try {
     let methodFunction = api[req.params.methodName]
     if( ! methodFunction ) {
         if( debug ) console.error("GET unknown method", req.params.methodName)
@@ -49,7 +49,7 @@ export const get = (api, dispatch) => (req, res) => {
         console.error("GET error", error, error.stack)
         httpResponse(res, "Bad Request", typeof error === "string" ? {error} : undefined)
     }
-}
+} catch(error) { uncaught(error) }}
 
 /**
     Middleware for the Express Js POST requests.  The request URL should be your API method name.
@@ -63,7 +63,7 @@ export const get = (api, dispatch) => (req, res) => {
     curl -X POST -F "fileupload=@myFile.bin;filename=myFile" -F var1=1111 -F var2=2222 http://localhost:9999/upload
     ```
 */
-export const post = (api, dispatch) => (req, res) => {
+export const post = (api, dispatch) => (req, res) => { try {
     let methodName = req.params.methodName
     let busboy = new Busboy({ headers: req.headers, limits: uploadLimit });
     let params = {}
@@ -105,11 +105,17 @@ export const post = (api, dispatch) => (req, res) => {
         }
     })
     req.pipe(busboy)
+} catch(error) { uncaught(error) }}
+
+/** Express will crash the entrire server process if any middleware throws an exception */
+function uncaught(error) {
+    console.error('ERROR\trest-api\t', error, error.stack)
 }
 
 /** Simple HTTP status callbacks used to reply to the client */
 function reply( res, action ) {
     action.reply = ( message, data ) =>{
+        if( typeof message !== 'string' ) throw new Error("reply's first parameter shoud be a HTTP Status message (like 'OK')")
         if( message.then ) {// Promise
             message
                 .then( data =>{
