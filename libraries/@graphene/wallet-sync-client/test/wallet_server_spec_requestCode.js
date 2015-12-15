@@ -15,9 +15,9 @@ const public_key = private_key.toPublicKey().toString()
 describe('Email service', () => {
 
     it('requestCode', function(done) {
-        let email = "alice@example.bitbucket"
         this.timeout(5000)
-        server.requestCode(email, public_key).then(()=>{ done() })
+        let email = "alice@example.bitbucket"
+        server.requestCode(email).then(()=>{ done() })
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
 })
