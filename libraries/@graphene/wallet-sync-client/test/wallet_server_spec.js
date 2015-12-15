@@ -42,7 +42,7 @@ describe('Wallet sync client', () => {
     })
 
     it('createWallet', done => {
-        server.createWallet(code, encrypted_data, signature).then( ()=> done() )
+        server.createWallet(code, encrypted_data, signature).then( json =>{console.log(json); done() })
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
     

@@ -19,14 +19,11 @@ export default class WalletSyncClient {
         ```bash
         curl http://localhost:9080/requestCode?email=alice@example.com
         ```
-        @arg {Object} requestCode
-        @arg {string} requestCode.email
-        @arg {string} requestCode.public_key - In {@link createWallet}, this must match the coresponding private signing key.
+        @arg {string} email
     */
-    requestCode(email, public_key) {
+    requestCode(email) {
         if( invalidEmail(email) ) throw ["invalid email", email]
-        public_key = toString(req(public_key, 'public_key'))
-        let action = { type: "requestCode", email, public_key }
+        let action = { type: "requestCode", email }
         return walletFetch(this.host, this.port, action)
             .then( res =>{ assertRes(res, "OK"); return true })
     }
@@ -38,10 +35,9 @@ export default class WalletSyncClient {
         ```bash
         curl -X POST -F "fileupload=@mywallet.bin;filename=encrypted_data" -F code=22 -F signature=01aaeeff http://localhost:9080/createWallet
         ```
-        @arg {Object} createWallet - Values from API call
-        @arg {string} createWallet.code - from {@link requestCode}
-        @arg {string} createWallet.encrypted_data - base64 string
-        @arg {string} createWallet.signature - base64 string
+        @arg {string} code - from {@link requestCode}
+        @arg {string} encrypted_data - base64 string
+        @arg {string} signature - base64 string
         @return {Promise} object - {
             code: 200, code_description: "OK",
             local_hash: "base64 string sha256(encrypted_data)",
