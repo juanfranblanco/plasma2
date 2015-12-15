@@ -6,7 +6,6 @@ import createMiddleware from './middleware'
 import * as actions from './actions'
 import * as restApi from "./rest-api"
 import {checkToken} from "@graphene/time-token"
-import cors from "express-cors"
 
 const {
     /** Server listen port */
@@ -32,7 +31,7 @@ export default function createServer() {
         let origin = req.get('Origin')
         res.set('Access-Control-Allow-Origin', origin)
         res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
-        res.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')  
+        res.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')
         res.set('Access-Control-Allow-Credentials', 'true')
         next()
     })
