@@ -15,9 +15,6 @@ const {
     /** Limit the number of wallet requests it accepts per IP address to a fixed number per hour. */
     npm_package_config_rest_ip_requests_per_hour,
     
-    /** A array of valid Access-Control-Allow-Origin value like: ['example.com'] or ["*"] */
-    npm_package_config_allow_origins
-    
 } = process.env
 
 const ratelimitConfig = {
@@ -31,8 +28,14 @@ export default function createServer() {
 
     var app = express()
     
-    console.log("Allowed Origins", JSON.parse(npm_package_config_allow_origins))
-    app.use(cors({ allowedOrigins: JSON.parse(npm_package_config_allow_origins) }))
+    app.use((req, res, next) => {
+        let origin = req.get('Origin')
+        res.set('Access-Control-Allow-Origin', origin)
+        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+        res.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')  
+        res.set('Access-Control-Allow-Credentials', 'true')
+        next()
+    })
 
     // Limit number of requests per hour by IP
     console.log("Limit by IP address", {

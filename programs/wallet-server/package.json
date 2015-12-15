@@ -15,7 +15,6 @@
   "dependencies": {
     "express": "^4.13.3",
     "express-better-ratelimit": "^1.1.2",
-    "express-cors": "0.0.3",
     "express-limiter": "^1.6.0",
     "immutable": "^3.7.5",
     "mysql": "^2.9.0",
