@@ -1,12 +1,12 @@
 import assert from "assert"
 import walletFetch from "../src/fetch"
 import {PrivateKey} from "@graphene/ecc"
-import WalletSyncServer from "../src/WalletSyncServer"
+import WalletSyncApi from "../src/WalletSyncApi"
 
 const host = process.env.npm_package_config_server_host
 const port = process.env.npm_package_config_server_port
 
-const server = new WalletSyncServer(host, port)
+const server = new WalletSyncApi(host, port)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")

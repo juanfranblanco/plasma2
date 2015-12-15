@@ -1,3 +1,3 @@
 module.exports = {
-    WalletSyncServer: require('./src/WalletSyncServer')
+    WalletSyncApi: require('./src/WalletSyncApi')
 }

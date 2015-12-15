@@ -1,11 +1,11 @@
 import walletFetch from "./fetch"
 import assert from "assert"
 
-/** A protocol between the web browser and the server for storing and retrieving data.  
+/** A protocol between the web browser and the server for storing and retrieving data.  Unless documented otherwise, all methods return a Promise (future) that will resolve on success or reject on error.
 
     @see [Wallet Server Architecture]{@link https://github.com/cryptonomex/graphene/wiki/Wallet-Server-Architecture}
 */
-export default class WalletSyncClient {
+export default class WalletSyncApi {
     
     constructor(host, port) {
         this.host = host
@@ -20,6 +20,7 @@ export default class WalletSyncClient {
         curl http://localhost:9080/requestCode?email=alice@example.com
         ```
         @arg {string} email
+        @return {Promise}
     */
     requestCode(email) {
         if( invalidEmail(email) ) throw ["invalid email", email]
@@ -39,9 +40,9 @@ export default class WalletSyncClient {
         @arg {string} encrypted_data - base64 string
         @arg {string} signature - base64 string
         @return {Promise} object - {
-            code: 200, code_description: "OK",
+            status: 200, statusText: "OK",
             local_hash: "base64 string sha256(encrypted_data)",
-            created: "ISO Date"
+            created: "ISO Date String"
         }
      */
     createWallet(code, encrypted_data, signature) {
@@ -56,16 +57,23 @@ export default class WalletSyncClient {
         })
     }
 
-    /** Requesting AND validating a new code will invalidate a prior code.  
-        @arg {Object} fetchWallet - Values from API call
-        @arg {string} fetchWallet.public_key - derived from {@link createWallet.signature}
-        @arg {string} [fetchWallet.local_hash = null] - base64 sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
+    /** @arg {string} public_key - derived from {@link createWallet.signature}
+        @arg {Buffer|string} [local_hash = null] - binary sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
+        @return {Promise} object - {
+            status: 200, statusText: "OK",
+            encrypted_data: "base64 string encrypted_data",
+            created: "ISO Date String",
+            updated: "ISO Date String"
+        }
     */
     fetchWallet(public_key, local_hash) {
         public_key = toString(req(public_key, 'public_key'))
         local_hash = toBinary(local_hash)
         let action = { type: "fetchWallet", public_key, local_hash }
-        return walletFetch(this.host, this.port, action).then( res => assertRes(res, "OK").json() ).then( json => {
+        return walletFetch(this.host, this.port, action).then( res => res.json() ).then( json => {
+            // console.log("json", json)
+            assert(json.statusText === "OK" || json.statusText === "Not Modified",
+                'json.statusText === "OK" || json.statusText === "Not Modified"')
             assert(json.encrypted_data, 'encrypted_data')
             assert(json.created, 'created')
             assert(json.updated, 'updated')

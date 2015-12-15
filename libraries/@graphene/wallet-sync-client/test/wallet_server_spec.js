@@ -5,12 +5,12 @@ import hash from "@graphene/hash"
 import FormData from "form-data"
 import bs58 from "bs58"
 import walletFetch from "../src/fetch"
-import WalletSyncServer from "../src/WalletSyncServer"
+import WalletSyncApi from "../src/WalletSyncApi"
 
 const host = process.env.npm_package_config_server_host
 const port = process.env.npm_package_config_server_port
 
-const server = new WalletSyncServer(host, port)
+const server = new WalletSyncApi(host, port)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
@@ -42,7 +42,7 @@ describe('Wallet sync client', () => {
     })
 
     it('createWallet', done => {
-        server.createWallet(code, encrypted_data, signature).then( json =>{console.log(json); done() })
+        server.createWallet(code, encrypted_data, signature).then( json => done() )
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
     
@@ -57,18 +57,22 @@ describe('Wallet sync client', () => {
             .then(()=> done() )
             .catch( error => console.error(error, error.stack) )
     })
-
+    
     it('fetchWallet (Recovery)', done => {
         let local_hash = null // recovery, the local_hash is not known
-        server.fetchWallet(public_key, local_hash).then(()=>{ done() })
-            .catch( error =>{ console.error(error, error.stack); throw error })
+        server.fetchWallet(public_key, local_hash)
+            .then( json => {
+                assertRes(json, "OK")
+                assert(json.encrypted_data, encrypted_data.toString('base64'), 'encrypted_data')
+                done()
+            })
+            .catch( error => console.error(error, error.stack) )
     })
-    
+
     it('fetchWallet (Not Modified)', done => {
         server.fetchWallet(public_key, local_hash)
-            .catch( error =>{ if(error.res.statusText !== 'Not Modified') {
-                console.error(error, error.stack); throw error }})
-            .then(()=>{ done() })
+            .then( json => { assertRes(json, 'Not Modified'); done() })
+            .catch( error => console.error(error, error.stack) )
     })
     
     it('saveWallet', done => {
@@ -101,7 +105,7 @@ describe('Wallet sync client', () => {
         })
         .catch( error =>{ console.error(error); throw error })
     })
-
+    
     /** End of the wallet tests, clean-up... */
     it('deleteWallet', done=>{
         deleteWallet("2", "data2").then(() =>{ done() })

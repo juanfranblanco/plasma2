@@ -35,13 +35,13 @@ export default function reducer(state, action) {
                 break
             case 'fetchWallet':
                 var { public_key, local_hash } = action
-                local_hash = new Buffer(local_hash || '').toString('base64')
+                local_hash = local_hash ? new Buffer(local_hash).toString('base64') : ''
+                console.log("local_hash fetchWallet", local_hash)
                 var r = Wallet
                     .findOne({ where: {public_key, local_hash: { $ne: local_hash } } })
                     .then
                 ( wallet => {
                     if( ! wallet ) return "Not Modified"
-                    let { email, public_key, signature, local_hash } = wallet
                     return {
                         encrypted_data: wallet.encrypted_data.toString('base64'),
                         created: wallet.createdAt, updated: wallet.updatedAt
