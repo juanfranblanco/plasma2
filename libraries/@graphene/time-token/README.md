@@ -11,4 +11,4 @@ Update `./.npmrc` if you need to change something:
 @graphene/time-token:expire_min = 10
 ```
 
-* [Build](BUILD.md)
+* [Index](./index.js)

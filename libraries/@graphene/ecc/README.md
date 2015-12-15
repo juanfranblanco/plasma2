@@ -12,7 +12,6 @@ Update `./.npmrc` if you need to change something:
 ```
 
 # See Also
-* [Build](BUILD.md)
 * [Config](./config/index.js)
 * [Address](./src/address.js)
 * [Aes](./src/aes.js)

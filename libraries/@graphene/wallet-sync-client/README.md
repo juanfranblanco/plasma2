@@ -14,7 +14,7 @@ For the unit tests, you will need to `npm start` a programs/wallet-server config
 
 # API Usage
 * [Server API](./src/WalletSyncApi.js)
-* [test](./test)
+* [Usage (unit test)](./test)
 
 # Commands
 Example: `npm run [test|test:watch]`
