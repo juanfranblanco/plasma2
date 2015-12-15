@@ -1,4 +1,3 @@
-import bs58 from "bs58"
 import express from 'express'
 import limit from 'express-better-ratelimit'
 import {createStore, applyMiddleware} from 'redux'

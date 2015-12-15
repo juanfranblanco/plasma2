@@ -3,8 +3,6 @@ import {createToken} from '@graphene/time-token'
 import {Signature, PrivateKey, Aes} from "@graphene/ecc"
 import hash from "@graphene/hash"
 import FormData from "form-data"
-import bs58 from "bs58"
-import walletFetch from "../src/fetch"
 import WalletSyncApi from "../src/WalletSyncApi"
 
 const host = process.env.npm_package_config_server_host
@@ -53,8 +51,8 @@ describe('Wallet sync client', () => {
             .catch( error =>{
                 assertRes(error.res, "Bad Request")
                 assert(error.cause.message === "Validation error", 'error.cause.message === "Validation error"')
+                done()
             })
-            .then(()=> done() )
             .catch( error => console.error(error, error.stack) )
     })
 
