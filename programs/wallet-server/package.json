@@ -5,11 +5,10 @@
   "config": {
     "rest_port": 9080,
     "rest_ip_requests_per_hour": 10,
-    "allow_origins": [ "*" ],
     "mail_from": "alice@example.com",
     "mail_subject": "Verify your wallet backup token",
     "mail_script": "./bin/email.sh",
-    "mail_token_url": "https://bitshares.org/wallet/#/walletSyncCode/${token}"
+    "mail_token_url": "https://bitshares.org/wallet?token=${token}"
   },
   "main": "index.js",
   "dependencies": {
