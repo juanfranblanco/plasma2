@@ -52,7 +52,8 @@ export default class WalletSyncClient {
         encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
         signature = toBinary(req(signature, 'signature'))
         let action = { type: "createWallet", code, encrypted_data, signature }
-        return walletFetch(this.host, this.port, action).then( res => assertRes(res, "OK").json() ).then( json => {
+        return walletFetch(this.host, this.port, action).then( res => res.json() ).then( json => {
+            assertRes(json, "OK", json)
             assert(json.local_hash, 'local_hash')
             assert(json.created, 'created')
             return json
@@ -158,11 +159,11 @@ function req(data, field_name) {
     return data
 }
 
-function assertRes(res, statusText) {
+function assertRes(res, statusText, cause) {
     try { assert.equal(res.statusText, statusText) }
-        catch(error) {
+        catch(unexpected_response) {
             // console.log("res", res)
-            throw { error, res: {
+            throw { unexpected_response, cause, res: {
                 status: res.status, // HTTP Status Code
                 statusText: res.statusText // HTTP Status Text (matching Code)
             }}

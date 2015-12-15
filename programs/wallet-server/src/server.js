@@ -5,7 +5,7 @@ import {createStore, applyMiddleware} from 'redux'
 import reducer from './reducer'
 import createMiddleware from './middleware'
 import * as actions from './actions'
-import * as restApi from "@graphene/rest-api"
+import * as restApi from "./rest-api"
 import {checkToken} from "@graphene/time-token"
 import cors from "express-cors"
 

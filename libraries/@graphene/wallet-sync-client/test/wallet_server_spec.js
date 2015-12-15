@@ -46,13 +46,17 @@ describe('Wallet sync client', () => {
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
     
-    // it('createWallet (duplicate)', done => {
-    //     // The same code can't be used twice
-    //     server.createWallet(code, encrypted_data2, signature2)
-    //         .catch( error =>{ /*console.log(1,error);*/ assertRes(error, "Bad Request") })
-    //         .then(()=> done() )
-    //         .catch( error => console.error(error, error.stack) )
-    // })
+    it('createWallet (duplicate)', done => {
+        // Ensure the same email can't be used twice.
+        // Try to create a new wallet with the same code (email)
+        server.createWallet(code, encrypted_data2, signature2)
+            .catch( error =>{
+                assertRes(error.res, "Bad Request")
+                assert(error.cause.message === "Validation error", 'error.cause.message === "Validation error"')
+            })
+            .then(()=> done() )
+            .catch( error => console.error(error, error.stack) )
+    })
 
     it('fetchWallet (Recovery)', done => {
         let local_hash = null // recovery, the local_hash is not known
@@ -81,14 +85,14 @@ describe('Wallet sync client', () => {
             .catch( error =>{ if(error.res.statusText === 'Conflict') done()
                 else console.log(error, error.stack) })
     })
-
+    
     it('saveWallet (Unknown key)', done => {
         // The "2" key is not on the server yet
         server.saveWallet( local_hash2, encrypted_data2, signature2 )
             .catch( error =>{ if(error.res.statusText === 'Not Found') done()
                 else console.log(error, error.stack) })
     })
-
+    
     it('changePassword', done => {
         server.changePassword( local_hash, signature, encrypted_data2, signature2 ).then( json => {
             assert.equal(json.local_hash, local_hash2.toString('base64'), 'local_hash')

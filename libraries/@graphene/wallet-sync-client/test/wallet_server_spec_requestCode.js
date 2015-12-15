@@ -20,7 +20,6 @@ describe('Email service', () => {
         server.requestCode(email, public_key).then(()=>{ done() })
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
-
 })
 
 function assertRes(res, statusText) {

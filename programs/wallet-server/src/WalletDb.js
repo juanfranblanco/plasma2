@@ -18,7 +18,7 @@ export function createWallet(encrypted_data, signature, email_sha1) {
     
     let public_key = pub.toString()
     let local_hash = lh.toString('base64')
-    email_sha1 = email_sha1.toString('base64')
+    email_sha1 = new Buffer(email_sha1, 'binary').toString('base64')
     return Wallet.create({
         public_key, email_sha1, encrypted_data,
         signature: signature_buffer.toString('base64'), local_hash })

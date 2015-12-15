@@ -17,7 +17,7 @@ See [busboy](https://www.npmjs.com/package/busboy)
 
 # Usage
 ```js
-import * as restApi from "@graphene/rest-api"
+import * as restApi from "./rest-api"
 import express from 'express'
 
 var api = {

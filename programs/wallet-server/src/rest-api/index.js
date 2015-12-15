@@ -125,7 +125,7 @@ function reply( res, action ) {
                     httpResponse(res, code_description, data)
                 })
                 .catch( error =>{
-                    console.log("ERROR", error)
+                    console.log("ERROR\trest-api\t", JSON.stringify(error))
                     httpResponse(res, "Bad Request", error)
                 })
             return
@@ -149,8 +149,10 @@ export function httpResponse(res, message, data = {}) {
     let code = response_codes[message.toLowerCase()]
     if( ! code ) throw 'Unknown HTTP Status message: ' + message
     if(data == null || typeof data !== 'object') data = { message: data }
-    data.code = code
-    data.code_description = message
+    // Add the HTTP Response code to the JSON body
+    data.status = code
+    data.statusText = message
+    // Set the Header HTTP Response code and send a JSON body reply
     res.status(code).json( data )
 }
 
