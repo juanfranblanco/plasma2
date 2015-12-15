@@ -22,7 +22,6 @@ Update `./.npmrc` if you need to change something:
 # Server Port
 @graphene/wallet-server:rest_port = 9080
 @graphene/wallet-server:rest_ip_requests_per_hour = 10
-@graphene/wallet-server:allow_origins = ["*"]
 #
 # Email - tokens have the time in them, expire_min is tested when verifying
 @graphene/time-token:expire_min = 10
