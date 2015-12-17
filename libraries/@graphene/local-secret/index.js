@@ -1,9 +1,9 @@
-import crypto from "crypto"
+import secureRandom from "secure-random"
 
 const { npm_config__graphene_local_secret_secret } = process.env
 
 if( ! npm_config__graphene_local_secret_secret ) {
-    const buf = crypto.randomBytes(256)
+    const buf = secureRandom(256, {type: 'Buffer'})
     const local_secret = buf.toString('base64')
     console.error("# WARN you need to run this command to lock-in your secret.")
     console.error("# Add the following to ./.npmrc")

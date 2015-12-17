@@ -115,7 +115,6 @@ function uncaught(error) {
 /** Simple HTTP status callbacks used to reply to the client */
 function reply( res, action ) {
     action.reply = ( message, data ) =>{
-        if( typeof message !== 'string' ) throw new Error("reply's first parameter shoud be a HTTP Status message (like 'OK')")
         if( message.then ) {// Promise
             message
                 .then( data =>{

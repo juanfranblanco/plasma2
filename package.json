@@ -24,6 +24,7 @@
     "ecurve": "^1.0.2",
     "express": "^4.13.3",
     "express-better-ratelimit": "^1.1.2",
+    "immutable": "^3.7.6",
     "secp256k1": "^2.0.7",
     "secure-random": "^1.1.1"
   },

@@ -1,5 +1,5 @@
-import walletFetch from "./fetch"
 import assert from "assert"
+import walletFetch from "./fetch"
 
 /** A protocol between the web browser and the server for storing and retrieving data.  Unless documented otherwise, all methods return a Promise (future) that will resolve on success or reject on error.
 
@@ -152,7 +152,7 @@ export default class WalletSyncApi {
 // No spaces, only one @ symbol, any character for the email name (not completely complient but safe),
 // only valid domain name characters...  Single letter domain is allowed, top level domain has at
 // least 2 characters.
-var invalidEmail = email => ! email || ! /^[^ ^@.]+@[a-z0-9][\.a-z0-9_-]*\.[a-z0-9]{2,}$/i.test( email )
+export var invalidEmail = email => ! email || ! /^[^ ^@.]+@[a-z0-9][\.a-z0-9_-]*\.[a-z0-9]{2,}$/i.test( email )
 
 var toBinary = data => data == null ? data :
     Buffer.isBuffer(data) ? data.toString('binary') :
