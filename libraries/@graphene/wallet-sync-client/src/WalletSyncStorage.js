@@ -4,19 +4,17 @@ import {createToken} from "@graphene/time-token"
 import {Signature, PrivateKey, Aes} from "@graphene/ecc"
 import hash from "@graphene/hash"
 import WalletSyncApi, {invalidEmail} from "../src/WalletSyncApi"
-import store from "store"
 
 /** Serilizable persistent state (strings).. The order generally reflects the actual work-flow order. */
 const inital_persistent_state = Map({
-    wallet_server_url: null,
     email: null,
     code_expiration_date: null,
-    code: null
+    email_validated: false,
     public_key: null,
     local_hash: null,
     created: null,
     updated: null
-}}
+})
 
 /** Serilizable to object type */
 function toObject(k, v) {
@@ -36,11 +34,9 @@ function toObject(k, v) {
 export default class WalletSyncStorage {
     
     /**
-        @arg {WalletSyncApi} server
         @arg {function} state_reducer - returns merged state after accepting partial state object updates.  When called with an undefined argument, if available, prior persisted state should be returned.
     */
-    constructor(server, state_reducer) {
-        this.server = server
+    constructor(state_reducer) {
         this.private_key = null
         this.state_reducer = state_reducer
         this.state = state_reducer() || inital_persistent_state
@@ -54,13 +50,12 @@ export default class WalletSyncStorage {
     /** Save email and code expiration time {@link WalletSyncApi.requestCode()}.
         @arg {string} email
         @arg {number} code_expiration_min - minutes until code expires (example: 10)
-        @return [ undefined | "invalid_email" ]
-        @throws [ TypeError("code_expiration_min") | InternalError("Delete this wallet first") ]
+        @throws [ TypeError("code_expiration_min"|"invalid_email") | InternalError("Delete this wallet first") ]
     */
     setEmail(email, code_expiration_min) {
         email = email ? email.trim() : email
-        if( invalidEmail(email) ) return "invalid_email"
-        if( typeof code_expiration_min !== "number" ) throw new TypeError("code_expiration_min")
+        if( invalidEmail(email) ) throw new TypeError( "invalid_email" )
+        if( typeof code_expiration_min !== "number" ) throw new TypeError("code_expiration_min "+typeof(code_expiration_min))
         if( this.state.get("created") ) throw new InternalError("Delete this wallet first")
         if( this.private_key && email.toLowerCase() !== this.state.get("email").toLowerCase() ) this.lock()
         let code_expiration_date = new Date(Date.now()+code_expiration_min*60*1000)
@@ -68,13 +63,29 @@ export default class WalletSyncStorage {
     }
     
     /**
-        @arg {string} code - base58 code from @graphene/time-token
+        @arg {string} code - base58 code from the wallet service {@link @graphene/time-token} emailed to user
         @throws [ TypeError("code") | InternalError("Call setEmail first") ]
+        @return [ undefined | "invalid_code" ]
     */
-    setEmailCode(code) {
+    validateEmail(code) {
         if( ! code ) throw TypeError("code")
-        if( ! this.state.get("email") ) throw new InternalError("Call setEmail first")
-        this.state = this.state_reducer({ code })
+        let email = this.state.get("email")
+        if( ! email ) throw new InternalError("Call setEmail first")
+        let seed = extractSeed(code)
+        if( ! seed ) return "invalid_code"
+        if( ! seed === hash.sha1(email.toLowerCase(), 'binary') ) return "invalid_code"
+        this.state = this.state_reducer({ email_validated: true, code_expiration_date: null })
+    }
+    
+    /** 
+        @arg {object} wallet_object
+        @returns 
+        @throws InternalError("Call validateEmail first") | InternalError("Wallet locked")
+    */
+    createEncryptedBackup(wallet_object) {
+        if( typeof wallet_object !== 'object' ) throw new TypeError("wallet_object")
+        if( ! this.state.get("email_validated") ) throw new InternalError("Call validateEmail first")
+        
     }
     
     /**
@@ -102,17 +113,6 @@ export default class WalletSyncStorage {
     
     /** @return {boolean} */
     isLocked() { return this.private_key != null }
-    
-    /** Saves or create the wallet on the remote wallet service.
-        @arg {object} wallet_object
-        @throws InternalError("Call setEmailCode first") | InternalError("Wallet locked")
-    */
-    saveWallet(wallet_object) {
-        if( typeof wallet_object !== 'object' ) throw new TypeError("wallet_object")
-        if( ! this.state.get("code") ) throw new InternalError("Call setEmailCode first")
-        if( this.isLocked() ) throw new InternalError("Wallet locked")
-        
-    }
     
 
 }

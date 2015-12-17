@@ -25,7 +25,7 @@ const signature2 = Signature.signBufferSha256(local_hash2, private_key2)
 const signature_key1_enc2 = Signature.signBufferSha256(local_hash2, private_key)
 
 /** These test may depend on each other.  For example: createWallet is the setup for fetchWallet, etc...  */
-describe('Wallet sync client', () => {
+describe('Wallet API client', () => {
 
     /** Ignore, this is clean up from a failed run */
     before( done =>{
