@@ -1,5 +1,5 @@
 import crypto from "crypto"
-import hash from "@graphene/hash"
+import {hash} from "@graphene/ecc"
 import {Wallet} from "./db/models.js"
 import {Signature, PrivateKey} from "@graphene/ecc"
 

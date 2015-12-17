@@ -71,10 +71,10 @@ export default class WalletSyncApi {
         local_hash = toBinary(local_hash)
         let action = { type: "fetchWallet", public_key, local_hash }
         return walletFetch(this.host, this.port, action)
-            .then( res => res.statusText === "Not Modified" ? res : res.json() )
+            .then( res => /No Content|Not Modified/.test(res.statusText) ? res : res.json() )
             .then( json => {
             let { status, statusText, updated, created, encrypted_data } = json
-            assert(/OK|Not Modified/.test(statusText), '/OK|Not Modified/.test(statusText)')
+            assert(/OK|No Content|Not Modified/.test(statusText), '/OK|No Content|Not Modified/.test(statusText)')
             if(statusText === "OK") {
                 assert(encrypted_data, 'encrypted_data')
                 assert(created, 'created')

@@ -1,5 +1,5 @@
 var ecdsa = require('./ecdsa');
-var hash = require('@graphene/hash');
+var hash = require('./hash');
 var curve = require('ecurve').getCurveByName('secp256k1');
 var assert = require('assert');
 var BigInteger = require('bigi');

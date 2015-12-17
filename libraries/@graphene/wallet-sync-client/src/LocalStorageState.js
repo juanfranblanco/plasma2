@@ -26,6 +26,9 @@ export default class LocalStorageState {
         return this.state
     }
     
-    clear() { localStorage.removeItem("LocalStorageState::" + this.namespace) }
+    clear() {
+        localStorage.removeItem("LocalStorageState::" + this.namespace)
+        this.state = Map()
+    }
     
 }    

@@ -1,7 +1,6 @@
 import assert from "assert"
 import {createToken} from '@graphene/time-token'
-import {Signature, PrivateKey, Aes} from "@graphene/ecc"
-import hash from "@graphene/hash"
+import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
 import FormData from "form-data"
 import WalletSyncApi from "../src/WalletSyncApi"
 
@@ -19,6 +18,7 @@ const local_hash = hash.sha256(encrypted_data)
 const signature = Signature.signBufferSha256(local_hash, private_key)
 
 const private_key2 = PrivateKey.fromSeed("2")
+const public_key2 = private_key2.toPublicKey().toString()
 const encrypted_data2 = Aes.fromSeed("").encrypt("data2")
 const local_hash2 = hash.sha256(encrypted_data2)
 const signature2 = Signature.signBufferSha256(local_hash2, private_key2)
@@ -70,6 +70,12 @@ describe('Wallet API client', () => {
     it('fetchWallet (Not Modified)', done => {
         server.fetchWallet(public_key, local_hash)
             .then( json => { assertRes(json, 'Not Modified'); done() })
+            .catch( error => console.error(error, error.stack) )
+    })
+    
+    it('fetchWallet (Not Exist)', done => {
+        server.fetchWallet(public_key2, local_hash2)
+            .then( json => { assertRes(json, 'No Content'); done() })
             .catch( error => console.error(error, error.stack) )
     })
     

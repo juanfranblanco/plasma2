@@ -45,7 +45,10 @@ describe('Email Actions', () => {
     it('emailCode', function(done) {
         let email = "alice@example.bitbucket"
         this.timeout(5000)
-        err(actions.emailCode(email).then( ()=> done() ))
+        err(actions.emailCode(email).then( ()=>{
+            assert(storage.state.get("code_expiration_date"), 'code_expiration_date')
+            done()
+        }))
     })
     
 })

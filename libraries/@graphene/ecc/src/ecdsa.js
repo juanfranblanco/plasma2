@@ -1,5 +1,5 @@
 var assert = require('assert') // from github.com/bitcoinjs/bitcoinjs-lib from github.com/cryptocoinjs/ecdsa
-var crypto = require('@graphene/hash')
+var crypto = require('./hash')
 var enforceType = require('./types')
 
 var BigInteger = require('bigi')

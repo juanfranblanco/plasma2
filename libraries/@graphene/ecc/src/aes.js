@@ -3,7 +3,7 @@ var CryptoJS = require("crypto-js");
 var assert = require("assert");
 var ByteBuffer = require("bytebuffer");
 var Long = ByteBuffer.Long;
-var hash = require('@graphene/hash');
+var hash = require('./hash');
 
 /** Provides symetric encrypt and decrypt via AES. */
 class Aes {

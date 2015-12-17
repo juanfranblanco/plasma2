@@ -4,8 +4,7 @@ var secp256k1 = ecurve.getCurveByName('secp256k1');
 var BigInteger = require('bigi');
 var base58 = require('bs58');
 var assert = require('assert');
-var hash = require('@graphene/hash');
-
+var hash = require('./hash');
 var PublicKey = require('./key_public');
 
 class PrivateKey {

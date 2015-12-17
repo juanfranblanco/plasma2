@@ -2,7 +2,7 @@ import { checkToken, expire_min } from "@graphene/time-token"
 import emailToken from "./EmailToken"
 import * as WalletDb from "./WalletDb"
 import {Wallet} from "./db/models.js"
-import hash from "@graphene/hash"
+import { hash } from "@graphene/ecc"
 
 export default function reducer(state, action) {
     if( /redux/.test(action.type) ) return state
@@ -37,10 +37,10 @@ export default function reducer(state, action) {
                 var { public_key, local_hash } = action
                 local_hash = local_hash ? new Buffer(local_hash, 'binary').toString('base64') : ''
                 var r = Wallet
-                    .findOne({ where: {public_key, local_hash: { $ne: local_hash } } })
-                    .then
-                ( wallet => {
-                    if( ! wallet ) return "Not Modified"
+                    .findOne({ where: {public_key} })
+                    .then( wallet => {
+                    if( ! wallet ) return "No Content"
+                    if( wallet.local_hash === local_hash ) return "Not Modified"
                     return {
                         encrypted_data: wallet.encrypted_data.toString('base64'),
                         created: wallet.createdAt, updated: wallet.updatedAt

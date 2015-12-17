@@ -3,7 +3,7 @@ var ecurve = require('ecurve');
 var secp256k1 = ecurve.getCurveByName('secp256k1');
 BigInteger = require('bigi');
 var base58 = require('bs58');
-var hash = require('@graphene/hash');
+var hash = require('./hash');
 var config = require('../config');
 var assert = require('assert');
 
