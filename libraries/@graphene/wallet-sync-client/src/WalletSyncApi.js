@@ -73,13 +73,14 @@ export default class WalletSyncApi {
         return walletFetch(this.host, this.port, action)
             .then( res => /No Content|Not Modified/.test(res.statusText) ? res : res.json() )
             .then( json => {
-            let { status, statusText, updated, created, encrypted_data } = json
+            let { status, statusText, updated, created, local_hash, encrypted_data } = json
             assert(/OK|No Content|Not Modified/.test(statusText), '/OK|No Content|Not Modified/.test(statusText)')
             if(statusText === "OK") {
                 assert(encrypted_data, 'encrypted_data')
+                assert(local_hash, 'local_hash')
                 assert(created, 'created')
                 assert(updated, 'updated')
-                return {status, statusText, updated, created, encrypted_data}
+                return {status, statusText, updated, created, local_hash, encrypted_data}
             }
             return {status, statusText}
         })

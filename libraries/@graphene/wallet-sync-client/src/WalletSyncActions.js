@@ -1,15 +1,17 @@
 import { Aes, PublicKey, PrivateKey, Signature, hash } from "@graphene/ecc"
-import WalletSyncStorage from "./WalletSyncStorage"
+import WalletState from "./WalletState"
 import secureRandom from "secure-random"
 import assert from "assert"
 import lzma from "lzma"
 
 /** Combines local storage and remote APIs to offer high-level functionality.  Unless documented otherwise, functions in this class return a promise.
+
+@deprecated .. see Wallet.js instead
 */
 export default class WalletSyncActions {
     
-    constructor(api, reducer) {
-        this.storage = new WalletSyncStorage(reducer)
+    constructor(api, persister) {
+        this.storage = new WalletState(persister)
         this.api = api
     }
     
@@ -18,9 +20,18 @@ export default class WalletSyncActions {
             .then( json => this.storage.setEmail(email, json.expire_min) )
     }
     
-    validateCode(code) { this.storage.validateCode(code) }
-    unlock(password) { this.storage.unlock(password) }
-    lock() { this.storage.lock() }
+    validateCode(code) {
+        this.storage.validateCode(code)
+    }
+    
+    unlock(username, password) {
+        this.storage.unlock(username, password)
+    }
+    
+    lock() {
+        this.storage.lock()
+    }
+    
     isLocked() { return this.storage.isLocked() }
     
     /** Saves or create the wallet on the remote wallet service.  This wallet must have a valid email and be unlocked.
@@ -28,13 +39,20 @@ export default class WalletSyncActions {
         @return {Promise} InternalError("Call validateCode first") | InternalError("Wallet locked")
     */
     put(wallet_object) { return new Promise( resolve => {
-        if( typeof wallet_object !== 'object' ) throw new TypeError("wallet_object")
-        if( ! this.storage.state.get("email_validated") ) throw new Error("validate_email")
-        if( this.isLocked() ) throw new Error("wallet_locked")
+        if( typeof wallet_object !== 'object' )
+            throw new TypeError("wallet_object")
+        
+        if( ! this.storage.state.get("email_validated") )
+            throw new Error("validate_email")
+        
+        if( this.isLocked() )
+            throw new Error("wallet_locked")
+        
         let created = this.storage.state.get("created")
         if( created != null ) {
             let expire = this.storage.state.get("code_expiration_date")
-            if(Date.now() > new Date(expire).getTime()) throw new Error("email_code_expired")
+            if(Date.now() > new Date(expire).getTime())
+                throw new Error("email_code_expired")
         }
         var pubkey = this.storage.state.get("public_key")
         resolve( createWalletBackup(pubkey, wallet_object).then( encrypted_data => {
@@ -60,26 +78,34 @@ export default class WalletSyncActions {
     })}
     
     get() { return new Promise( resolve => {
-        if( ! this.storage.state.get("email_validated") ) throw new Error("validate_email")
-        if( this.isLocked() ) throw new Error("wallet_locked")
+        if( ! this.storage.state.get("email_validated") )
+            throw new Error("validate_email")
+        
+        if( this.isLocked() )
+            throw new Error("wallet_locked")
+        
         let local_hash = this.storage.state.get("local_hash")
         if( local_hash ) local_hash = new Buffer(local_hash, 'base64')
         let public_key = this.storage.state.get("public_key")
         resolve( this.api.fetchWallet(public_key, local_hash).then( json =>{
-            let { status, statusText, updated, created, encrypted_data } = json
+            let { status, statusText, updated, local_hash, created, encrypted_data } = json
             if( statusText === "OK" ) {
                 this.storage.walletFetched(local_hash, json.created, json.updated)
                 let private_key = this.storage.private_key
                 return decryptWalletBackup(private_key, new Buffer(encrypted_data, 'base64'))
             }
-            throw { status, statusText }
+            return { status, statusText }
         }))
     })}
     
     delete() { return new Promise( resolve => {
-        if( this.isLocked() ) throw new Error("wallet_locked")
+        if( this.isLocked() )
+            throw new Error("wallet_locked")
+        
         let created = this.storage.state.get("created")
-        if( created == null ) throw new Error("no_local_wallet")
+        if( created == null )
+            throw new Error("no_local_wallet")
+        
         let local_hash = new Buffer(this.storage.state.get("local_hash"), 'base64')
         let private_key = this.storage.private_key
         let signature = Signature.signBufferSha256(local_hash, private_key)
@@ -109,7 +135,7 @@ function createWalletBackup(backup_pubkey, wallet_object) {
     })
 }
 
-export function decryptWalletBackup(private_key, backup_buffer) {
+function decryptWalletBackup(private_key, backup_buffer) {
     return new Promise( (resolve, reject) => {
         if( ! Buffer.isBuffer(backup_buffer))
             backup_buffer = new Buffer(backup_buffer, 'binary')

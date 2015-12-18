@@ -1,11 +1,17 @@
 
+
+
+/** @deprecated see Wallet.js
+*/
+
 import {List, Map} from "immutable"
 import {createToken, extractSeed} from "@graphene/time-token"
 import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
 import WalletSyncApi, {invalidEmail} from "../src/WalletSyncApi"
 
-/** Serilizable persistent state (strings).. The order generally reflects the actual work-flow order. */
-const inital_persistent_state = Map({
+/** Serilizable persisterent state (strings).. The order generally reflects the actual work-flow order. */
+const inital_persisterent_state = Map({
+    url: null,
     email: null,
     code_expiration_date: null,
     code: null,
@@ -17,22 +23,35 @@ const inital_persistent_state = Map({
 })
 
 /**
-    Interacts with a remote wallet storage service.  This class also manages wallet synchronization state via pluggable storage (state_reducer).  Unless documented otherwise, methods return `undefined` when successful.
+    This class is like your database constraints and triggers.  All the validation happens to ensure a consistent state.  All state non-sensitive transactions are passed through a pluggable persister object which may or may not store the information to disk.  
+    
+    Unless documented otherwise, methods return `undefined` when successful.
 */
-export default class WalletSyncStorage {
+export default class WalletState {
     
     /**
-        @arg {function} state_reducer - returns merged state after accepting partial state object updates.  When called with an undefined argument, if available, prior persisted state should be returned.
+        @arg {function} persister - returns merged state after accepting partial state object updates.  When called with an undefined argument, if available, prior persistered state should be returned.  This object may or may not store the information to disk.
     */
-    constructor(state_reducer) {
+    constructor(persister) {
         this.private_key = null
-        this.state_reducer = state_reducer
-        this.state = state_reducer() || inital_persistent_state
+        this.persister = persister
+        // load from disk or provide an initial state
+        this.state = persister() || inital_persisterent_state
     }
     
+    /**
+        Reset memory and persistent storage to internal initial state.
+    */
     reset() {
         this.private_key = null
-        this.state = this.state_reducer(inital_persistent_state)
+        this.state = this.persister(inital_persisterent_state)
+    }
+    
+    /**
+        @arg {string} [ url = null] - Add or remove a wallet server url
+    */
+    setUrl(url) {
+        this.state = this.persister({ url })
     }
     
     /** Save email and code expiration time {@link WalletSyncApi.requestCode()}.
@@ -47,7 +66,7 @@ export default class WalletSyncStorage {
         if( this.state.get("created") ) throw new Error("Delete this wallet first")
         if( this.private_key && email.toLowerCase() !== this.state.get("email").toLowerCase() ) this.lock()
         let code_expiration_date = new Date(Date.now()+code_expiration_min*60*1000)
-        this.state = this.state_reducer({ email, code_expiration_date })
+        this.state = this.persister({ email, code_expiration_date })
     }
     
     /**
@@ -61,27 +80,31 @@ export default class WalletSyncStorage {
         let seed = extractSeed(code)
         if( ! seed ) throw TypeError("invalid_code (2)")
         if( ! seed === hash.sha1(email.toLowerCase(), 'binary') ) throw TypeError("invalid_code (3)")
-        this.state = this.state_reducer({ email_validated: true, code, code_expiration_date: null })
+        this.state = this.persister({ email_validated: true, code, code_expiration_date: null })
     }
     
     /**
-        Unlock the wallet in RAM.  An email must be provided first (it is a salt value).  The first unlock causes the password public key to get saved; therefore future unlocks could return a "invalid_password" error.
+        Unlock the wallet in RAM.  An email must be provided first (it is a salt value).  The first unlock causes the password public key to get saved; therefore future unlocks could throw an "invalid_password" error.
         
+        @arg {string} email - case-insensitive (must match token)
+        @arg {string} username - case-insensitive
         @arg {string} password
         @throws [ "password_required" | "missing_email" | "invalid_password" ]
     */
-    unlock(password) {
+    unlock(email, username, password) {
         if( ! this.isLocked() ) return
+        if( ! username ) throw new TypeError( "username_required" )
         if( ! password ) throw new TypeError( "password_required" )
+        username = username.trim().toLowerCase()
         let email = this.state.get("email")
         if( ! email ) throw new Error( "missing_email" )
-        let private_key = PrivateKey.fromSeed( email.toLowerCase() + password )
+        let private_key = PrivateKey.fromSeed( username + email.toLowerCase() + password )
         let public_key = private_key.toPublicKey()
         if( this.state.get("public_key") ) {
             if( this.state.get("public_key") !== public_key.toString())
                 throw new TypeError( "invalid_password" )
         } else {
-            this.state = this.state_reducer({ public_key: public_key.toString() })
+            this.state = this.persister({ public_key: public_key.toString() })
         }
         this.private_key = private_key
     }
@@ -93,29 +116,29 @@ export default class WalletSyncStorage {
     isLocked() { return this.private_key == null }
     
     /** Call prior to {@link this.unlock} to change password.  
-        @private - Instead WalletSyncActions should be used to keep the local and remote service in sync.
+        @private - Instead Wallet should be used to keep the local and remote service in sync.
     */
     deleteLocalPassword() {
-        this.state = this.state_reducer({ public_key: null })
+        this.state = this.persister({ public_key: null })
     }
     
     walletCreated(local_hash, created) {
         local_hash = toString(req(local_hash, 'local_hash'), 'base64')
         created = toString(req(created, 'created'))
-        this.state = this.state_reducer({ local_hash, created })
+        this.state = this.persister({ local_hash, created })
     }
     
     walletUpdated(local_hash, updated) {
         local_hash = toString(req(local_hash, 'local_hash'), 'base64')
         updated = toString(req(updated, 'updated'))
-        this.state = this.state_reducer({ local_hash, updated })
+        this.state = this.persister({ local_hash, updated })
     }
     
     walletFetched(local_hash, created, updated) {
         local_hash = toString(req(local_hash, 'local_hash'), 'base64')
         created = toString(req(created, 'created'))
         updated = toString(req(updated, 'updated'))
-        this.state = this.state_reducer({ local_hash, created, updated })
+        this.state = this.persister({ local_hash, created, updated })
     }
 
 }

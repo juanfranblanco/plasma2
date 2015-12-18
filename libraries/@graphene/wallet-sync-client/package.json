@@ -4,8 +4,7 @@
   "description": "Client library for arbitrary wallet object synchronization.  This package is a sync layer and sycn related storage, it does not defined or store the wallet.",
   "main": "index.js",
   "config": {
-    "server_port": 9080,
-    "server_host": "localhost",
+    "server_url": "http://localhost:9080",
     "@graphene/local-secret:secret": "test"
   },
   "scripts": {

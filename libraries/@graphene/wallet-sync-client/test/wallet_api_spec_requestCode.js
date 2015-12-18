@@ -2,9 +2,9 @@ import assert from "assert"
 import walletFetch from "../src/fetch"
 import {PrivateKey} from "@graphene/ecc"
 import WalletSyncApi from "../src/WalletSyncApi"
-import LocalStorageState from "../src/LocalStorageState"
-import WalletSyncStorage from "../src/WalletSyncStorage"
-import WalletSyncActions from "../src/WalletSyncActions"
+import LocalStoragePersistence from "../src/LocalStoragePersistence"
+import WalletState from "../src/WalletState"
+import Wallet from "../src/Wallet"
 
 const host = process.env.npm_package_config_server_host
 const port = process.env.npm_package_config_server_port
@@ -27,26 +27,26 @@ describe('Email API', () => {
 
 // Configure to use localStorage for the purpose of these tests...
 global.localStorage = require('localStorage')
-const state = new LocalStorageState("wallet_store_spec")
-var storage, api, actions
+const storage = new LocalStoragePersistence("wallet_store_spec")
+var storage, api, wallet
 
 /** These test may depend on each other.    */
 describe('Email Actions', () => {
 
     before( done =>{
         //  Clean up from a failed run 
-        state.clear()
+        storage.clear()
         api = new WalletSyncApi(host, port)
-        storage = new WalletSyncStorage(state.reducer())
-        actions = new WalletSyncActions(api, storage)
+        state = new WalletState(storage.persister())
+        wallet = new Wallet(api, state)
         done()
     })
 
     it('emailCode', function(done) {
         let email = "alice@example.bitbucket"
         this.timeout(5000)
-        err(actions.emailCode(email).then( ()=>{
-            assert(storage.state.get("code_expiration_date"), 'code_expiration_date')
+        err(api.emailCode(email).then( ()=>{
+            assert(state.state.get("code_expiration_date"), 'code_expiration_date')
             done()
         }))
     })
