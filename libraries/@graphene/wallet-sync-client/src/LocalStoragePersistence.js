@@ -14,55 +14,45 @@ export default class LocalStoragePersistence {
             "@arg {string} namespace unique to each wallet.  Must match /[a-z0-9_-]+/i.")
         const key = "LocalStoragePersistence::" + this.namespace
         this.STATE = key + "::state"
-        this.KEEP_LOCAL_COPY = key + "::keepLocalCopy"
-        this.keepLocalCopy = localStorage.getItem(this.KEEP_LOCAL_COPY) === "true"
-        this.state = Map()
+        this.SAVE_TO_DISK = key + "::saveToDisk"
+        this.saveToDisk = localStorage.getItem(this.SAVE_TO_DISK) === "true"
+        let stateStr = localStorage.getItem(this.STATE)
+        this.state = stateStr ? Map(JSON.parse(stateStr)) : Map()
     }
     
     /**
         @arg {boolean} [save = true] - Save (or delete / do not save) all state changes to disk
     */
-    keepLocalCopy( save = true ) {
+    saveToDisk( save = true ) {
         if( save ) {
-            localStorage.setItem(this.KEEP_LOCAL_COPY, "true")
+            localStorage.setItem(this.SAVE_TO_DISK, "true")
             localStorage.setItem(this.STATE, JSON.stringify(this.state.toJS(),null,0))
         } else {
-            localStorage.setItem(this.KEEP_LOCAL_COPY, "false")
+            localStorage.setItem(this.SAVE_TO_DISK, "false")
             localStorage.removeItem(this.STATE)
         }
-        this.keepLocalCopy = save
+        this.saveToDisk = save
     }
     
     /**
-        @return {function} - accepts Immutable object state updates, merges with existing state, stores this new state and returns a new complete state object.  When called with no parameters, persisted state is loaded and returned (async storage will need to prepare this in advance). 
+        @return {function} state - Accepts Immutable object state updates, merges with existing state, stores this new state and returns a new complete state object.
     */
-    persister() {
-        return setState.bind(this)
+    setState(newState) {
+        this.state = this.state.merge(newState)
+        if( this.saveToDisk && newState != undefined )
+            localStorage.setItem(this.STATE, JSON.stringify(this.state.toJS(),null,0))
+    }
+    
+    getState() {
+        return this.state
     }
     
     /**
-        Ensures that memory and persistent storage is cleared.
+        Ensures that memory and persistent storage is cleared.  This does not reset the saveToDisk configuration.
     */
     clear() {
         localStorage.removeItem(this.STATE)
         this.state = Map()
     }
     
-}
-
-/**
-    @private see {@link this.persister}
-*/
-setState(state) {
-    if( state === undefined ) {
-        if( ! this.keepLocalCopy ) return
-        let str = localStorage.getItem(this.STATE)
-        if( ! str ) return
-        return this.state = Map(JSON.parse(str))
-    }
-    this.state = this.state.merge(state)
-    if( this.keepLocalCopy )
-        localStorage.setItem(this.STATE, JSON.stringify(this.state.toJS(),null,0))
-    
-    return this.state
 }

@@ -21,7 +21,7 @@ var wallet
 // reset local data, completely a blank-slate
 function clear() {
     state.clear()
-    wallet = new Wallet(storage.persister())
+    wallet = new Wallet(storage)
 }
 
 // clear(as above) then initialize and login wallet

@@ -7,9 +7,8 @@ import walletFetch from "./fetch"
 */
 export default class WalletSyncApi {
     
-    constructor(host, port) {
-        this.host = host
-        this.port = port
+    constructor(remote_url) {
+        this.remote_url = remote_url
     }
 
     /**
@@ -23,7 +22,7 @@ export default class WalletSyncApi {
     requestCode(email) {
         if( invalidEmail(email) ) throw ["invalid email", email]
         let action = { type: "requestCode", email }
-        return walletFetch(this.host, this.port, action)
+        return walletFetch(this.remote_url, action)
             .then( res => res.json() ).then( json => {
             assertRes(json, "OK")
             let { status, statusText, expire_min } = json
@@ -48,7 +47,7 @@ export default class WalletSyncApi {
         encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
         signature = toBinary(req(signature, 'signature'))
         let action = { type: "createWallet", code, encrypted_data, signature }
-        return walletFetch(this.host, this.port, action).then( res => res.json() ).then( json => {
+        return walletFetch(this.remote_url, action).then( res => res.json() ).then( json => {
             assertRes(json, "OK", json)
             let { status, statusText, created, local_hash } = json
             assert(local_hash, 'local_hash')
@@ -70,7 +69,7 @@ export default class WalletSyncApi {
         public_key = toString(req(public_key, 'public_key'))
         local_hash = toBinary(local_hash)
         let action = { type: "fetchWallet", public_key, local_hash }
-        return walletFetch(this.host, this.port, action)
+        return walletFetch(this.remote_url, action)
             .then( res => /No Content|Not Modified/.test(res.statusText) ? res : res.json() )
             .then( json => {
             let { status, statusText, updated, created, local_hash, encrypted_data } = json
@@ -98,7 +97,7 @@ export default class WalletSyncApi {
         encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
         signature = toBinary(req(signature, 'signature'))
         let action = { type: "saveWallet", original_local_hash, encrypted_data, signature }
-        return walletFetch(this.host, this.port, action).then( res => assertRes(res, "OK", res).json() )
+        return walletFetch(this.remote_url, action).then( res => assertRes(res, "OK", res).json() )
             .then( json => {
             let { status, statusText, updated, local_hash } = json
             assert(local_hash, 'local_hash')
@@ -121,7 +120,7 @@ export default class WalletSyncApi {
         new_encrypted_data = toBinary(req(new_encrypted_data, 'new_encrypted_data'))
         new_signature = toBinary(req(new_signature, 'new_signature'))
         let action = { type: "changePassword", original_local_hash, original_signature, new_encrypted_data, new_signature }
-        return walletFetch(this.host, this.port, action).then( res => assertRes(res, "OK").json() )
+        return walletFetch(this.remote_url, action).then( res => assertRes(res, "OK").json() )
             .then( json => {
             let { status, statusText, updated, local_hash } = json
             assert(updated, 'updated')
@@ -139,7 +138,7 @@ export default class WalletSyncApi {
         local_hash = toBinary(req(local_hash, 'local_hash'))
         signature = toBinary(req(signature, 'signature'))
         let action = { type: "deleteWallet", local_hash, signature }
-        return walletFetch(this.host, this.port, action)
+        return walletFetch(this.remote_url, action)
             .then(res => assertRes(res, "OK" ))
             .then( json => { return {status: 200, statusText: "OK"} })
     }
