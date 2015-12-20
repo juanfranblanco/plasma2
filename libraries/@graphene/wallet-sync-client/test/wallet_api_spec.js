@@ -2,12 +2,12 @@ import assert from "assert"
 import {createToken} from '@graphene/time-token'
 import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
 import FormData from "form-data"
-import WalletSyncApi from "../src/WalletSyncApi"
+import WalletApi from "../src/WalletApi"
 
 const host = process.env.npm_package_config_server_host
 const port = process.env.npm_package_config_server_port
 
-const server = new WalletSyncApi(host, port)
+const server = new WalletApi(host, port)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")

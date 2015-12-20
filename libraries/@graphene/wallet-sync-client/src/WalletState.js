@@ -7,7 +7,7 @@
 import {List, Map} from "immutable"
 import {createToken, extractSeed} from "@graphene/time-token"
 import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
-import WalletSyncApi, {invalidEmail} from "../src/WalletSyncApi"
+import WalletApi, {invalidEmail} from "../src/WalletApi"
 
 /** Serilizable persisterent state (strings).. The order generally reflects the actual work-flow order. */
 const inital_persisterent_state = Map({
@@ -54,7 +54,7 @@ export default class WalletState {
         this.state = this.persister({ url })
     }
     
-    /** Save email and code expiration time {@link WalletSyncApi.requestCode()}.
+    /** Save email and code expiration time {@link WalletApi.requestCode()}.
         @arg {string} email
         @arg {number} code_expiration_min - minutes until code expires (example: 10)
         @throws [ TypeError("code_expiration_min"|"invalid_email") | Error("Delete this wallet first") ]

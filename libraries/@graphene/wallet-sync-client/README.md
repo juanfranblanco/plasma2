@@ -12,7 +12,7 @@ For the unit tests, you will need to `npm start` a programs/wallet-server config
 ```
 
 # API Usage
-* [Server API](./src/WalletSyncApi.js)
+* [Server API](./src/WalletApi.js)
 * [Usage (unit test)](./test)
 
 # Commands

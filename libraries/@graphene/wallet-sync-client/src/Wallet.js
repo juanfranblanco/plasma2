@@ -31,18 +31,18 @@ export default class Wallet {
         // load from disk or provide an initial state
         this.state = storage.getState() || inital_persistent_state
         // allows easy updating of state both in memory and on disk (storage remembers if it should write to disk)
-        this.setState = setState.bind(this)
+        this.storageSetState = storageSetState.bind(this)
         // enable the backup server if one is configured (see useBackupServer)
         if(this.state.get("remote_url"))
-            this.api = new WalletSyncApi(this.state.get("remote_url"))
+            this.api = new WalletApi(this.state.get("remote_url"))
     }
     
     /** Configure the wallet to look to a remote host to load and/or save your wallet. 
         @arg {string} [ remote_url = null ] - By passing null into this call the wallet will stop synchronizing its state with the remote server.
     */
     useBackupServer( remote_url ) {
-        if( remote_url ) this.api = new WalletSyncApi(remote_url)
-        this.setState({ remote_url })
+        this.api = remote_url ? new WalletApi(remote_url) : null
+        this.storageSetState({ remote_url })
     }
     
     /**
@@ -58,10 +58,10 @@ export default class Wallet {
         Configure the wallet to save its data on the remote server. If this is set to false, then it will be removed from the server. If it is set to true, then it will be uploaded to the server. If the wallet is not currently saved on the server a token will be required to allow the creation of a new wallet.onfigure the wallet to save its data on the remote server. If this is set to false, then it will be removed from the server. If it is set to true, then it will be uploaded to the server. If the wallet is not currently saved on the server a token will be required to allow the creation of a new wallet.
         
         @arg {boolean} save - Enable or disable remote backups
-        @arg {string} token - Code obtained via {@link WalletSyncApi.requestCode(email).  Only required for the first remote backup (from any computer). 
+        @arg {string} token - Code obtained via {@link WalletApi.requestCode(email).  Only required for the first remote backup (from any computer). 
     */
     keepRemoteCopy( save = true, token = null ) {
-        this.setState({ remote_copy: save, remote_token: token })
+        this.storageSetState({ remote_copy: save, remote_token: token })
         
     }
     
@@ -73,26 +73,31 @@ export default class Wallet {
         @arg {string} email 
         @arg {string} username
         @arg {string} password
-        @throws [email_required | username_required | password_required | invalid_password ]
+        @return {Promise} - reject [email_required | username_required | password_required | invalid_password ], success - getState is ready
     */
     login( email, username, password ) {
-        if( ! this.private_key ) return
-        if( ! email ) throw new TypeError( "email_required" )
-        if( ! username ) throw new TypeError( "username_required" )
-        if( ! password ) throw new TypeError( "password_required" )
-        let private_key = PrivateKey.fromSeed(email.trim().toLowerCase() + username.trim().toLowerCase() + password)
-        let public_key = private_key.toPublicKey()
-        if( this.state.get("encryption_pubkey") ) {
-            if( this.state.get("encryption_pubkey") !== public_key.toString())
-                throw new TypeError( "invalid_password" )
-        } else {
-            this.setState({ encryption_pubkey: public_key.toString() })
-        }
-        this.private_key = private_key
-        let encrypted_wallet = this.state.get("encrypted_wallet")
-        if( encrypted_wallet ) {
-            this.wallet_object = decrypt(encrypted_wallet, this.private_key)
-        }
+        return new Promise( resolve => {
+            if( ! this.private_key ) return
+            if( ! email ) throw new TypeError( "email_required" )
+            if( ! username ) throw new TypeError( "username_required" )
+            if( ! password ) throw new TypeError( "password_required" )
+            let private_key = PrivateKey.fromSeed(email.trim().toLowerCase() + username.trim().toLowerCase() + password)
+            let public_key = private_key.toPublicKey()
+            if( this.state.get("encryption_pubkey") ) {
+                if( this.state.get("encryption_pubkey") !== public_key.toString())
+                    throw new TypeError( "invalid_password" )
+            } else {
+                this.storageSetState({ encryption_pubkey: public_key.toString() })
+            }
+            this.private_key = private_key
+            let encrypted_wallet = this.state.get("encrypted_wallet")
+            if( encrypted_wallet ) {
+                let backup_buffer = new Buffer(encrypted_wallet, 'binary')
+                resolve(decrypt(backup_buffer, this.private_key).then( wallet_object => {
+                    this.wallet_object = Map( wallet_object )
+                }))
+            }
+        })
     }
     
     /** This API call will remove the wallet state from memory. */
@@ -103,7 +108,7 @@ export default class Wallet {
     
     
     /** This method returns an object representing the state of the wallet. It is only valid if the wallet has successfully logged in.
-        @return {object} wallet or `null` if locked
+        @return {Immutable.Map} wallet or `null` if locked
     */
     getState() {
         return this.wallet_object
@@ -112,25 +117,41 @@ export default class Wallet {
     /** 
         This method is used to update the wallet state. If the wallet is configured to keep synchronized with the remote wallet then the server will refer to a copy of the wallets revision history to ensure that no version is overwritten. If the local wallet ever falls on a fork an attempt to upload that wallet will cause the API call to fail; a reconcilation will be needed. After successfully storing the state on the server, save the state to local memory, and optionally disk.
         
-        @throws Error ["login"]
+        @arg {Map} wallet_object - mutable or immutable map Map({})
+        @return {Promise} - reject [wallet_locked, etc...], success after state update
     */
     setState( wallet_object )  {
-        if( ! this.private_key )
-            throw new Error("login")
-        
-        let encrypted_wallet = encrypt(wallet_object, this.private_key)
-        this.setState({ encrypted_wallet })
-        this.wallet_object = wallet_object
+        return new Promise( resolve => {
+            if( ! this.private_key )
+                throw new Error("wallet_locked")
+            
+            if( ! Map.isMap( wallet_object ))
+                throw new Error("wallet_object should be a Map")
+            
+            // Ensure the object is Immutable, this will not nest Maps if it is already immutable
+            wallet_object = Map(wallet_object)
+            let encryption_pubkey = this.state.get("encryption_pubkey")
+            resolve( encrypt( wallet_object, encryption_pubkey ).then( encrypted_wallet => {
+                this.storageSetState({ encrypted_wallet: encrypted_wallet.toString('binary') })
+                this.wallet_object = wallet_object
+            }))
+        })
     }
     
 }
 
 /** @private */
-function setState(state) {
-    let prev = this.state
-    let next = prev.merge(state)
+function storageSetState(state) {
     
+    this.state = this.state.merge(state)
     
-    this.storage.setState(newState)
-    this.state = newState
+    // let prev = this.state
+    // let next = prev.merge(state)
+    // 
+    // 
+    // 
+    // this.storage.setState(next)
+    // this.state = next
 }
+
+

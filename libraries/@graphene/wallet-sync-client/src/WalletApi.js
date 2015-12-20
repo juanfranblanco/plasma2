@@ -5,7 +5,7 @@ import walletFetch from "./fetch"
 
     @see [Wallet Server Architecture]{@link https://github.com/cryptonomex/graphene/wiki/Wallet-Server-Architecture}
 */
-export default class WalletSyncApi {
+export default class WalletApi {
     
     constructor(remote_url) {
         this.remote_url = remote_url
@@ -154,6 +154,7 @@ export default class WalletSyncApi {
 // least 2 characters.
 export var invalidEmail = email => ! email || ! /^[^ ^@.]+@[a-z0-9][\.a-z0-9_-]*\.[a-z0-9]{2,}$/i.test( email )
 
+// @return {string} binary
 var toBinary = data => data == null ? data :
     Buffer.isBuffer(data) ? data.toString('binary') :
     data["toBuffer"] ? data.toBuffer().toString('binary') : data
@@ -170,6 +171,7 @@ var toBinary = data => data == null ? data :
 var toString = data => data == null ? data :
     data["toString"] ? data.toString() : data // PublicKey.toString()
 
+// required
 function req(data, field_name) {
     if( data == null ) throw "Missing required field: " + field_name
     return data

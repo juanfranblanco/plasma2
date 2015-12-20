@@ -7,7 +7,7 @@ import FormData from "form-data"
     @return {Promise} res - expressjs response object
 */
 export default function fetch(remote_url, action) {
-    if( ! action.type ) throw new Error("Action parameter missing action.type (see ./WalletSyncApi.js")
+    if( ! action.type ) throw new Error("Action parameter missing action.type (see ./WalletApi.js")
     let body = new FormData()
     for(let f in action) {
         if( f === 'type' ) continue

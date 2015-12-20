@@ -1,7 +1,7 @@
 import assert from "assert"
 import walletFetch from "../src/fetch"
 import {PrivateKey} from "@graphene/ecc"
-import WalletSyncApi from "../src/WalletSyncApi"
+import WalletApi from "../src/WalletApi"
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
 import WalletState from "../src/WalletState"
 import Wallet from "../src/Wallet"
@@ -9,7 +9,7 @@ import Wallet from "../src/Wallet"
 const host = process.env.npm_package_config_server_host
 const port = process.env.npm_package_config_server_port
 
-const server = new WalletSyncApi(host, port)
+const server = new WalletApi(host, port)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
@@ -36,7 +36,7 @@ describe('Email Actions', () => {
     before( done =>{
         //  Clean up from a failed run 
         storage.clear()
-        api = new WalletSyncApi(host, port)
+        api = new WalletApi(host, port)
         state = new WalletState(storage.persister())
         wallet = new Wallet(api, state)
         done()
