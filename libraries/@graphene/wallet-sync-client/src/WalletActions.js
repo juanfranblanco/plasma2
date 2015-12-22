@@ -30,7 +30,7 @@ export function encrypt(wallet_object, backup_pubkey) {
 /**
     @return {Promise} {object} wallet_object
 */
-export function function decrypt(backup_buffer, private_key) {
+export function decrypt(backup_buffer, private_key) {
     return new Promise( (resolve, reject) => {
         if( ! Buffer.isBuffer(backup_buffer))
             backup_buffer = new Buffer(backup_buffer, 'binary')

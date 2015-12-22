@@ -5,7 +5,7 @@ import LocalStoragePersistence from "../src/LocalStoragePersistence"
 import WalletState from "../src/WalletState"
 import Wallet from "../src/Wallet"
 
-const host = process.env.npm_package_config_server_url
+const server_url = process.env.npm_package_config_server_url
 
 const email = "alice@example.bitbucket"
 const username = "username"
@@ -20,29 +20,27 @@ var wallet
 
 // reset local data, completely a blank-slate
 function clear() {
-    state.clear()
+    storage.clear()
     wallet = new Wallet(storage)
-}
-
-// clear(as above) then initialize and login wallet
-function init() {
-    clear()
-    wallet.storage.setEmail(email, 10)
-    wallet.validateCode(code)
-    wallet.login(email, username, password)
 }
 
 describe('Wallet Actions', () => {
 
-    beforeEach( done =>{
-        init()
-        resolve(wallet.get().then( res =>{
-            if(res.statusText === "No Content") return
-            console.log("res2", res)
-            return deleteWallet().then(()=> done()).catch( error=>{
-                if( ! /no_local_wallet/.test(error)) throw error
-            })
-        }), done)
+    // beforeEach( done =>{
+    it('before', () => {
+        clear()
+        wallet.keepRemoteCopy(true, code)
+        wallet.useBackupServer(server_url)
+        wallet.login(email, username, password)
+            .then( ()=> wallet.delete() )
+        
+        // resolve(wallet.getState().then( res =>{
+        //     if(res.statusText === "No Content") return
+        //     console.log("res2", res)
+        //     return deleteWallet().then(()=> done()).catch( error=>{
+        //         if( ! /no_local_wallet/.test(error)) throw error
+        //     })
+        // }), done)
     })
     
     it('validateCode', () => {

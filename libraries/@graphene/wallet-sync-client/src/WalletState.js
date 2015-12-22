@@ -95,9 +95,8 @@ export default class WalletState {
         if( ! this.isLocked() ) return
         if( ! username ) throw new TypeError( "username_required" )
         if( ! password ) throw new TypeError( "password_required" )
-        username = username.trim().toLowerCase()
-        let email = this.state.get("email")
         if( ! email ) throw new Error( "missing_email" )
+        username = username.trim().toLowerCase()
         let private_key = PrivateKey.fromSeed( username + email.toLowerCase() + password )
         let public_key = private_key.toPublicKey()
         if( this.state.get("public_key") ) {

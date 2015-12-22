@@ -1,5 +1,7 @@
 
 import { Map } from "immutable"
+import { encrypt, decrypt } from "./WalletActions"
+import WalletApi from "./WalletApi"
 
 /** Serilizable persisterent state (serilizable types only).. The order generally reflects the actual work-flow order. */
 const inital_persistent_state = Map({
@@ -35,6 +37,9 @@ export default class Wallet {
         // enable the backup server if one is configured (see useBackupServer)
         if(this.state.get("remote_url"))
             this.api = new WalletApi(this.state.get("remote_url"))
+        
+        this.syncCheck = syncCheck.bind(this)
+        this.syncCheck()
     }
     
     /** Configure the wallet to look to a remote host to load and/or save your wallet. 
@@ -43,6 +48,7 @@ export default class Wallet {
     useBackupServer( remote_url ) {
         this.api = remote_url ? new WalletApi(remote_url) : null
         this.storageSetState({ remote_url })
+        this.syncCheck()
     }
     
     /**
@@ -50,8 +56,8 @@ export default class Wallet {
         
         @arg {boolean} [save = true] -  Save (or delete / do not save) all state changes to disk
     */
-    keepLocalCopy( save = true ) {
-        this.storage.saveToDisk( save )
+    keepLocalCopy( local_copy = true ) {
+        this.storage.saveToDisk( local_copy )
     }
     
     /**
@@ -62,13 +68,13 @@ export default class Wallet {
     */
     keepRemoteCopy( save = true, token = null ) {
         this.storageSetState({ remote_copy: save, remote_token: token })
-        
+        this.syncCheck()
     }
     
     /**
         This API call is used to load the wallet. If a backup server has been specified then it will attempt to fetch the latest version from the server, otherwise it will load the local wallet into memory. The configuration set by keepLocalCopy will determine whether or not the wallet is saved to disk as a side effect of logging in.
         
-        The wallet is unlocked in RAM when it combines these as follows: lowercase(email) + lowercase(username) + password to come up with a matching public / private key. If keepRemoteCopy is enabled, the email used to obtain the token must match the email used here. Also, if keepRemoteCopy is enabled, the server will store only a one-way hash of the email (and not the email itself) so that it can track resources by unique emails.
+        The wallet is unlocked in RAM when it combines these as follows: lowercase(email) + lowercase(username) + password to come up with a matching public / private key. If keepRemoteCopy is enabled, the email used to obtain the token must match the email used here. Also, if keepRemoteCopy is enabled, the server will store only a one-way hash of the email (and not the email itself) so that it can track resources by unique emails but still respect email privacy also giving the server no advantage in guessing the email portion of the password salt.
         
         @arg {string} email 
         @arg {string} username
@@ -95,6 +101,7 @@ export default class Wallet {
                 let backup_buffer = new Buffer(encrypted_wallet, 'binary')
                 resolve(decrypt(backup_buffer, this.private_key).then( wallet_object => {
                     this.wallet_object = Map( wallet_object )
+                    return this.syncCheck()
                 }))
             }
         })
@@ -108,10 +115,11 @@ export default class Wallet {
     
     
     /** This method returns an object representing the state of the wallet. It is only valid if the wallet has successfully logged in.
-        @return {Immutable.Map} wallet or `null` if locked
+        @return {Promise} {Immutable.Map} wallet_object or `undefined` if locked
     */
     getState() {
-        return this.wallet_object
+        if( ! this.private_key ) return Promise.resolve()
+        return this.syncCheck().then( ()=> this.wallet_object )
     }
 
     /** 
@@ -138,13 +146,31 @@ export default class Wallet {
         })
     }
     
+    /** @return {Promise} */
+    delete() {
+        let private_key = this.private_key
+        let encrypted_wallet = this.state.get("encrypted_wallet")
+        let local_hash = hash.sha256(encrypted_wallet)
+        let signature = Signature.signBufferSha256(local_hash, private_key)
+        return this.api.deleteWallet( local_hash, signature )
+    }
+    
+}
+
+/** @private */
+function syncCheck() {
+    let {
+        remote_copy, remote_token, remote_url,
+        email_sha1, encryption_pubkey, encrypted_wallet,
+        local_hash_history, remote_created_date, remote_updated_date
+    } = this.state.toJS()
+    
+    return Promise.resolve()
 }
 
 /** @private */
 function storageSetState(state) {
-    
     this.state = this.state.merge(state)
-    
     // let prev = this.state
     // let next = prev.merge(state)
     // 
