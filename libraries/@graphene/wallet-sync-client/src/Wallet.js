@@ -2,6 +2,7 @@
 import { Map } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
 import WalletApi from "./WalletApi"
+import { PrivateKey, hash } from "@graphene/ecc" 
 
 /** Serilizable persisterent state (serilizable types only).. The order generally reflects the actual work-flow order. */
 const inital_persistent_state = Map({
@@ -57,7 +58,7 @@ export default class Wallet {
         @arg {boolean} [save = true] -  Save (or delete / do not save) all state changes to disk
     */
     keepLocalCopy( local_copy = true ) {
-        this.storage.saveToDisk( local_copy )
+        this.storage.setSaveToDisk( local_copy )
     }
     
     /**
@@ -83,11 +84,12 @@ export default class Wallet {
     */
     login( email, username, password ) {
         return new Promise( resolve => {
-            if( ! this.private_key ) return
+            if( this.private_key ) return
             if( ! email ) throw new TypeError( "email_required" )
             if( ! username ) throw new TypeError( "username_required" )
             if( ! password ) throw new TypeError( "password_required" )
-            let private_key = PrivateKey.fromSeed(email.trim().toLowerCase() + username.trim().toLowerCase() + password)
+            let private_key = PrivateKey.fromSeed(
+                email.trim().toLowerCase() + username.trim().toLowerCase() + password)
             let public_key = private_key.toPublicKey()
             if( this.state.get("encryption_pubkey") ) {
                 if( this.state.get("encryption_pubkey") !== public_key.toString())
@@ -97,13 +99,16 @@ export default class Wallet {
             }
             this.private_key = private_key
             let encrypted_wallet = this.state.get("encrypted_wallet")
-            if( encrypted_wallet ) {
-                let backup_buffer = new Buffer(encrypted_wallet, 'binary')
-                resolve(decrypt(backup_buffer, this.private_key).then( wallet_object => {
-                    this.wallet_object = Map( wallet_object )
-                    return this.syncCheck()
-                }))
+            if( ! encrypted_wallet ) {
+                resolve()
+                return
             }
+            resolve(this.syncCheck.then(()=> {
+                let backup_buffer = new Buffer(encrypted_wallet, 'binary')
+                decrypt(backup_buffer, this.private_key).then( wallet_object => {
+                    this.wallet_object = Map( wallet_object )
+                })
+            }))
         })
     }
     
@@ -150,6 +155,7 @@ export default class Wallet {
     delete() {
         let private_key = this.private_key
         let encrypted_wallet = this.state.get("encrypted_wallet")
+        if( ! encrypted_wallet ) return Promise.resolve()
         let local_hash = hash.sha256(encrypted_wallet)
         let signature = Signature.signBufferSha256(local_hash, private_key)
         return this.api.deleteWallet( local_hash, signature )

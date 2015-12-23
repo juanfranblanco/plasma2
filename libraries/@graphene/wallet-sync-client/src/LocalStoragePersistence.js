@@ -23,7 +23,7 @@ export default class LocalStoragePersistence {
     /**
         @arg {boolean} [save = true] - Save (or delete / do not save) all state changes to disk
     */
-    saveToDisk( save = true ) {
+    setSaveToDisk( save = true ) {
         if( save ) {
             localStorage.setItem(this.SAVE_TO_DISK, "true")
             localStorage.setItem(this.STATE, JSON.stringify(this.state.toJS(),null,0))

@@ -26,61 +26,20 @@ function clear() {
 
 describe('Wallet Actions', () => {
 
-    // beforeEach( done =>{
-    it('before', () => {
+    beforeEach( done =>{
+        resolve(deleteWallet(), done)
+    })
+    
+    it('createWallet', done => {
         clear()
-        wallet.keepRemoteCopy(true, code)
         wallet.useBackupServer(server_url)
-        wallet.login(email, username, password)
-            .then( ()=> wallet.delete() )
-        
-        // resolve(wallet.getState().then( res =>{
-        //     if(res.statusText === "No Content") return
-        //     console.log("res2", res)
-        //     return deleteWallet().then(()=> done()).catch( error=>{
-        //         if( ! /no_local_wallet/.test(error)) throw error
-        //     })
-        // }), done)
-    })
-    
-    it('validateCode', () => {
-        clear()
-        wallet = new Wallet(api, state.persister())
-        throws(()=>wallet.validateCode(code), "missing_email")
-        wallet.storage.setEmail(email, 10)
-        assert.equal(wallet.storage.state.get("email_validated"), undefined, "email_validated")
-        wallet.validateCode(code)
-        assert.equal(wallet.storage.state.get("email_validated"), true, "email_validated")
-    })
-    
-    it('login', () => {
-        clear()
-        assert.equal(wallet.isLocked(), true, "isLocked")
-        throws(()=>wallet.login(email, username, password), "missing_email")
-        wallet.storage.setEmail(email, 10)
-        wallet.login(email, username, password)
-        assert.equal(wallet.isLocked(), false, "isLocked")
-        wallet.logout()
-        assert.equal(wallet.isLocked(), true, "isLocked")
-        throws(()=> wallet.login(username, password+"wrong"), "invalid_password")
-    })
-    
-    it('put', done => {
-        init()
-        resolve( wallet.put({ name: "default_wallet" }), ()=>{
-            done()
-        })
-    })
-    
-    it('get', done => {
-        clear()
-        wallet.storage.setEmail(email, 10)
-        wallet.validateCode(code)
-        wallet.login(email, username, password)
-        resolve( wallet.get(), status =>{
-            assert(status, "OK", 'status')
-            done()
-        })
+        wallet.keepRemoteCopy(false, code)
+        wallet.keepLocalCopy(false)
+        resolve( wallet
+            .login(email, username, password)
+            .then( ()=> wallet.setState({}) ),
+            done
+        )
     })
     
     it('delete', done => {
@@ -91,10 +50,11 @@ describe('Wallet Actions', () => {
 
 function deleteWallet() {
     clear()
-    wallet.storage.setEmail(email, 10)
-    wallet.validateCode(code)
-    wallet.login(email, username, password)
-    return wallet.delete()
+    wallet.useBackupServer(server_url)
+    wallet.keepRemoteCopy(false, code)
+    wallet.keepLocalCopy(false)
+    return wallet.login(email, username, password)
+        .then( ()=> wallet.delete() )
 }
 
 function throws(f, contains) {
@@ -106,6 +66,7 @@ function throws(f, contains) {
     }
     throw new Error("[throws] did not encounter error: " + contains)
 }
+
 function resolve(promise, done) {
     if( ! promise ) throw new TypeError("Missing: promise")
     return promise
