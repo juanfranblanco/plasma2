@@ -4,10 +4,9 @@ import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
 import FormData from "form-data"
 import WalletApi from "../src/WalletApi"
 
-const host = process.env.npm_package_config_server_host
-const port = process.env.npm_package_config_server_port
+const remote_url = process.env.npm_package_config_remote_url
 
-const server = new WalletApi(host, port)
+const server = new WalletApi(remote_url)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
@@ -26,6 +25,7 @@ const signature_key1_enc2 = Signature.signBufferSha256(local_hash2, private_key)
 
 /** These test may depend on each other.  For example: createWallet is the setup for fetchWallet, etc...  */
 describe('Wallet API client', () => {
+
 
     /** Ignore, this is clean up from a failed run */
     before( done =>{
@@ -48,11 +48,7 @@ describe('Wallet API client', () => {
         // Ensure the same email can't be used twice.
         // Try to create a new wallet with the same code (email)
         server.createWallet(code, encrypted_data2, signature2)
-            .catch( error =>{
-                assertRes(error.res, "Bad Request")
-                assert(error.cause.message === "Validation error", 'error.cause.message === "Validation error"')
-                done()
-            })
+            .then( json => { assert.equal(json.error, "duplicate"); done() })
             .catch( error => console.error(error, error.stack) )
     })
 

@@ -8,9 +8,9 @@ import lzma from "lzma"
     @return {Promise} {Buffer} binary_backup
 */
 export function encrypt(wallet_object, backup_pubkey) {
-    let compression_mode = 9 
-    let entropy = secureRandom.randomBuffer(32)
     return new Promise( resolve => {
+        let compression_mode = 9 
+        let entropy = secureRandom.randomBuffer(32)
         var public_key = PublicKey.fromPublicKeyString(backup_pubkey)
         // The onetime private is never saved, only the onetime public
         var onetime_private_key = PrivateKey.fromBuffer(entropy)
@@ -108,44 +108,7 @@ export function decrypt(backup_buffer, private_key) {
 //         @arg {object} wallet_object
 //         @return {Promise} InternalError("Call validateCode first") | InternalError("Wallet locked")
 //     */
-//     put(wallet_object) { return new Promise( resolve => {
-//         if( typeof wallet_object !== 'object' )
-//             throw new TypeError("wallet_object")
-//         
-//         if( ! this.storage.state.get("email_validated") )
-//             throw new Error("validate_email")
-//         
-//         if( this.isLocked() )
-//             throw new Error("wallet_locked")
-//         
-//         let created = this.storage.state.get("created")
-//         if( created != null ) {
-//             let expire = this.storage.state.get("code_expiration_date")
-//             if(Date.now() > new Date(expire).getTime())
-//                 throw new Error("email_code_expired")
-//         }
-//         var pubkey = this.storage.state.get("public_key")
-//         resolve( createWalletBackup(pubkey, wallet_object).then( encrypted_data => {
-//             // this.storage.private_key
-//             let local_hash_buffer = hash.sha256(encrypted_data)
-//             let private_key = this.storage.private_key
-//             let signature = Signature.signBufferSha256(local_hash_buffer, private_key)
-//             let local_hash = local_hash_buffer.toString('base64')
-//             if( created == null ) {
-//                 let code = this.storage.state.get("code")
-//                 return this.api.createWallet(code, encrypted_data, signature).then( json => {
-//                     this.storage.walletCreated(local_hash, json.created)
-//                     assert.equal(local_hash, json.local_hash, "unmatched local/server hash")
-//                 })
-//             } else {
-//                 let original_local_hash = this.storage.get("local_hash") 
-//                 return this.api.saveWallet(code, encrypted_data, signature).then( json => {
-//                     this.storage.walletUpdated(local_hash, json.updated)
-//                     assert.equal(local_hash, json.local_hash, "unmatched local/server hash")
-//                 })
-//             }
-//         }))
-//     })}
+
 //     
 //     get() { return new Promise( resolve => {
 //         if( ! this.storage.state.get("email_validated") )

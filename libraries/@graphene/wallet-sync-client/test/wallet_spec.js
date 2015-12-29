@@ -5,7 +5,7 @@ import LocalStoragePersistence from "../src/LocalStoragePersistence"
 import WalletState from "../src/WalletState"
 import Wallet from "../src/Wallet"
 
-const server_url = process.env.npm_package_config_server_url
+const remote_url = process.env.npm_package_config_remote_url
 
 const email = "alice@example.bitbucket"
 const username = "username"
@@ -32,7 +32,7 @@ describe('Wallet Actions', () => {
     
     it('createWallet', done => {
         clear()
-        wallet.useBackupServer(server_url)
+        wallet.useBackupServer(remote_url)
         wallet.keepRemoteCopy(false, code)
         wallet.keepLocalCopy(false)
         resolve( wallet
@@ -50,7 +50,7 @@ describe('Wallet Actions', () => {
 
 function deleteWallet() {
     clear()
-    wallet.useBackupServer(server_url)
+    wallet.useBackupServer(remote_url)
     wallet.keepRemoteCopy(false, code)
     wallet.keepLocalCopy(false)
     return wallet.login(email, username, password)

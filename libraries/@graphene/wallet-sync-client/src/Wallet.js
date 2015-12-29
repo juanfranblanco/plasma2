@@ -1,8 +1,8 @@
 
 import { Map } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
+import { PrivateKey, Signature, hash } from "@graphene/ecc" 
 import WalletApi from "./WalletApi"
-import { PrivateKey, hash } from "@graphene/ecc" 
 
 /** Serilizable persisterent state (serilizable types only).. The order generally reflects the actual work-flow order. */
 const inital_persistent_state = Map({
@@ -16,6 +16,45 @@ const inital_persistent_state = Map({
     remote_created_date: null,
     remote_updated_date: null
 })
+
+/** @private */
+function putWallet(wallet_object) { return new Promise( resolve => {
+    
+    if( ! wallet_object )
+        throw new Error("Missing wallet_object")
+    
+    if( ! this.private_key )
+        throw new Error("wallet_locked")
+    
+    let code = this.state.get("remote_token")
+    var pubkey = this.state.get("encryption_pubkey")
+    
+    resolve( encrypt(wallet_object, pubkey).then( encrypted_data => {
+        // this.storage.private_key
+        let local_hash_buffer = hash.sha256(encrypted_data)
+        let private_key = this.private_key
+        let signature = Signature.signBufferSha256(local_hash_buffer, private_key)
+        let local_hash = local_hash_buffer.toString('base64')
+        let created = this.state.get("remote_created_date")
+        let code = this.state.get("remote_token")
+        if( created == null ) {
+            let code = this.state.get("remote_token")
+            return this.api.createWallet(code, encrypted_data, signature)
+                .then( json => {
+                assert.equal(json.local_hash, local_hash, 'local_hash')
+                this.storageSetState({ local_hash, created: json.remote_created_date })
+            })
+        } else {
+            let original_local_hash = this.state.get("local_hash") 
+            return this.api.saveWallet(original_local_hash, encrypted_data, signature)
+                .then( json => {
+                assert.equal(json.local_hash, local_hash, 'local_hash')
+                this.storageSetState({ local_hash, updated: json.remote_updated_date })
+            })
+        }
+    }))
+})}    
+
 
 /**
     A Wallet is a place where private user information can be stored. This information is kept encrypted when on disk or stored on the remote server.
@@ -35,6 +74,7 @@ export default class Wallet {
         this.state = storage.getState() || inital_persistent_state
         // allows easy updating of state both in memory and on disk (storage remembers if it should write to disk)
         this.storageSetState = storageSetState.bind(this)
+        this.putWallet = putWallet.bind(this)
         // enable the backup server if one is configured (see useBackupServer)
         if(this.state.get("remote_url"))
             this.api = new WalletApi(this.state.get("remote_url"))
@@ -138,15 +178,24 @@ export default class Wallet {
             if( ! this.private_key )
                 throw new Error("wallet_locked")
             
-            if( ! Map.isMap( wallet_object ))
-                throw new Error("wallet_object should be a Map")
-            
-            // Ensure the object is Immutable, this will not nest Maps if it is already immutable
-            wallet_object = Map(wallet_object)
+            if( ! Map.isMap( wallet_object ) ) {
+                if( ! typeof wallet_object === 'object')
+                    throw new Error("wallet_object should an 'object' or Map")
+                wallet_object = Map(wallet_object)
+            }
             let encryption_pubkey = this.state.get("encryption_pubkey")
-            resolve( encrypt( wallet_object, encryption_pubkey ).then( encrypted_wallet => {
-                this.storageSetState({ encrypted_wallet: encrypted_wallet.toString('binary') })
-                this.wallet_object = wallet_object
+            resolve( encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
+                let p = this.putWallet(wallet_object).then(()=>{
+                    this.storageSetState({ encrypted_wallet: encrypted_wallet.toString('binary') })
+                    this.wallet_object = wallet_object
+                }).catch( error => {
+                    if(error.cause.message === "Validation error") {
+                        // this wallet exists
+                        console.log("errora", error)
+                    }
+                })
+                
+                return p
             }))
         })
     }
@@ -162,6 +211,9 @@ export default class Wallet {
     }
     
 }
+
+
+
 
 /** @private */
 function syncCheck() {

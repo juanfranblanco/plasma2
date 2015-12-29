@@ -8,6 +8,7 @@ import walletFetch from "./fetch"
 export default class WalletApi {
     
     constructor(remote_url) {
+        if( typeof remote_url !== 'string' ) throw Error("remote_url required")
         this.remote_url = remote_url
     }
 

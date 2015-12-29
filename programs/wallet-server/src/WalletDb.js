@@ -17,14 +17,22 @@ export function createWallet(encrypted_data, signature, email_sha1) {
         return Promise.reject("signature_verify")
     
     let public_key = pub.toString()
-    let local_hash = lh.toString('base64')
     email_sha1 = new Buffer(email_sha1, 'binary').toString('base64')
-    return Wallet.create({
-        public_key, email_sha1, encrypted_data,
-        signature: signature_buffer.toString('base64'), local_hash })
-        // return only select fields from the wallet....
-        // Do not return wallet.id, db sequences may change.
-        .then( wallet =>{ return { local_hash, created: wallet.createdAt } })
+    
+    return Wallet.findOne({where: {email_sha1}}).then( wallet =>{
+        console.log("wallet.public_key, public_key", wallet.public_key, public_key)
+        if( wallet && wallet.public_key === public_key)
+            return { error: 'duplicate', local_hash, created: wallet.createdAt }
+        
+        let local_hash = lh.toString('base64')
+        
+        return Wallet.create({
+            public_key, email_sha1, encrypted_data,
+            signature: signature_buffer.toString('base64'), local_hash })
+            // return only select fields from the wallet....
+            // Do not return wallet.id, db sequences may change.
+            .then( wallet =>{ return { local_hash, created: wallet.createdAt } })
+    })
 }
 
 /**

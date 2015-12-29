@@ -6,10 +6,9 @@ import LocalStoragePersistence from "../src/LocalStoragePersistence"
 import WalletState from "../src/WalletState"
 import Wallet from "../src/Wallet"
 
-const host = process.env.npm_package_config_server_host
-const port = process.env.npm_package_config_server_port
+const remote_url = process.env.npm_package_config_remote_url
 
-const server = new WalletApi(host, port)
+const server = new WalletApi(remote_url)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
