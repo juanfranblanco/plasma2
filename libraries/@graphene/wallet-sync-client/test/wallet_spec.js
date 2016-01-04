@@ -6,7 +6,7 @@ import Wallet from "../src/Wallet"
 
 const remote_url = process.env.npm_package_config_remote_url
 
-const email = "alice@example.bitbucket"
+const email = "alice_v1@example.bitbucket"
 const username = "username"
 const password = "password"
 const code = createToken(hash.sha1(email, 'binary'))
@@ -15,6 +15,7 @@ const code = createToken(hash.sha1(email, 'binary'))
 global.localStorage = require('localStorage')
 const storage = new LocalStoragePersistence("wallet_action_spec")
 var wallet
+
 // reset local data, completely a blank-slate
 function clear() {
     storage.clear()
@@ -24,23 +25,18 @@ function clear() {
 describe('Wallet Actions', () => {
 
     beforeEach( done =>{
-        resolve(deleteWallet(), done)
+        resolve(deleteWallet(), ()=>{ clear(); done() })
     })
     
     it('createWallet', done => {
-        clear()
+        wallet.keepLocalCopy(true)
+        wallet.keepRemoteCopy(true, code)
         wallet.useBackupServer(remote_url)
-        wallet.keepRemoteCopy(false, code)
-        wallet.keepLocalCopy(false)
-        resolve( wallet
+        let p = wallet
             .login(email, username, password)
-            .then( ()=> wallet.setState({}) ),
-            done
-        )
-    })
-    
-    it('delete', done => {
-        resolve(deleteWallet(), done)
+            .then( ()=> wallet.setState({}) )
+        
+        resolve(p, done)
     })
     
 })
