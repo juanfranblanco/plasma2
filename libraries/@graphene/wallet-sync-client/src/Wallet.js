@@ -3,6 +3,7 @@ import { Map } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
 import { PrivateKey, Signature, hash } from "@graphene/ecc" 
 import WalletApi from "./WalletApi"
+import assert from "assert"
 
 const remote_url = process.env.npm_package_config_remote_url
 
@@ -129,7 +130,10 @@ export default class Wallet {
             if( ! username ) throw new TypeError( "username_required" )
             if( ! password ) throw new TypeError( "password_required" )
             let private_key = PrivateKey.fromSeed(
-                email.trim().toLowerCase() + username.trim().toLowerCase() + password)
+                email.trim().toLowerCase() + "\t" +
+                username.trim().toLowerCase() + "\t" +
+                password
+            )
             let public_key = private_key.toPublicKey()
             if( this.storage.state.get("encryption_pubkey") ) {
                 if( this.storage.state.get("encryption_pubkey") !== public_key.toString())
@@ -185,14 +189,12 @@ export default class Wallet {
             }
             let encryption_pubkey = this.storage.state.get("encryption_pubkey")
             resolve( encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
-                let p = this.putWallet(wallet_object).then(()=>{
+                let p = this.putWallet(wallet_object).then( json=>{
+                    console.log("json", json)
                     this.storage.setState({ encrypted_wallet: encrypted_wallet.toString('binary') })
                     this.wallet_object = wallet_object
                 }).catch( error => {
-                    if(error.cause.message === "Validation error") {
-                        // this wallet exists
-                        console.log("errora", error)
-                    }
+                    console.log(error, error.stack)
                 })
                 
                 return p

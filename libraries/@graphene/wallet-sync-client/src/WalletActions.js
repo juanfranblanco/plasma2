@@ -1,5 +1,4 @@
 import { Aes, PublicKey, PrivateKey, Signature, hash } from "@graphene/ecc"
-import WalletState from "./WalletState"
 import secureRandom from "secure-random"
 import assert from "assert"
 import lzma from "lzma"

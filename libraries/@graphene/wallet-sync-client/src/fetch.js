@@ -17,6 +17,5 @@ export default function fetch(remote_url, action) {
         body.append(f, value)
     }
     return nodeFetch( remote_url + "/" + action.type, { method: 'POST', body })
-        // .then( res => { try {return res.json()} catch(e) { return res } })
-        .catch( error =>{ console.error("fetch", error, error.stack); throw error })
+        // .catch( error =>{ console.error("ERROR nodeFetch", error, 'stack', error.stack); throw error })
 }

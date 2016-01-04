@@ -5,8 +5,7 @@ import FormData from "form-data"
 import WalletApi from "../src/WalletApi"
 
 const remote_url = process.env.npm_package_config_remote_url
-
-const server = new WalletApi(remote_url)
+const api = new WalletApi(remote_url)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
@@ -22,7 +21,6 @@ const encrypted_data2 = Aes.fromSeed("").encrypt("data2")
 const local_hash2 = hash.sha256(encrypted_data2)
 const signature2 = Signature.signBufferSha256(local_hash2, private_key2)
 const signature_key1_enc2 = Signature.signBufferSha256(local_hash2, private_key)
-
 
 /** These test may depend on each other.  For example: createWallet is the setup for fetchWallet, etc...  */
 describe('Wallet API client', () => {
@@ -40,21 +38,28 @@ describe('Wallet API client', () => {
     })
 
     it('createWallet', done => {
-        server.createWallet(code, encrypted_data, signature).then( json => done() )
+        api.createWallet(code, encrypted_data, signature).then( json => done() )
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
 
     it('createWallet (duplicate)', done => {
         // Ensure the same email can't be used twice.
         // Try to create a new wallet with the same code (email)
-        server.createWallet(code, encrypted_data2, signature2)
-            .then( json => { assert.equal(json.error, "duplicate"); done() })
-            .catch( error => console.error('should-not-happen', error, error.stack) )
+        api.createWallet(code, encrypted_data2, signature2)
+            .then( json =>{ asert(false, 'should not happen') })
+            .catch( error =>{
+                let cause = error.cause
+                assert.equal(cause.statusText, "Bad Request")
+                assert.equal(cause.message, "duplicate", cause)
+                assert(cause.local_hash, "local_hash")
+                assert(cause.created, "created")
+                done()
+            })
     })
 
     it('fetchWallet (Recovery)', done => {
         let local_hash = null // recovery, the local_hash is not known
-        server.fetchWallet(public_key, local_hash)
+        api.fetchWallet(public_key, local_hash)
             .then( json => {
                 assertRes(json, "OK")
                 assert(json.encrypted_data, encrypted_data.toString('base64'), 'encrypted_data')
@@ -64,19 +69,19 @@ describe('Wallet API client', () => {
     })
 
     it('fetchWallet (Not Modified)', done => {
-        server.fetchWallet(public_key, local_hash)
+        api.fetchWallet(public_key, local_hash)
             .then( json => { assertRes(json, 'Not Modified'); done() })
             .catch( error => console.error(error, error.stack) )
     })
     
     it('fetchWallet (Not Exist)', done => {
-        server.fetchWallet(public_key2, local_hash2)
+        api.fetchWallet(public_key2, local_hash2)
             .then( json => { assertRes(json, 'No Content'); done() })
             .catch( error => console.error(error, error.stack) )
     })
     
     it('saveWallet', done => {
-        server.saveWallet( local_hash, encrypted_data2, signature_key1_enc2 ).then( json =>{
+        api.saveWallet( local_hash, encrypted_data2, signature_key1_enc2 ).then( json =>{
             assert.equal(json.local_hash, local_hash2.toString('base64'), 'local_hash')
             assert(json.updated, 'updated')
             done()
@@ -85,20 +90,20 @@ describe('Wallet API client', () => {
 
     it('saveWallet (Conflict)', done => {
         // original hash will not match
-        server.saveWallet( local_hash, encrypted_data2, signature_key1_enc2 )
+        api.saveWallet( local_hash, encrypted_data2, signature_key1_enc2 )
             .catch( error =>{ if(error.res.statusText === 'Conflict') done()
                 else console.log(error, error.stack) })
     })
     
     it('saveWallet (Unknown key)', done => {
-        // The "2" key is not on the server yet
-        server.saveWallet( local_hash2, encrypted_data2, signature2 )
+        // The "2" key is not on the api yet
+        api.saveWallet( local_hash2, encrypted_data2, signature2 )
             .catch( error =>{ if(error.res.statusText === 'Not Found') done()
                 else console.log(error, error.stack) })
     })
     
     it('changePassword', done => {
-        server.changePassword( local_hash, signature, encrypted_data2, signature2 ).then( json => {
+        api.changePassword( local_hash, signature, encrypted_data2, signature2 ).then( json => {
             assert.equal(json.local_hash, local_hash2.toString('base64'), 'local_hash')
             assert(json.updated, 'updated')
             done()
@@ -119,7 +124,7 @@ function deleteWallet(private_key_seed, wallet_data) {
     let encrypted_data = Aes.fromSeed(private_key_seed).encrypt(wallet_data)
     let local_hash = hash.sha256(encrypted_data)
     let signature = Signature.signBufferSha256(local_hash, private_key)
-    return server.deleteWallet( local_hash, signature )
+    return api.deleteWallet( local_hash, signature )
 }
 
 function assertRes(res, statusText) {

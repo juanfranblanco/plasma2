@@ -50,12 +50,10 @@ export default class WalletApi {
         let action = { type: "createWallet", code, encrypted_data, signature }
         return walletFetch(this.remote_url, action).then( res => res.json() ).then( json => {
             assertRes(json, "OK", json)
-            let { status, statusText, created, local_hash, error } = json
-            if( ! error ) {
-                assert(local_hash, 'local_hash')
-                assert(created, 'created')
-            }
-            return { status, statusText, created, local_hash, error }
+            let { status, statusText, created, local_hash } = json
+            assert(local_hash, 'local_hash')
+            assert(created, 'created')
+            return { status, statusText, created, local_hash }
         })
     }
 

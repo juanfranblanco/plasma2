@@ -3,7 +3,6 @@ import walletFetch from "../src/fetch"
 import {PrivateKey} from "@graphene/ecc"
 import WalletApi from "../src/WalletApi"
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
-import WalletState from "../src/WalletState"
 import Wallet from "../src/Wallet"
 
 // Configure to use localStorage for the purpose of these tests...
