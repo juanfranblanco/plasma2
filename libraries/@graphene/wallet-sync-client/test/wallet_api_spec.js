@@ -23,9 +23,9 @@ const local_hash2 = hash.sha256(encrypted_data2)
 const signature2 = Signature.signBufferSha256(local_hash2, private_key2)
 const signature_key1_enc2 = Signature.signBufferSha256(local_hash2, private_key)
 
+
 /** These test may depend on each other.  For example: createWallet is the setup for fetchWallet, etc...  */
 describe('Wallet API client', () => {
-
 
     /** Ignore, this is clean up from a failed run */
     before( done =>{
@@ -43,13 +43,13 @@ describe('Wallet API client', () => {
         server.createWallet(code, encrypted_data, signature).then( json => done() )
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
-    
+
     it('createWallet (duplicate)', done => {
         // Ensure the same email can't be used twice.
         // Try to create a new wallet with the same code (email)
         server.createWallet(code, encrypted_data2, signature2)
             .then( json => { assert.equal(json.error, "duplicate"); done() })
-            .catch( error => console.error(error, error.stack) )
+            .catch( error => console.error('should-not-happen', error, error.stack) )
     })
 
     it('fetchWallet (Recovery)', done => {

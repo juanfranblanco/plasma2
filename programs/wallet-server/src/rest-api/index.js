@@ -109,7 +109,7 @@ export const post = (api, dispatch) => (req, res) => { try {
 
 /** Express will crash the entrire server process if any middleware throws an exception */
 function uncaught(error) {
-    console.error('ERROR\trest-api\t', error, error.stack)
+    console.error('ERROR\trest-api uncaught\t', error, error.stack, JSON.stringify(error))
 }
 
 /** Simple HTTP status callbacks used to reply to the client */
@@ -130,7 +130,7 @@ function reply( res, action ) {
                     httpResponse(res, code_description, data)
                 })
                 .catch( error =>{
-                    console.log("ERROR\trest-api\t", JSON.stringify(error))
+                    console.error("ERROR\trest-api caught\t", error, error.stack, JSON.stringify(error))
                     httpResponse(res, "Bad Request", error)
                 })
             return

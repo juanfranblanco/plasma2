@@ -18,10 +18,9 @@ export function createWallet(encrypted_data, signature, email_sha1) {
     
     let public_key = pub.toString()
     email_sha1 = new Buffer(email_sha1, 'binary').toString('base64')
-    
-    return Wallet.findOne({where: {email_sha1}}).then( wallet =>{
-        console.log("wallet.public_key, public_key", wallet.public_key, public_key)
-        if( wallet && wallet.public_key === public_key)
+
+    return Wallet.findOne({ where: { $or:[{email_sha1},{public_key}] } }).then( wallet =>{
+        if( wallet )
             return { error: 'duplicate', local_hash, created: wallet.createdAt }
         
         let local_hash = lh.toString('base64')
