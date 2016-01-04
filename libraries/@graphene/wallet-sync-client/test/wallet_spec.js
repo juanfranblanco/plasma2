@@ -17,32 +17,33 @@ const storage = new LocalStoragePersistence("wallet_action_spec")
 var wallet
 
 // reset local data, completely a blank-slate
-function clear() {
+function resetStorage() {
     storage.clear()
     wallet = new Wallet(storage)
 }
 
 describe('Wallet Actions', () => {
-
-    beforeEach( done =>{
-        resolve(deleteWallet(), ()=>{ clear(); done() })
-    })
     
     it('createWallet', done => {
-        wallet.keepLocalCopy(true)
-        wallet.keepRemoteCopy(true, code)
-        wallet.useBackupServer(remote_url)
-        let p = wallet
-            .login(email, username, password)
-            .then( ()=> wallet.setState({}) )
-        
-        resolve(p, done)
+        resolve(deleteWallet(), ()=>{
+            resetStorage()
+            wallet.keepLocalCopy(true)
+            wallet.keepRemoteCopy(true, code)
+            wallet.useBackupServer(remote_url)
+            let p = wallet
+                .login(email, username, password)
+                .then(()=> wallet.setState({ test_wallet: 'secret'}) )
+            
+            resolve(p, done)
+        })
     })
+    
+    
     
 })
 
 function deleteWallet() {
-    clear()
+    resetStorage()
     wallet.useBackupServer(remote_url)
     wallet.keepRemoteCopy(false, code)
     wallet.keepLocalCopy(false)
@@ -55,7 +56,7 @@ function throws(f, contains) {
         f()
     } catch(error) {
         if( new RegExp(contains).test(error) ) return
-        console.error('[throws] ' + error, error.stack)
+        console.error('[throws] ' + error, 'stack', error.stack)
     }
     throw new Error("[throws] did not encounter error: " + contains)
 }
@@ -63,6 +64,6 @@ function throws(f, contains) {
 function resolve(promise, done) {
     if( ! promise ) throw new TypeError("Missing: promise")
     return promise
-        .catch(error =>{ console.error(error, error.stack); throw error})
-        .then( result =>{ if( done ) done() })
+        .catch(error =>{ console.error(error, 'stack', error.stack); throw error})
+        .then( result =>{ if( done ) done(); return result })
 }

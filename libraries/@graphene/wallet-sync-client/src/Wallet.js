@@ -86,7 +86,10 @@ export default class Wallet {
     */
     login( email, username, password ) {
         return new Promise( resolve => {
-            if( this.private_key ) return
+            if( this.private_key ) {
+                resolve()
+                return
+            }
             if( ! email ) throw new Error( "email_required" )
             if( ! username ) throw new Error( "username_required" )
             if( ! password ) throw new Error( "password_required" )
@@ -97,9 +100,11 @@ export default class Wallet {
             )
             let public_key = private_key.toPublicKey()
             if( this.storage.state.get("encryption_pubkey") ) {
+                // check login (email, username, and password)
                 if( this.storage.state.get("encryption_pubkey") !== public_key.toString())
                     throw new Error( "invalid_password" )
             } else {
+                // first login
                 let email_sha1 = hash.sha1( email.trim().toLowerCase() )
                 this.storage.setState({
                     encryption_pubkey: public_key.toString(),
@@ -107,6 +112,7 @@ export default class Wallet {
                 })
             }
             this.private_key = private_key
+            // check server, decrypt and set this.wallet_object (if a wallet is found)
             var p = this.sync().then(()=> {
                 let encrypted_wallet = this.storage.state.get("encrypted_wallet")
                 if( ! encrypted_wallet ) {
@@ -156,7 +162,6 @@ export default class Wallet {
             let encryption_pubkey = this.storage.state.get("encryption_pubkey")
             resolve( encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
                 let p = this.putWallet(wallet_object).then( json=>{
-                    console.log("json", json)
                     this.storage.setState({ encrypted_wallet: encrypted_wallet.toString('binary') })
                     this.wallet_object = wallet_object
                 }).catch( error => {
@@ -203,6 +208,9 @@ function sync() {
             }
         })
     }
+    
+    
+    
     return Promise.resolve()
 }
 
