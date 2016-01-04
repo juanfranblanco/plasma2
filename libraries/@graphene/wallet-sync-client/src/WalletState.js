@@ -9,8 +9,8 @@ import {createToken, extractSeed} from "@graphene/time-token"
 import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
 import WalletApi, {invalidEmail} from "../src/WalletApi"
 
-/** Serilizable persisterent state (strings).. The order generally reflects the actual work-flow order. */
-const inital_persisterent_state = Map({
+/** Serilizable storageent state (strings).. The order generally reflects the actual work-flow order. */
+const inital_storageent_state = Map({
     url: null,
     email: null,
     code_expiration_date: null,
@@ -23,20 +23,21 @@ const inital_persisterent_state = Map({
 })
 
 /**
-    This class is like your database constraints and triggers.  All the validation happens to ensure a consistent state.  All state non-sensitive transactions are passed through a pluggable persister object which may or may not store the information to disk.  
+    This class is like your database constraints and triggers.  All the validation happens to ensure a consistent state.  All state non-sensitive transactions are passed through a pluggable storage object which may or may not store the information to disk.  
     
     Unless documented otherwise, methods return `undefined` when successful.
 */
 export default class WalletState {
     
     /**
-        @arg {function} persister - returns merged state after accepting partial state object updates.  When called with an undefined argument, if available, prior persistered state should be returned.  This object may or may not store the information to disk.
+        @arg {function} storage - returns merged state after accepting partial state object updates.  When called with an undefined argument, if available, prior storageed state should be returned.  This object may or may not store the information to disk.
     */
-    constructor(persister) {
+    constructor(storage) {
         this.private_key = null
-        this.persister = persister
+        this.storage = storage
         // load from disk or provide an initial state
-        this.state = persister() || inital_persisterent_state
+        let state = this.storage.getState()
+        this.state = state.isEmpty() ? inital_storageent_state : state
     }
     
     /**
@@ -44,14 +45,14 @@ export default class WalletState {
     */
     reset() {
         this.private_key = null
-        this.state = this.persister(inital_persisterent_state)
+        this.state = this.storage.setState(inital_storageent_state)
     }
     
     /**
         @arg {string} [ url = null] - Add or remove a wallet server url
     */
     setUrl(url) {
-        this.state = this.persister({ url })
+        this.state = this.storage.setState({ url })
     }
     
     /** Save email and code expiration time {@link WalletApi.requestCode()}.
@@ -66,7 +67,7 @@ export default class WalletState {
         if( this.state.get("created") ) throw new Error("Delete this wallet first")
         if( this.private_key && email.toLowerCase() !== this.state.get("email").toLowerCase() ) this.lock()
         let code_expiration_date = new Date(Date.now()+code_expiration_min*60*1000)
-        this.state = this.persister({ email, code_expiration_date })
+        this.state = this.storage.setState({ email, code_expiration_date })
     }
     
     /**
@@ -80,7 +81,7 @@ export default class WalletState {
         let seed = extractSeed(code)
         if( ! seed ) throw TypeError("invalid_code (2)")
         if( ! seed === hash.sha1(email.toLowerCase(), 'binary') ) throw TypeError("invalid_code (3)")
-        this.state = this.persister({ email_validated: true, code, code_expiration_date: null })
+        this.state = this.storage.setState({ email_validated: true, code, code_expiration_date: null })
     }
     
     /**
@@ -103,7 +104,7 @@ export default class WalletState {
             if( this.state.get("public_key") !== public_key.toString())
                 throw new TypeError( "invalid_password" )
         } else {
-            this.state = this.persister({ public_key: public_key.toString() })
+            this.state = this.storage.setState({ public_key: public_key.toString() })
         }
         this.private_key = private_key
     }
@@ -118,26 +119,26 @@ export default class WalletState {
         @private - Instead Wallet should be used to keep the local and remote service in sync.
     */
     deleteLocalPassword() {
-        this.state = this.persister({ public_key: null })
+        this.state = this.storage.setState({ public_key: null })
     }
     
     walletCreated(local_hash, created) {
         local_hash = toString(req(local_hash, 'local_hash'), 'base64')
         created = toString(req(created, 'created'))
-        this.state = this.persister({ local_hash, created })
+        this.state = this.storage.setState({ local_hash, created })
     }
     
     walletUpdated(local_hash, updated) {
         local_hash = toString(req(local_hash, 'local_hash'), 'base64')
         updated = toString(req(updated, 'updated'))
-        this.state = this.persister({ local_hash, updated })
+        this.state = this.storage.setState({ local_hash, updated })
     }
     
     walletFetched(local_hash, created, updated) {
         local_hash = toString(req(local_hash, 'local_hash'), 'base64')
         created = toString(req(created, 'created'))
         updated = toString(req(updated, 'updated'))
-        this.state = this.persister({ local_hash, created, updated })
+        this.state = this.storage.setState({ local_hash, created, updated })
     }
 
 }

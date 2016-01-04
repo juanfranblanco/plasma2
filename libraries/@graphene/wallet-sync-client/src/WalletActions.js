@@ -85,7 +85,7 @@ export function decrypt(backup_buffer, private_key) {
 //         this.api = api
 //     }
 //     
-//     emailCode(email) {
+//     requestCode(email) {
 //         return this.api.requestCode(email)
 //             .then( json => this.storage.setEmail(email, json.expire_min) )
 //     }

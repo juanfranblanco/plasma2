@@ -6,9 +6,10 @@ import LocalStoragePersistence from "../src/LocalStoragePersistence"
 import WalletState from "../src/WalletState"
 import Wallet from "../src/Wallet"
 
-const remote_url = process.env.npm_package_config_remote_url
-
-const server = new WalletApi(remote_url)
+// Configure to use localStorage for the purpose of these tests...
+global.localStorage = require('localStorage')
+const storage = new LocalStoragePersistence("wallet_store_spec_v2")
+var wallet = new Wallet(storage)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
@@ -18,16 +19,10 @@ describe('Email API', () => {
     it('requestCode', function(done) {
         this.timeout(5000)
         let email = "alice@example.bitbucket"
-        server.requestCode(email).then(()=>{ done() })
+        wallet.api.requestCode(email).then(()=>{ done() })
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
 })
-
-
-// Configure to use localStorage for the purpose of these tests...
-global.localStorage = require('localStorage')
-const storage = new LocalStoragePersistence("wallet_store_spec")
-var storage, api, wallet
 
 /** These test may depend on each other.    */
 describe('Email Actions', () => {
@@ -35,21 +30,19 @@ describe('Email Actions', () => {
     before( done =>{
         //  Clean up from a failed run 
         storage.clear()
-        api = new WalletApi(host, port)
-        state = new WalletState(storage.persister())
-        wallet = new Wallet(api, state)
+        wallet = new Wallet(storage)  
         done()
     })
 
-    it('emailCode', function(done) {
+    it('requestCode', function(done) {
         let email = "alice@example.bitbucket"
         this.timeout(5000)
-        err(api.emailCode(email).then( ()=>{
-            assert(state.state.get("code_expiration_date"), 'code_expiration_date')
+        err(wallet.api.requestCode(email).then( json =>{
+            assert(json.expire_min, 'expire_min')
             done()
         }))
     })
-    
+
 })
 
 function err(p) { p.catch(error => console.error(error, error.stack)) }

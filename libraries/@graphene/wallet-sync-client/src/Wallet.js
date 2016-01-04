@@ -4,11 +4,13 @@ import { encrypt, decrypt } from "./WalletActions"
 import { PrivateKey, Signature, hash } from "@graphene/ecc" 
 import WalletApi from "./WalletApi"
 
+const remote_url = process.env.npm_package_config_remote_url
+
 /** Serilizable persisterent state (serilizable types only).. The order generally reflects the actual work-flow order. */
 const inital_persistent_state = Map({
     remote_copy: false,
     remote_token: null,
-    remote_url: null,
+    remote_url: remote_url,
     email_sha1: null,
     encryption_pubkey: null,
     encrypted_wallet: null,
@@ -26,8 +28,8 @@ function putWallet(wallet_object) { return new Promise( resolve => {
     if( ! this.private_key )
         throw new Error("wallet_locked")
     
-    let code = this.state.get("remote_token")
-    var pubkey = this.state.get("encryption_pubkey")
+    let code = this.storage.state.get("remote_token")
+    var pubkey = this.storage.state.get("encryption_pubkey")
     
     resolve( encrypt(wallet_object, pubkey).then( encrypted_data => {
         // this.storage.private_key
@@ -35,21 +37,21 @@ function putWallet(wallet_object) { return new Promise( resolve => {
         let private_key = this.private_key
         let signature = Signature.signBufferSha256(local_hash_buffer, private_key)
         let local_hash = local_hash_buffer.toString('base64')
-        let created = this.state.get("remote_created_date")
-        let code = this.state.get("remote_token")
+        let created = this.storage.state.get("remote_created_date")
+        let code = this.storage.state.get("remote_token")
         if( created == null ) {
-            let code = this.state.get("remote_token")
+            let code = this.storage.state.get("remote_token")
             return this.api.createWallet(code, encrypted_data, signature)
                 .then( json => {
                 assert.equal(json.local_hash, local_hash, 'local_hash')
-                this.storageSetState({ local_hash, created: json.remote_created_date })
+                this.storage.setState({ local_hash, created: json.remote_created_date })
             })
         } else {
-            let original_local_hash = this.state.get("local_hash") 
+            let original_local_hash = this.storage.state.get("local_hash") 
             return this.api.saveWallet(original_local_hash, encrypted_data, signature)
                 .then( json => {
                 assert.equal(json.local_hash, local_hash, 'local_hash')
-                this.storageSetState({ local_hash, updated: json.remote_updated_date })
+                this.storage.setState({ local_hash, updated: json.remote_updated_date })
             })
         }
     }))
@@ -70,14 +72,12 @@ export default class Wallet {
         // storage knows if it should run RAM only or persist to disk
         this.storage = storage
         this.private_key = null
-        // load from disk or provide an initial state
-        this.state = storage.getState() || inital_persistent_state
-        // allows easy updating of state both in memory and on disk (storage remembers if it should write to disk)
-        this.storageSetState = storageSetState.bind(this)
+        if( this.storage.state.isEmpty() ) {
+            storage.setState( inital_persistent_state )
+        }
         this.putWallet = putWallet.bind(this)
         // enable the backup server if one is configured (see useBackupServer)
-        if(this.state.get("remote_url"))
-            this.api = new WalletApi(this.state.get("remote_url"))
+        this.api = new WalletApi(this.storage.state.get("remote_url"))
         
         this.syncCheck = syncCheck.bind(this)
         this.syncCheck()
@@ -88,7 +88,7 @@ export default class Wallet {
     */
     useBackupServer( remote_url ) {
         this.api = remote_url ? new WalletApi(remote_url) : null
-        this.storageSetState({ remote_url })
+        this.storage.setState({ remote_url })
         this.syncCheck()
     }
     
@@ -108,7 +108,7 @@ export default class Wallet {
         @arg {string} token - Code obtained via {@link WalletApi.requestCode(email).  Only required for the first remote backup (from any computer). 
     */
     keepRemoteCopy( save = true, token = null ) {
-        this.storageSetState({ remote_copy: save, remote_token: token })
+        this.storage.setState({ remote_copy: save, remote_token: token })
         this.syncCheck()
     }
     
@@ -131,14 +131,14 @@ export default class Wallet {
             let private_key = PrivateKey.fromSeed(
                 email.trim().toLowerCase() + username.trim().toLowerCase() + password)
             let public_key = private_key.toPublicKey()
-            if( this.state.get("encryption_pubkey") ) {
-                if( this.state.get("encryption_pubkey") !== public_key.toString())
+            if( this.storage.state.get("encryption_pubkey") ) {
+                if( this.storage.state.get("encryption_pubkey") !== public_key.toString())
                     throw new TypeError( "invalid_password" )
             } else {
-                this.storageSetState({ encryption_pubkey: public_key.toString() })
+                this.storage.setState({ encryption_pubkey: public_key.toString() })
             }
             this.private_key = private_key
-            let encrypted_wallet = this.state.get("encrypted_wallet")
+            let encrypted_wallet = this.storage.state.get("encrypted_wallet")
             if( ! encrypted_wallet ) {
                 resolve()
                 return
@@ -183,10 +183,10 @@ export default class Wallet {
                     throw new Error("wallet_object should an 'object' or Map")
                 wallet_object = Map(wallet_object)
             }
-            let encryption_pubkey = this.state.get("encryption_pubkey")
+            let encryption_pubkey = this.storage.state.get("encryption_pubkey")
             resolve( encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
                 let p = this.putWallet(wallet_object).then(()=>{
-                    this.storageSetState({ encrypted_wallet: encrypted_wallet.toString('binary') })
+                    this.storage.setState({ encrypted_wallet: encrypted_wallet.toString('binary') })
                     this.wallet_object = wallet_object
                 }).catch( error => {
                     if(error.cause.message === "Validation error") {
@@ -203,7 +203,7 @@ export default class Wallet {
     /** @return {Promise} */
     delete() {
         let private_key = this.private_key
-        let encrypted_wallet = this.state.get("encrypted_wallet")
+        let encrypted_wallet = this.storage.state.get("encrypted_wallet")
         if( ! encrypted_wallet ) return Promise.resolve()
         let local_hash = hash.sha256(encrypted_wallet)
         let signature = Signature.signBufferSha256(local_hash, private_key)
@@ -212,30 +212,14 @@ export default class Wallet {
     
 }
 
-
-
-
 /** @private */
 function syncCheck() {
     let {
         remote_copy, remote_token, remote_url,
         email_sha1, encryption_pubkey, encrypted_wallet,
         local_hash_history, remote_created_date, remote_updated_date
-    } = this.state.toJS()
+    } = this.storage.state.toJS()
     
     return Promise.resolve()
 }
-
-/** @private */
-function storageSetState(state) {
-    this.state = this.state.merge(state)
-    // let prev = this.state
-    // let next = prev.merge(state)
-    // 
-    // 
-    // 
-    // this.storage.setState(next)
-    // this.state = next
-}
-
 
