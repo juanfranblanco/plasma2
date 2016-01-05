@@ -6,7 +6,7 @@ import Wallet from "../src/Wallet"
 
 const remote_url = process.env.npm_package_config_remote_url
 
-const email = "alice_v1@example.bitbucket"
+const email = "alice_v2@example.bitbucket"
 const username = "username"
 const password = "password"
 const code = createToken(hash.sha1(email, 'binary'))
@@ -48,7 +48,7 @@ function deleteWallet() {
     wallet.keepRemoteCopy(false, code)
     wallet.keepLocalCopy(false)
     return wallet.login(email, username, password)
-        .then( ()=> wallet.delete() )
+        .then( ()=> wallet.deleteWallet() )
 }
 
 function throws(f, contains) {

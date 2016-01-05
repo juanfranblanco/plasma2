@@ -114,7 +114,7 @@ export function decrypt(backup_buffer, private_key) {
 //             throw new Error("validate_email")
 //         
 //         if( this.isLocked() )
-//             throw new Error("wallet_locked")
+//             throw new Error("login")
 //         
 //         let local_hash = this.storage.state.get("local_hash")
 //         if( local_hash ) local_hash = new Buffer(local_hash, 'base64')
@@ -132,7 +132,7 @@ export function decrypt(backup_buffer, private_key) {
 //     
 //     delete() { return new Promise( resolve => {
 //         if( this.isLocked() )
-//             throw new Error("wallet_locked")
+//             throw new Error("login")
 //         
 //         let created = this.storage.state.get("created")
 //         if( created == null )
