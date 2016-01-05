@@ -16,7 +16,7 @@ const code = createToken(hash.sha1(email, 'binary'))
 
 // Configure to use localStorage for the purpose of these tests...
 global.localStorage = require('localStorage')
-const storage = new LocalStoragePersistence("wallet_action_spec")
+const storage = new LocalStoragePersistence("wallet_spec")
 var wallet, api = new WalletApi(remote_url)
 
 function initWallet() {
@@ -35,18 +35,22 @@ describe('Wallet Actions', () => {
             .then(()=>deleteWallet())
             .then(()=>done())
     })
-    
-    // Delete the test wallet after each test, then reset for the next test
-    beforeEach(()=> resolve(deleteWallet().then(()=>initWallet()) ))
+
+
+    // Delete wallet after each test, then reset for the next test
+    beforeEach(()=> deleteWallet().then(()=> initWallet()))
     
     it('createWallet remote', done => {
         wallet.useBackupServer(remote_url)
         wallet.keepRemoteCopy(true, code)
         let create = wallet
             .login(email, username, password)
+            // create the initial wallet
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )
+            // update the wallet
+            .then(()=> wallet.setState({ test_wallet: 'secret2'}) )
         
-        resolve(create.then(()=>assertServerWallet({ test_wallet: 'secret'})), done)
+        resolve(create.then(()=>assertServerWallet({ test_wallet: 'secret2'})), done)
     })
     
     it('createWallet local', done => {
@@ -58,8 +62,8 @@ describe('Wallet Actions', () => {
         
         let assertPromise = create.then(()=>{
             
-            // Verify the local wallet exists
-            let testStorage = new LocalStoragePersistence("wallet_action_spec")
+            // Verify the disk wallet exists
+            let testStorage = new LocalStoragePersistence("wallet_spec")
             let json = testStorage.getState().toJS()
             assert(json.email_sha1,'email_sha1')
             assert(json.local_hash,'local_hash')
@@ -79,16 +83,17 @@ describe('Wallet Actions', () => {
             .login(email, username, password)
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )
         
-        create.then(()=> {
+        let assertPromise = create.then(()=> {
+            
             // It is not on disk
-            let testStorage = new LocalStoragePersistence("wallet_action_spec")
+            let testStorage = new LocalStoragePersistence("wallet_spec")
             let json = testStorage.getState().toJS()
             assert.equal("{}", JSON.stringify(json), "disk was not empty")
             
             // It is not on the server
             return assertNoServerWallet({ test_wallet: 'secret' })
         })
-        resolve(create, done)
+        resolve(assertPromise, done)
     })
 
 })
