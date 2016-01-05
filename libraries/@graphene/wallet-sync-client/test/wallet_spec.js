@@ -6,7 +6,7 @@ import Wallet from "../src/Wallet"
 
 const remote_url = process.env.npm_package_config_remote_url
 
-const email = "alice_v2@example.bitbucket"
+const email = "v2_alice@example.bitbucket"
 const username = "username"
 const password = "password"
 const code = createToken(hash.sha1(email, 'binary'))
@@ -22,12 +22,13 @@ function resetStorage() {
     wallet = new Wallet(storage)
 }
 
+
 describe('Wallet Actions', () => {
     
     it('createWallet', done => {
         resolve(deleteWallet(), ()=>{
             resetStorage()
-            wallet.keepLocalCopy(true)
+            wallet.keepLocalCopy(false)
             wallet.keepRemoteCopy(true, code)
             wallet.useBackupServer(remote_url)
             let p = wallet
@@ -37,16 +38,14 @@ describe('Wallet Actions', () => {
             resolve(p, done)
         })
     })
-    
-    
-    
+        
 })
 
 function deleteWallet() {
     resetStorage()
-    wallet.useBackupServer(remote_url)
-    wallet.keepRemoteCopy(false, code)
     wallet.keepLocalCopy(false)
+    wallet.keepRemoteCopy(true, code)
+    wallet.useBackupServer(remote_url)
     return wallet.login(email, username, password)
         .then( ()=> wallet.deleteWallet() )
 }
