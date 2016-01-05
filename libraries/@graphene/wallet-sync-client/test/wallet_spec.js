@@ -18,6 +18,7 @@ global.localStorage = require('localStorage')
 const storage = new LocalStoragePersistence("wallet_spec")
 var wallet, api = new WalletApi(remote_url)
 
+
 function initWallet() {
     storage.clear()
     wallet = new Wallet(storage)
@@ -50,9 +51,10 @@ describe('Wallet Actions', () => {
         
         let assertPromise = create.then(()=>{
             
-            // Wallet is available
+            // Wallet is in memory
             assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
             
+            // Wallet is on the server
             return assertServerWallet({ test_wallet: 'secret2'})
         })
         resolve(assertPromise, done)
@@ -68,16 +70,17 @@ describe('Wallet Actions', () => {
         
         let assertPromise = create.then(()=>{
             
-            // Wallet is available
+            // Wallet is in memory
             assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
             
             // Verify the disk wallet exists
             let testStorage = new LocalStoragePersistence("wallet_spec")
             let json = testStorage.getState().toJS()
             assert(json.email_sha1,'email_sha1')
-            assert(json.local_hash,'local_hash')
+            assert(json.remote_hash == null, 'remote_hash')
             assert(json.encrypted_wallet,'encrypted_wallet')
             assert(json.encryption_pubkey,'encryption_pubkey')
+            wallet.keepLocalCopy(false)// clean-up (delete it from disk)
             
             // It is not on the server
             return assertNoServerWallet()
@@ -87,6 +90,7 @@ describe('Wallet Actions', () => {
     })
     
     it('createWallet ram', done => {
+        // keepLocalCopy false may not be necessary (off is the default), however it will also delete anything on disk
         wallet.keepLocalCopy(false)
         let create = wallet
             .login(email, username, password)
@@ -95,7 +99,7 @@ describe('Wallet Actions', () => {
         
         let assertPromise = create.then(()=> {
             
-            // Wallet is available
+            // Wallet is in memory
             assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
             
             // It is not on disk
@@ -108,8 +112,35 @@ describe('Wallet Actions', () => {
         })
         resolve(assertPromise, done)
     })
+    
+    it('createWallet remote with offline updates', done => {
+        wallet.useBackupServer(remote_url)
+        wallet.keepRemoteCopy(true, code)
+        let create = wallet
+            .login(email, username, password)
+            // create the initial wallet
+            .then(()=> wallet.setState({ test_wallet: 'secret'}) )
+        
+        let assertPromise = create.then(()=>{
+            
+            wallet.keepRemoteCopy(false)
+            return wallet.setState({ test_wallet: 'offline secret'})
+                .then(()=> wallet.setState({ test_wallet: 'offline secret2'}))
+                .then(()=>{
+                
+                // there were 2 updates, now sync remotely
+                wallet.keepRemoteCopy(true)
+                
+                // Wallet is on the server
+                return assertServerWallet({ test_wallet: 'offline secret2'})
+            })
+                
+        })
+        resolve(assertPromise, done)
+    })
 
 })
+
 
 function assertNoServerWallet() {
     return assertServerWallet({})
