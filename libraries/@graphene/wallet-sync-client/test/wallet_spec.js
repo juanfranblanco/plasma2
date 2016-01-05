@@ -7,12 +7,11 @@ import LocalStoragePersistence from "../src/LocalStoragePersistence"
 import Wallet from "../src/Wallet"
 import WalletApi from "../src/WalletApi"
 
-const remote_url = process.env.npm_package_config_remote_url
-
-const email = "alice@example.bitbucket"
 const username = "username"
 const password = "password"
+const email = "alice@example.bitbucket"
 const code = createToken(hash.sha1(email, 'binary'))
+const remote_url = process.env.npm_package_config_remote_url
 
 // Configure to use localStorage for the purpose of these tests...
 global.localStorage = require('localStorage')
@@ -26,7 +25,7 @@ function initWallet() {
 
 describe('Wallet Actions', () => {
     
-    // Delete the test wallet from the server just incase a prior-run failed
+    // Ensure there is no wallet on the server
     before(done=>{
         initWallet()
         wallet.useBackupServer(remote_url)
@@ -36,8 +35,7 @@ describe('Wallet Actions', () => {
             .then(()=>done())
     })
 
-
-    // Delete wallet after each test, then reset for the next test
+    // Delete wallet before each test, and reset for the next test
     beforeEach(()=> deleteWallet().then(()=> initWallet()))
     
     it('createWallet remote', done => {
@@ -50,7 +48,14 @@ describe('Wallet Actions', () => {
             // update the wallet
             .then(()=> wallet.setState({ test_wallet: 'secret2'}) )
         
-        resolve(create.then(()=>assertServerWallet({ test_wallet: 'secret2'})), done)
+        let assertPromise = create.then(()=>{
+            
+            // Wallet is available
+            assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
+            
+            return assertServerWallet({ test_wallet: 'secret2'})
+        })
+        resolve(assertPromise, done)
     })
     
     it('createWallet local', done => {
@@ -58,9 +63,13 @@ describe('Wallet Actions', () => {
         wallet.keepLocalCopy(true)
         let create = wallet
             .login(email, username, password)
-            .then(()=> wallet.setState({ test_wallet: 'secret'}) )
+            .then(()=> wallet.setState({ test_wallet: 'secret'}) )// create
+            .then(()=> wallet.setState({ test_wallet: 'secret2'}) )// update
         
         let assertPromise = create.then(()=>{
+            
+            // Wallet is available
+            assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
             
             // Verify the disk wallet exists
             let testStorage = new LocalStoragePersistence("wallet_spec")
@@ -71,7 +80,7 @@ describe('Wallet Actions', () => {
             assert(json.encryption_pubkey,'encryption_pubkey')
             
             // It is not on the server
-            return assertNoServerWallet({ test_wallet: 'secret' })
+            return assertNoServerWallet()
             
         })
         resolve(assertPromise, done)
@@ -81,9 +90,13 @@ describe('Wallet Actions', () => {
         wallet.keepLocalCopy(false)
         let create = wallet
             .login(email, username, password)
-            .then(()=> wallet.setState({ test_wallet: 'secret'}) )
+            .then(()=> wallet.setState({ test_wallet: 'secret'}) )// create
+            .then(()=> wallet.setState({ test_wallet: 'secret2'}) )// update
         
         let assertPromise = create.then(()=> {
+            
+            // Wallet is available
+            assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
             
             // It is not on disk
             let testStorage = new LocalStoragePersistence("wallet_spec")
@@ -91,16 +104,16 @@ describe('Wallet Actions', () => {
             assert.equal("{}", JSON.stringify(json), "disk was not empty")
             
             // It is not on the server
-            return assertNoServerWallet({ test_wallet: 'secret' })
+            return assertNoServerWallet()
         })
         resolve(assertPromise, done)
     })
 
 })
 
-function assertNoServerWallet(expectedWallet) {
-    return assertServerWallet(expectedWallet)
-        .then(()=> assert(false,'Server Wallet Found'))
+function assertNoServerWallet() {
+    return assertServerWallet({})
+        .then(()=> assert(false, 'Server Wallet Found'))
         .catch(json=> assert.equal('No Server Wallet', json.message, json))
 }
 
