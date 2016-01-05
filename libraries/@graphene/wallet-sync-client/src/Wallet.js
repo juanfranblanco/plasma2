@@ -5,13 +5,11 @@ import { PrivateKey, Signature, hash } from "@graphene/ecc"
 import WalletApi from "./WalletApi"
 import assert from "assert"
 
-const remote_url = process.env.npm_package_config_remote_url
-
 /** Serilizable persisterent state (serilizable types only).. The order generally reflects the actual work-flow order. */
 const inital_persistent_state = Map({
     remote_copy: undefined,
     remote_token: null,
-    remote_url: remote_url,
+    remote_url: null,
     email_sha1: null,
     encryption_pubkey: null,
     encrypted_wallet: null,
@@ -42,9 +40,10 @@ export default class Wallet {
         let remote_url = this.storage.state.get("remote_url")
         if( remote_url ) this.api = new WalletApi(remote_url)
         
-        this.putWallet = putWallet.bind(this) // private (somewhat)
-        this.deleteWallet = deleteWallet.bind(this) // private (server-side delete only)
-        this.sync = sync.bind(this) // private
+        // semi-private method bindings, these are used for testing
+        this.sync = sync.bind(this)
+        this.signHash = signHash.bind(this) // low level API requests (outside of this class)
+        this.updateWallet = updateWallet.bind(this)
     }
     
     /** Configure the wallet to look to a remote host to load and/or save your wallet. 
@@ -57,6 +56,8 @@ export default class Wallet {
     
     /**
         Configure the wallet to keep a local copy on disk.  This allows the user to access the wallet even if the server is no longer available. This option can be disabled on public computers where the wallet data should never touch disk and should be deleted when the user logs out.
+        
+        By default a local copy will NOT be kept.
         
         @arg {boolean} [save = true] -  Save (or delete / do not save) all state changes to disk
     */
@@ -77,6 +78,11 @@ export default class Wallet {
         @return {Promise} resolve []
     */
     keepRemoteCopy( save = true, token = null ) {
+        if( save === true ) {
+            let state = this.storage.state
+            if(! state.get("remote_url"))
+                throw new Error("configuration_error, remote_copy without remote_url")
+        }
         return this.sync({ remote_copy: save, remote_token: token })
     }
     
@@ -114,7 +120,7 @@ export default class Wallet {
                 let email_sha1 = hash.sha1( email.trim().toLowerCase() )
                 this.storage.setState({
                     encryption_pubkey: public_key.toString(),
-                    email_sha1
+                    email_sha1: email_sha1.toString('base64')
                 })
             }
             // check server, decrypt and set this.wallet_object (if a wallet is found)
@@ -137,7 +143,7 @@ export default class Wallet {
     */
     getState() {
         if( ! this.private_key ) return Promise.resolve()
-        return this.sync().then( ret=> this.wallet_object )
+        return this.sync().then(()=> this.wallet_object )
     }
 
     /** 
@@ -158,7 +164,7 @@ export default class Wallet {
             }
             let encryption_pubkey = this.storage.state.get("encryption_pubkey")
             resolve( encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
-                return this.putWallet(wallet_object).catch( error => {
+                return this.updateWallet(wallet_object).catch( error => {
                     console.log('ERROR setState', error, 'stack', error.stack)
                     throw error
                 })
@@ -168,58 +174,67 @@ export default class Wallet {
     
 }
 
-/** Delete wallet, server-side only
-    @return {Promise}
-    @private
+// /** Delete wallet, server-side only
+//     @return {Promise}
+//     @private
+// */
+// function deleteWallet() {
+//     let private_key = this.private_key
+//     let encrypted_wallet = this.storage.state.get("encrypted_wallet")
+//     if( ! encrypted_wallet ) return Promise.resolve()
+//     let local_hash = hash.sha256(encrypted_wallet)
+//     let signature = Signature.signBufferSha256(local_hash, private_key)
+//     return this.api.deleteWallet( local_hash, signature )
+// }
+
+/** Used to make level API requests (outside of this class)
 */
-function deleteWallet() {
+function signHash() {
     let private_key = this.private_key
     let encrypted_wallet = this.storage.state.get("encrypted_wallet")
-    if( ! encrypted_wallet ) return Promise.resolve()
+    if( ! private_key || ! encrypted_wallet ) return
     let local_hash = hash.sha256(encrypted_wallet)
     let signature = Signature.signBufferSha256(local_hash, private_key)
-    return this.api.deleteWallet( local_hash, signature )
+    return { local_hash, signature }
 }
 
-/** @private */
+/** Updates this.storage with newState (if succeeds)
+*/
 function sync(newState = Map(), private_key = this.private_key) {
     return new Promise( resolve => {
+
         let state = this.storage.state.merge(newState)
-        let remote_copy = state.get("remote_copy")
-        if( ! private_key || ! this.api || remote_copy === undefined) {
+        
+        if( ! private_key || ! this.api ) {
             this.storage.setState(state)
             resolve()
             return
         }
         
-        // login state = null
-        // useBackupServer state = +remote_url
-        // keepRemoteCopy state = remote_copy: save, remote_token: token
-        // setState state = wallet_object
-        
-        // remote_copy, remote_token, remote_url,
-        // email_sha1, encryption_pubkey, encrypted_wallet,
-        // local_hash, remote_created_date, remote_updated_date
-        
         let public_key = private_key.toPublicKey()
         let local_hash = state.get("local_hash")
+        let remote_copy = state.get("remote_copy")
         
         var fetchWalletPromise = this.api.fetchWallet(public_key, local_hash)
             .then( json =>{
             
             // OK|No Content|Not Modified
-            if( json.statusText === "Not Modified")
+            if( json.statusText === "Not Modified") {
+                this.storage.setState(state)
                 return
+            }
             
             let local_updated_date = state.get("remote_updated_date")
-            let server_newer = json.updated && //! local_updated_date ||
+            let server_has_wallet = !!json.updated
+            let server_newer = server_has_wallet &&
                 new Date(json.updated).getTime() > new Date(local_updated_date || 0).getTime()
             
             if( server_newer ) {
                 let {updated, created, local_hash, encrypted_data} = json
-                if( ! remote_copy) {
+                local_hash = new Buffer(local_hash, 'base64')
+                if( remote_copy === false ) {
                     let signature = Signature.signBufferSha256(local_hash, private_key)
-                    return api.deleteWallet( local_hash, signature )
+                    return api.deleteWallet( local_hash, signature ).then(()=> this.storage.setState(state))
                 }
                 state = state.merge({
                     local_hash,
@@ -233,12 +248,13 @@ function sync(newState = Map(), private_key = this.private_key) {
                     this.wallet_object = Map( wallet_object )
                 })
             } else {
-                if( ! remote_copy) {
+                if( remote_copy === false && server_has_wallet ) {
                     let signature = Signature.signBufferSha256(local_hash, private_key)
-                    return api.deleteWallet( local_hash, signature )
+                    return api.deleteWallet( local_hash, signature ).then(()=> this.storage.setState(state))
                 }
-                if( this.wallet_object )
-                    return this.putWallet(this.wallet_object, state)
+                if( this.wallet_object && remote_copy === true )
+                    return this.updateWallet(this.wallet_object, state) //updateWallet updates storage
+                this.storage.setState(state)
             }
         })
         resolve( fetchWalletPromise )
@@ -246,8 +262,9 @@ function sync(newState = Map(), private_key = this.private_key) {
 }
 
 
-/** @private */
-function putWallet(wallet_object, state = this.storage.state) { return new Promise( resolve => {
+/** Create or update a wallet on the server.  Updates this.storage with state (if succeeds)
+*/
+function updateWallet(wallet_object, state = this.storage.state) { return new Promise( resolve => {
     
     if( ! wallet_object )
         throw new Error("Missing wallet_object")
@@ -255,15 +272,24 @@ function putWallet(wallet_object, state = this.storage.state) { return new Promi
     if( ! this.private_key )
         throw new Error("login")
     
-    let code = state.get("remote_token")
-    var pubkey = state.get("encryption_pubkey")
+    let pubkey = state.get("encryption_pubkey")
     
     resolve( encrypt(wallet_object, pubkey).then( encrypted_data => {
-        // this.storage.private_key
         let local_hash_buffer = hash.sha256(encrypted_data)
+        let local_hash = local_hash_buffer.toString('base64')
+        if( ! state.get("remote_copy") ) {
+            state = state.merge({
+                local_hash,
+                encrypted_wallet: encrypted_data.toString('base64'),
+                remote_created_date: undefined,
+                remote_updated_date: undefined
+            })
+            this.storage.setState(state)
+            this.wallet_object = wallet_object
+            return
+        }
         let private_key = this.private_key
         let signature = Signature.signBufferSha256(local_hash_buffer, private_key)
-        let local_hash = local_hash_buffer.toString('base64')
         let created = state.get("remote_created_date")
         let code = state.get("remote_token")
         if( created == null ) {
@@ -275,7 +301,7 @@ function putWallet(wallet_object, state = this.storage.state) { return new Promi
                 state = state.merge({
                     local_hash,
                     remote_token: null,
-                    encrypted_wallet: encrypted_data,
+                    encrypted_wallet: encrypted_data.toString('base64'),
                     remote_created_date: json.remote_created_date
                 })
                 this.storage.setState(state)
@@ -290,7 +316,7 @@ function putWallet(wallet_object, state = this.storage.state) { return new Promi
                 assert.equal(json.local_hash, local_hash, 'local_hash')
                 state = state.merge({
                     local_hash,
-                    encrypted_wallet: encrypted_data,
+                    encrypted_wallet: encrypted_data.toString('base64'),
                     remote_updated_date: json.remote_updated_date
                 })
                 this.storage.setState(state)
