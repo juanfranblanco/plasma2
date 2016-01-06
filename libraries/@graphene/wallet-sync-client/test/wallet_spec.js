@@ -18,23 +18,23 @@ global.localStorage = require('localStorage')
 const storage = new LocalStoragePersistence("wallet_spec")
 var wallet, api = new WalletApi(remote_url)
 
-
 function initWallet() {
     storage.clear()
     wallet = new Wallet(storage)
 }
 
+
 describe('Wallet Actions', () => {
     
     // Ensure there is no wallet on the server
-    before(done=>{
+    before(()=>{
         initWallet()
         wallet.useBackupServer(remote_url)
         // "login" will sync from the server
-        wallet.login(email, username, password)
+        return wallet.login(email, username, password)
             .then(()=>deleteWallet())
-            .then(()=>done())
     })
+
 
     // Delete wallet before each test, and reset for the next test
     beforeEach(()=> deleteWallet().then(()=> initWallet()))
@@ -113,34 +113,47 @@ describe('Wallet Actions', () => {
         resolve(assertPromise, done)
     })
     
-    it('createWallet remote with offline updates', done => {
+    it('createWallet local offline updates', () => {
         wallet.useBackupServer(remote_url)
         wallet.keepRemoteCopy(true, code)
-        let create = wallet
-            .login(email, username, password)
+        
+        let create = wallet.login(email, username, password)
             // create the initial wallet
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )
-        
-        let assertPromise = create.then(()=>{
+
+        return create.then(()=>{
             
+            // disconnect from the backup server
+            wallet.useBackupServer()
+            
+            // does not delete wallet on the server, it was disconnect first
             wallet.keepRemoteCopy(false)
-            return wallet.setState({ test_wallet: 'offline secret'})
-                .then(()=> wallet.setState({ test_wallet: 'offline secret2'}))
+            
+            return assertServerWallet({ test_wallet: 'secret'})//still on server
+                .then(()=> wallet.setState({ test_wallet: 'offline secret'}))//local change
+                .then(()=> wallet.setState({ test_wallet: 'offline secret2'}))//local change
                 .then(()=>{
                 
-                // there were 2 updates, now sync remotely
-                wallet.keepRemoteCopy(true)
                 
-                // Wallet is on the server
-                return assertServerWallet({ test_wallet: 'offline secret2'})
+                // the old wallet is still on the server
+                return assertServerWallet({ test_wallet: 'secret'})//server unchanged
+                    .then(()=>{
+                    
+                    wallet.useBackupServer(remote_url)//hookup again
+                    
+                    // there were 2 updates, now sync remotely
+                    return wallet.keepRemoteCopy(true)//backup to server
+                        .then(()=>{
+                        
+                        // New wallet is on the server
+                        return assertServerWallet({ test_wallet: 'offline secret2'})
+                    })
+                })
             })
-                
         })
-        resolve(assertPromise, done)
     })
 
 })
-
 
 function assertNoServerWallet() {
     return assertServerWallet({})
@@ -155,8 +168,8 @@ function assertServerWallet(expectedWallet) {
         let backup_buffer = new Buffer(json.encrypted_data, 'base64')
         return decrypt(backup_buffer, wallet.private_key).then( wallet_object => {
             assert.equal(
-                JSON.stringify(expectedWallet,null,0),
-                JSON.stringify(wallet_object,null,0)
+                JSON.stringify(wallet_object,null,0),
+                JSON.stringify(expectedWallet,null,0)
             )
         })
     })
@@ -167,8 +180,10 @@ function deleteWallet() {
     if( ! sig ) return Promise.resolve()
     let { local_hash, signature } = sig
     return api.deleteWallet( local_hash, signature ).catch( error =>{
-        if( ! error.res.statusText === "Not Found")
+        if( ! error.res.statusText === "Not Found") {
+            console.error("ERROR", error, "stack", error.stack)
             throw error
+        }
     })
 }
 

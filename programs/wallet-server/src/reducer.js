@@ -39,8 +39,10 @@ export default function reducer(state, action) {
                 var r = Wallet
                     .findOne({ where: {public_key} })
                     .then( wallet => {
+                    
                     if( ! wallet ) return "No Content"
                     if( wallet.local_hash === local_hash ) return "Not Modified"
+                    
                     return {
                         local_hash: wallet.local_hash, // local_hash in fetch could be null, always return the wallet local hash
                         encrypted_data: wallet.encrypted_data.toString('base64'),
