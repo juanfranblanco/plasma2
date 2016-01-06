@@ -106,15 +106,19 @@ export default class Wallet {
                 resolve()
                 return
             }
+            
             if( ! email ) throw new Error( "email_required" )
             if( ! username ) throw new Error( "username_required" )
             if( ! password ) throw new Error( "password_required" )
+            
             let private_key = PrivateKey.fromSeed(
                 email.trim().toLowerCase() + "\t" +
                 username.trim().toLowerCase() + "\t" +
                 password
             )
+            
             let public_key = private_key.toPublicKey()
+            
             if( this.storage.state.get("encryption_pubkey") ) {
                 // check login (email, username, and password)
                 if( this.storage.state.get("encryption_pubkey") !== public_key.toString())
@@ -127,6 +131,7 @@ export default class Wallet {
                     email_sha1: email_sha1.toString('base64')
                 })
             }
+            
             // check server, decrypt and set this.wallet_object (if a wallet is found)
             var p = this.sync(private_key).then(()=> {
                 this.private_key = private_key
@@ -233,6 +238,10 @@ function sync(private_key = this.private_key) {
             
             // Has local modifications since last backup
             let dirty = current_hash.toString('base64') !== remote_hash
+            
+            // No changes locally or remote
+            if( ! dirty &&  server.statusText === "Not Modified")
+                return
             
             // Push local changes (no conflict)
             if( dirty && server.statusText === "Not Modified" )
