@@ -190,13 +190,13 @@ function newWallet() {
 }
 
 function assertNoServerWallet(walletParam = wallet) {
-    if( ! walletParam.private_key ) throw new Error("wallet locked")
-    return api.fetchWallet( walletParam.private_key.toPublicKey() ).then( json=> {
-        assert(json.encrypted_data == null, 'No Server Wallet')
-    })
-    // return assertServerWallet({})
-    //     .then(()=> assert(false, 'Server Wallet Found'))
-    //     .catch(json=> assert.equal('No Server Wallet', json.message, json))
+    // if( ! walletParam.private_key ) throw new Error("wallet locked")
+    // return api.fetchWallet( walletParam.private_key.toPublicKey() ).then( json=> {
+    //     assert(json.encrypted_data == null, 'No Server Wallet')
+    // })
+    return assertServerWallet({})
+        .then(()=> assert(false, 'Server Wallet Found'))
+        .catch(json=> assert.equal('No Server Wallet', json.message, json))
 }
 
 function assertServerWallet(expectedWallet, walletParam = wallet) {
@@ -213,17 +213,18 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
     })
 }
 
+
 function deleteWallet(emailParam = email) {
-    // return remoteWallet(emailParam).then( wallet => wallet.keepRemoteCopy(false) )
-    let sig = wallet.signHash()
-    if( ! sig ) return Promise.resolve()
-    let { local_hash, signature } = sig
-    return api.deleteWallet( local_hash, signature ).catch( error =>{
-        if( ! error.res.statusText === "Not Found") {
-            console.error("ERROR", error, "stack", error.stack)
-            throw error
-        }
-    })
+    return remoteWallet(emailParam).then( wallet => wallet.keepRemoteCopy(false) )
+    // let sig = wallet.signHash()
+    // if( ! sig ) return Promise.resolve()
+    // let { local_hash, signature } = sig
+    // return api.deleteWallet( local_hash, signature ).catch( error =>{
+    //     if( ! error.res.statusText === "Not Found") {
+    //         console.error("ERROR", error, "stack", error.stack)
+    //         throw error
+    //     }
+    // })
 }
 
 function resolve(promise, done) {
