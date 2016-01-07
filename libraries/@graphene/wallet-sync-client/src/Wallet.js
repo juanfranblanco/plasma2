@@ -5,16 +5,33 @@ import { PrivateKey, Signature, hash } from "@graphene/ecc"
 import WalletApi from "./WalletApi"
 import assert from "assert"
 
-/** Serilizable persisterent state (serilizable types only).. The order generally reflects the actual work-flow order. */
+/**
+    Serilizable persisterent state (serilizable types only).. The order generally reflects the actual work-flow order.
+*/
 const inital_persistent_state = Map({
+    
+    // True to stay in sync with the server (boolean)
     remote_copy: undefined,
+    
+    // An emailed token used to create a wallet for the 1st time (base58)
     remote_token: null,
+    
+    // Server's REST URL
     remote_url: null,
+    
+    // This is the last encrypted_wallet hash that was saved on the server (base64)
     remote_hash: null,
-    email_sha1: null,
+    
+    // This is the public key derived from the email+username+password 
     encryption_pubkey: null,
+    
+    // Wallet JSON string encrypted using the private key derived from email+username+password (base64)
     encrypted_wallet: null,
+    
+    // ISO Date string from the server
     remote_created_date: null,
+    
+    // ISO Date string from the server
     remote_updated_date: null
 })
 
@@ -126,10 +143,10 @@ export default class Wallet {
                     throw new Error( "invalid_password" )
             } else {
                 // first login
-                let email_sha1 = hash.sha1( email.trim().toLowerCase() )
+                // let email_sha1 = hash.sha1( email.trim().toLowerCase() )
                 this.storage.setState({
                     encryption_pubkey: public_key.toString(),
-                    email_sha1: email_sha1.toString('base64')
+                    // email_sha1: email_sha1.toString('base64')
                 })
             }
             
@@ -307,7 +324,8 @@ function forcePush(has_server_wallet, private_key) {
 
 /** Create or update a wallet on the server.  Updates this.storage with state (if succeeds)
 */
-function updateWallet(wallet_object, state = this.storage.state) { return new Promise( resolve => {
+function updateWallet(wallet_object, state = this.storage.state) {
+    return new Promise( resolve => {
     if( ! wallet_object )
         throw new Error("Missing wallet_object")
     
@@ -316,9 +334,11 @@ function updateWallet(wallet_object, state = this.storage.state) { return new Pr
     
     let pubkey = state.get("encryption_pubkey")
     
-    resolve( encrypt(wallet_object, pubkey).then( encrypted_data => {
-        if( state.get("remote_copy") !== true ) {
-            // going offline, don't change the remote_hash, it is used when going back online
+    resolve(
+        encrypt(wallet_object, pubkey).then( encrypted_data => {
+        if( this.api == null ) {
+            // Going offline, don't change the remote_hash. The remote_hash
+            // must be the last hash sent to the server
             state = state.merge({
                 encrypted_wallet: encrypted_data.toString('base64')
             })
@@ -367,5 +387,7 @@ function updateWallet(wallet_object, state = this.storage.state) { return new Pr
                 this.wallet_object = wallet_object
             })
         }
-    }))
-})}    
+    })
+    )
+})
+}

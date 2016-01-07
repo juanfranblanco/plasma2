@@ -77,7 +77,6 @@ describe('Wallet Tests', () => {
             // Verify the disk wallet exists
             let testStorage = new LocalStoragePersistence("wallet_spec")
             let json = testStorage.getState().toJS()
-            assert(json.email_sha1,'email_sha1')
             assert(json.remote_hash == null, 'remote_hash')
             assert(json.encrypted_wallet,'encrypted_wallet')
             assert(json.encryption_pubkey,'encryption_pubkey')
@@ -127,7 +126,7 @@ describe('Wallet Tests', () => {
             // disconnect from the backup server
             wallet.useBackupServer()
             
-            // does not delete wallet on the server, it was disconnect first
+            // does not delete wallet on the server (it was disconnect above)
             wallet.keepRemoteCopy(false)
             
             return assertServerWallet({ test_wallet: 'secret'})//still on server
@@ -153,47 +152,41 @@ describe('Wallet Tests', () => {
         })
     })
     
-    
-    it('Server wallet with remote updates', () => {
+    it('Server wallet with conflict', () => {
         return remoteWallet(email).then( wallet => {
-            return wallet.setState({ test_wallet: 'secret'})
+            return wallet.setState({ test_wallet: ''})
                 // create a second wallet client (same email, same server wallet)
                 .then(()=> remoteWallet(email)).then( wallet2 => {
                 
-                // Be sure the wallet synced up
-                assert.equal(wallet2.wallet_object.get("test_wallet"), 'secret')
+                // bring both clients offline
+                wallet.useBackupServer()
+                wallet2.useBackupServer()
                 
-                // update the 2nd client
-                return wallet2.setState({ test_wallet: 'secret2' }).then(()=> {
+                return wallet.setState({ test_wallet: 'secret' })
+                    .then(()=> wallet2.setState({ test_wallet: 'secret2' }))
+                    .then(()=> {
                     
+                    // bring clients online
+                    wallet.useBackupServer(remote_url)
+                    wallet2.useBackupServer(remote_url)
+                    
+                    // 1st one to update wins
                     return wallet.getState().then( wallet_object => {
                         
                         // Be sure the wallet synced up
-                        assert.equal(wallet_object.get("test_wallet"), 'secret2')
+                        assert.equal(wallet.wallet_object.get("test_wallet"), 'secret')
+                        
+                        // Cause a conflict updating 2nd client
+                        return wallet2.getState()
+                            .then( ()=> assert(false, '2nd client should not update'))
+                            .catch( e=> {
+                            assert(/Conflict/.test(e.toString()), 'Expecting conflict')
+                        })
                         
                     })
                 })
-                
             })
         })
-        
-        
-        // return remoteWallet(email).then( wallet => {
-        //     
-        //     return wallet.setState({ test_wallet: 'secret'}).then(()=> {
-        //         
-        //         // create a second wallet client (same email, same wallet)
-        //         return remoteWallet(email).then( wallet2 => {
-        //             assert.equal(wallet2.wallet_object.get("test_wallet"), 'secret')
-        //             // return wallet2.getState().then( wallet_object => {
-        //             //     assert.equal(wallet2.wallet_object.get("test_wallet"), 'secret')
-        //             // })
-        //             
-        //         })
-        //         
-        //     })
-        // })
-        
     })
     
 })
