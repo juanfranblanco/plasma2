@@ -228,6 +228,7 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
     })
 }
 
+
 function deleteWallet(emailParam = email) {
     let sig = wallet.signHash()
     if( ! sig ) return Promise.resolve()
