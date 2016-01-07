@@ -271,7 +271,7 @@ function sync(private_key = this.private_key) {
                 return pull(server, private_key)
             }
             
-            throw new Error("Conflict, both server and local wallet modified")
+            throw "conflict: both server and local wallet modified"
         })
         resolve( syncPromise )
     })

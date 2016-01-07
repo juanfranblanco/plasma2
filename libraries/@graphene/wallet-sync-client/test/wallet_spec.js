@@ -114,7 +114,7 @@ describe('Wallet Tests', () => {
         resolve(assertPromise, done)
     })
     
-    it('Server wallet with with offline updates', () => {
+    it('Server offline updates', () => {
         wallet.useBackupServer(remote_url)
         wallet.keepRemoteCopy(true, code)
         
@@ -153,7 +153,7 @@ describe('Wallet Tests', () => {
         })
     })
     
-    it('Server wallet with conflict', () => {
+    it('Server conflict', () => {
         return remoteWallet(email).then( wallet => {
             return wallet.setState({ test_wallet: ''})
                 // create a second wallet client (same email, same server wallet)
@@ -180,8 +180,8 @@ describe('Wallet Tests', () => {
                         // Cause a conflict updating 2nd client
                         return wallet2.getState()
                             .then( ()=> assert(false, '2nd client should not update'))
-                            .catch( e=> {
-                            assert(/Conflict/.test(e.toString()), 'Expecting conflict')
+                            .catch( error => {
+                            assert(/^conflict/.test(error), 'Expecting conflict')
                         })
                         
                     })
