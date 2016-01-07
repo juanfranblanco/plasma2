@@ -182,7 +182,7 @@ export default class Wallet {
         @return {Promise} - reject [wallet_locked, etc...], success after state update
     */
     setState( wallet_object )  {
-        return this.sync().then(()=> {
+        return new Promise( resolve => {
             if( ! this.private_key )
                 throw new Error("login")
             
@@ -193,13 +193,14 @@ export default class Wallet {
             }
             
             let encryption_pubkey = this.storage.state.get("encryption_pubkey")
-            return encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
+            
+            resolve(
+            encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
                 return this.updateWallet(wallet_object).catch( error => {
                     console.log('ERROR setState', error, 'stack', error.stack)
                     throw error
                 })
-            })
-            
+            }))
         })
     }
     
