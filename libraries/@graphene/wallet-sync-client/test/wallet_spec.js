@@ -39,8 +39,10 @@ describe('Wallet Tests', () => {
     beforeEach(()=> deleteWallet().then(()=> initWallet()))
     
     it('Server', done => {
+        
         wallet.useBackupServer(remote_url)
         wallet.keepRemoteCopy(true, code)
+        
         let create = wallet
             .login(email, username, password)
             // create the initial wallet
@@ -151,26 +153,48 @@ describe('Wallet Tests', () => {
         })
     })
     
+    
     it('Server wallet with remote updates', () => {
-        
         return remoteWallet(email).then( wallet => {
-            
-            return wallet.setState({ test_wallet: 'secret'}).then(()=> {
+            return wallet.setState({ test_wallet: 'secret'})
+                // create a second wallet client (same email, same server wallet)
+                .then(()=> remoteWallet(email)).then( wallet2 => {
                 
-                // create a second wallet client (same email, same wallet)
-                return remoteWallet(email).then( wallet2 => {
-                    assert.equal(wallet2.wallet_object.test_wallet, 'secret')
-                    // return wallet2.getState().then( wallet_object => {
-                    //     assert.equal(wallet_object.test_wallet, 'secret')
-                    // })
+                // Be sure the wallet synced up
+                assert.equal(wallet2.wallet_object.get("test_wallet"), 'secret')
+                
+                // update the 2nd client
+                return wallet2.setState({ test_wallet: 'secret2' }).then(()=> {
                     
+                    return wallet.getState().then( wallet_object => {
+                        
+                        // Be sure the wallet synced up
+                        assert.equal(wallet_object.get("test_wallet"), 'secret2')
+                        
+                    })
                 })
                 
             })
         })
         
+        
+        // return remoteWallet(email).then( wallet => {
+        //     
+        //     return wallet.setState({ test_wallet: 'secret'}).then(()=> {
+        //         
+        //         // create a second wallet client (same email, same wallet)
+        //         return remoteWallet(email).then( wallet2 => {
+        //             assert.equal(wallet2.wallet_object.get("test_wallet"), 'secret')
+        //             // return wallet2.getState().then( wallet_object => {
+        //             //     assert.equal(wallet2.wallet_object.get("test_wallet"), 'secret')
+        //             // })
+        //             
+        //         })
+        //         
+        //     })
+        // })
+        
     })
-    
     
 })
 
@@ -190,14 +214,12 @@ function newWallet() {
 }
 
 function assertNoServerWallet(walletParam = wallet) {
-    // if( ! walletParam.private_key ) throw new Error("wallet locked")
-    // return api.fetchWallet( walletParam.private_key.toPublicKey() ).then( json=> {
-    //     assert(json.encrypted_data == null, 'No Server Wallet')
-    // })
-    return assertServerWallet({})
-        .then(()=> assert(false, 'Server Wallet Found'))
-        .catch(json=> assert.equal('No Server Wallet', json.message, json))
+    if( ! walletParam.private_key ) throw new Error("wallet locked")
+    return api.fetchWallet( walletParam.private_key.toPublicKey() ).then( json=> {
+        assert(json.encrypted_data == null, 'No Server Wallet')
+    })
 }
+
 
 function assertServerWallet(expectedWallet, walletParam = wallet) {
     if( ! walletParam.private_key ) throw new Error("wallet locked")
@@ -213,18 +235,21 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
     })
 }
 
-
 function deleteWallet(emailParam = email) {
-    return remoteWallet(emailParam).then( wallet => wallet.keepRemoteCopy(false) )
-    // let sig = wallet.signHash()
-    // if( ! sig ) return Promise.resolve()
-    // let { local_hash, signature } = sig
-    // return api.deleteWallet( local_hash, signature ).catch( error =>{
-    //     if( ! error.res.statusText === "Not Found") {
-    //         console.error("ERROR", error, "stack", error.stack)
-    //         throw error
-    //     }
+    // return remoteWallet(emailParam).then( wallet2 =>{
+    //     return wallet2.keepRemoteCopy(false).then(()=>{
+    //         return assertNoServerWallet(wallet2)
+    //     })
     // })
+    let sig = wallet.signHash()
+    if( ! sig ) return Promise.resolve()
+    let { local_hash, signature } = sig
+    return api.deleteWallet( local_hash, signature ).catch( error =>{
+        if( ! error.res.statusText === "Not Found") {
+            console.error("ERROR", error, "stack", error.stack)
+            throw error
+        }
+    })
 }
 
 function resolve(promise, done) {

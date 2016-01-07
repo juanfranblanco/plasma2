@@ -51,11 +51,12 @@ export default class Wallet {
         Calling this method does not immediately trigger any action on the server.
         
         @arg {string} [ remote_url = null ] - By passing null into this call the wallet will stop synchronizing its state with the remote server.
-        @return undefined
+        @return Promise - always resolves, added for convenience
     */
     useBackupServer( remote_url ) {
         this.api = remote_url ? new WalletApi(remote_url) : null
         this.storage.setState({ remote_url })
+        return Promise.resolve()
     }
     
     /**
@@ -81,7 +82,7 @@ export default class Wallet {
         @throws {Error} ["remote_url required"|"login"]
         @return {Promise} - only important if the wallet is communicating with the server
     */
-    keepRemoteCopy( save = true, token = null ) {
+    keepRemoteCopy( save = true, token = this.storage.state.get("remote_token") ) {
         let state = this.storage.state
         if( save === true && ! state.get("remote_url"))
             throw new Error("configuration_error, remote_copy without remote_url")
@@ -164,7 +165,7 @@ export default class Wallet {
         @return {Promise} - reject [wallet_locked, etc...], success after state update
     */
     setState( wallet_object )  {
-        return new Promise( resolve => {
+        return this.sync().then(()=> {
             if( ! this.private_key )
                 throw new Error("login")
             
@@ -175,12 +176,13 @@ export default class Wallet {
             }
             
             let encryption_pubkey = this.storage.state.get("encryption_pubkey")
-            resolve( encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
+            return encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
                 return this.updateWallet(wallet_object).catch( error => {
                     console.log('ERROR setState', error, 'stack', error.stack)
                     throw error
                 })
-            }))
+            })
+            
         })
     }
     
@@ -273,6 +275,7 @@ function forcePull(server, private_key) {
     }
     
     state = state.merge({
+        remote_token: null, // unit tests will over-populate remote_token
         remote_hash: server.local_hash,
         encrypted_wallet: server.encrypted_data,
         remote_updated_date: server.updated,
@@ -298,7 +301,8 @@ function forcePush(has_server_wallet, private_key) {
         return this.api.deleteWallet( remote_hash, signature )
     }
     if( this.wallet_object && remote_copy === true )
-        return this.updateWallet(this.wallet_object, state) //updateWallet updates storage
+        //updateWallet updates storage
+        return this.updateWallet(this.wallet_object, state)
 }
 
 /** Create or update a wallet on the server.  Updates this.storage with state (if succeeds)
@@ -345,9 +349,13 @@ function updateWallet(wallet_object, state = this.storage.state) { return new Pr
         } else {
             // update the server wallet
             let remote_hash = state.get("remote_hash")
+            if( ! remote_hash )
+                throw new Error("Unable to update wallet.  You probably need to provide a remote_token.")
             
+            
+            let remote_hash_buffer = remote_hash ? new Buffer(remote_hash, 'base64') : null
             return this.api.saveWallet(
-                new Buffer(remote_hash, 'base64'), encrypted_data, signature)
+                remote_hash_buffer, encrypted_data, signature)
                 .then( json => {
                 assert.equal(json.local_hash, local_hash, 'local_hash')
                 state = state.merge({
