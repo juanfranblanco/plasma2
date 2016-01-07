@@ -11,12 +11,14 @@ const private_key = PrivateKey.fromSeed("")
 const public_key = private_key.toPublicKey().toString()
 
 describe('Email API', () => {
+    
     it('requestCode', function(done) {
         this.timeout(5000)
         let email = "alice@example.bitbucket"
         api.requestCode(email).then(()=>{ done() })
             .catch( error =>{ console.error(error, error.stack); throw error })
     })
+    
 })
 
 /** These test may depend on each other.    */

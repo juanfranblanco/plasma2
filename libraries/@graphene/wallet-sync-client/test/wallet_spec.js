@@ -9,7 +9,7 @@ import WalletApi from "../src/WalletApi"
 
 const username = "username"
 const password = "password"
-const email = "alice@example.bitbucket"
+const email = "alice_spec@example.bitbucket"
 const code = createToken(hash.sha1(email, 'binary'))
 const remote_url = process.env.npm_package_config_remote_url
 
@@ -62,6 +62,7 @@ describe('Wallet Tests', () => {
     })
     
     it('Disk', done => {
+        
         // Create a local wallet
         wallet.keepLocalCopy(true)
         let create = wallet
@@ -213,7 +214,6 @@ function assertNoServerWallet(walletParam = wallet) {
     })
 }
 
-
 function assertServerWallet(expectedWallet, walletParam = wallet) {
     if( ! walletParam.private_key ) throw new Error("wallet locked")
     return api.fetchWallet( walletParam.private_key.toPublicKey() ).then( json=> {
@@ -229,11 +229,6 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
 }
 
 function deleteWallet(emailParam = email) {
-    // return remoteWallet(emailParam).then( wallet2 =>{
-    //     return wallet2.keepRemoteCopy(false).then(()=>{
-    //         return assertNoServerWallet(wallet2)
-    //     })
-    // })
     let sig = wallet.signHash()
     if( ! sig ) return Promise.resolve()
     let { local_hash, signature } = sig
@@ -251,13 +246,3 @@ function resolve(promise, done) {
         .then( result =>{ if( done ) done(); return result })
         .catch(error =>{ console.error(error, 'stack', error.stack); throw error})
 }
-
-// function throws(f, contains) {
-//     try{
-//         f()
-//     } catch(error) {
-//         if( new RegExp(contains).test(error) ) return
-//         console.error('[throws] ' + error, 'stack', error.stack)
-//     }
-//     throw new Error("[throws] did not encounter error: " + contains)
-// }

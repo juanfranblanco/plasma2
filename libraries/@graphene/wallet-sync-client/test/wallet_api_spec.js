@@ -10,7 +10,7 @@ const api = new WalletApi(remote_url)
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
 const public_key = private_key.toPublicKey().toString()
-const code = createToken(hash.sha1("alice@example.bitbucket", 'binary'))
+const code = createToken(hash.sha1("alice_api@example.bitbucket", 'binary'))
 const encrypted_data = Aes.fromSeed("").encrypt("data")
 const local_hash = hash.sha256(encrypted_data)
 const signature = Signature.signBufferSha256(local_hash, private_key)
