@@ -16,7 +16,7 @@ See "scripts" in [package.json](./package.json)
 
 Example: `npm start` or `npm run [cli|dev]`
 
-Unit tests are run from [@graphene/wallet-sync-client](../../libraries/@graphene/wallet-sync-client)..
+Unit tests are run from [@graphene/wallet-client](../../libraries/@graphene/wallet-client)..
 
 # Configure
 Update `./.npmrc` if you need to change something:

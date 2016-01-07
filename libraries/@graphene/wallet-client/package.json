@@ -1,5 +1,5 @@
 {
-  "name": "@graphene/wallet-sync-client",
+  "name": "@graphene/wallet-client",
   "version": "1.0.0",
   "description": "Client library for arbitrary wallet object synchronization.  This package is a sync layer and sycn related storage, it does not defined or store the wallet.",
   "main": "index.js",
