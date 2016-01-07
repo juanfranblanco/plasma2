@@ -217,7 +217,9 @@ function signHash() {
     return { local_hash, signature }
 }
 
-/** @private
+/**
+    Take the most recent server wallet and the local wallet then decide what to do: 'pull' from the server, or 'push' changes to the server ...
+    @private
 */
 function sync(private_key = this.private_key) {
     
@@ -234,6 +236,7 @@ function sync(private_key = this.private_key) {
         let push = forcePush.bind(this)
         let pull = forcePull.bind(this)
         
+        // get the most recent server wallet
         var syncPromise = this.api.fetchWallet(public_key, remote_hash_buffer)
             .then( server =>{
             
@@ -272,6 +275,10 @@ function sync(private_key = this.private_key) {
                 return pull(server, private_key)
             }
             
+            assert(dirty, 'Expecting a locally modified wallet')
+            assert(server.statusText === "OK", 'Expecting a remotely modified wallet')
+            
+            // An internal wallet comparison is required to resolve
             throw "conflict: both server and local wallet modified"
         })
         resolve( syncPromise )
@@ -315,8 +322,12 @@ function forcePush(has_server_wallet, private_key) {
     let remote_copy = state.get("remote_copy")
     if( remote_copy === false && has_server_wallet ) {
         let remote_hash = state.get("remote_hash")
-        let signature = Signature.signBufferSha256(remote_hash, private_key)
-        return this.api.deleteWallet( remote_hash, signature )
+        if( ! remote_hash )
+            throw new Error("Delete error, is this wallet in-sync?")
+        
+        let remote_hash_buffer = new Buffer(remote_hash, 'base64')
+        let signature = Signature.signBufferSha256(remote_hash_buffer, private_key)
+        return this.api.deleteWallet( remote_hash_buffer, signature )
     }
     if( this.wallet_object && remote_copy === true )
         //updateWallet updates storage
