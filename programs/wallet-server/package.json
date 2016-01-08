@@ -18,7 +18,8 @@
     "immutable": "^3.7.5",
     "mysql": "^2.9.0",
     "redux": "^3.0.4",
-    "sequelize": "^3.14.2"
+    "sequelize": "^3.14.2",
+    "websocket": "^1.0.18"
   },
   "scripts": {
     "start": "babel-node ./index.js",

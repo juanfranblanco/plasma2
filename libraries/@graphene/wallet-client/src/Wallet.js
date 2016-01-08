@@ -176,6 +176,10 @@ export default class Wallet {
     /** 
         This method is used to update the wallet state. If the wallet is configured to keep synchronized with the remote wallet then the server will refer to a copy of the wallets revision history to ensure that no version is overwritten. If the local wallet ever falls on a fork an attempt to upload that wallet will cause the API call to fail; a reconcilation will be needed. After successfully storing the state on the server, save the state to local memory, and optionally disk.
         
+        This method does not perform any updates if the wallet_object is the same (use the Immutable.Js API to ensure this will work).
+        
+        After all synchronization, the Immutable version of wallet_object ends up in `this.wallet_object`.
+        
         @arg {Immutable|object} wallet_object - mutable or immutable object .. no loops, only JSON serilizable data
         @return {Promise} - reject [wallet_locked, etc...], success after state update
     */
@@ -183,6 +187,11 @@ export default class Wallet {
         return new Promise( resolve => {
             if( ! this.private_key )
                 throw new Error("login")
+            
+            if(this.wallet_object === wallet_object) {
+                resolve()
+                return
+            }
             
             wallet_object = fromJS(wallet_object)
             let encryption_pubkey = this.storage.state.get("encryption_pubkey")

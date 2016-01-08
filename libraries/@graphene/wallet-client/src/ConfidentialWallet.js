@@ -4,7 +4,7 @@
 */
 const empty_wallet = Map({
     
-    //  [[LABEL,KEY],...] No two keys can have the same label
+    //  { LABEL: KEY } No two keys can have the same label
     labeled_keys: {},
     
     // [blind_receipt,...]
@@ -49,7 +49,7 @@ const blind_receipt = Map({
     
 })
 
-
+import { Map } from "immutable"
 
 /** This class is used for stealth transfers */
 export default class ConfidentialWallet {
@@ -75,9 +75,11 @@ export default class ConfidentialWallet {
             if( ! wallet_object )
                 wallet_object = empty_wallet
             
-            let labeled_keys = wallet_object.get("labeled_keys")
-            labeled_keys[label] = public_key
-            
+            return this.wallet.setState(
+                wallet_object.updateIn(["labeled_keys"],
+                Map(), // default (incase this map does not exist)
+                keys => keys.set(label, public_key))
+            )
         })
         
     }
