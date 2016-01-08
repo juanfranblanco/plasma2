@@ -1,5 +1,5 @@
 var assert = require('assert') // from https://github.com/bitcoinjs/bitcoinjs-lib
-var enforceType = require('./types')
+var enforceType = require('./enforce_types')
 
 var BigInteger = require('bigi')
 

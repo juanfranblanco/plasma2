@@ -1,32 +1,32 @@
-var Convert = require('../src/serializer_convert');
+var Convert = require('../src/convert');
 var Long = require('bytebuffer').Long;
 
 var assert = require('assert');
-var type = require('../src/serializer_types');
+var type = require('../src/types');
 var p = require('../src/precision');
 var th = require('./test_helper');
 
 describe("types", function() {
     
-    // it("vote_id",function() {
-    //     var toHex=function(id){
-    //         var vote = type.vote_id.fromObject(id);
-    //         return Convert(type.vote_id).toHex(vote);
-    //     };
-    //     assert.equal("ff000000", toHex("255:0"));
-    //     assert.equal("00ffffff", toHex("0:"+0xffffff));
-    //     var out_of_range=function(id){
-    //         try {
-    //             toHex(id);
-    //             return assert(false, 'should have been out of range');
-    //         } catch (e) {
-    //             return assert(e.message.indexOf('out of range') !== -1);
-    //         }
-    //     };
-    //     out_of_range("0:"+(0xffffff+1));
-    //     out_of_range("256:0");
-    //     return;
-    // });
+    it("vote_id",function() {
+        var toHex=function(id){
+            var vote = type.vote_id.fromObject(id);
+            return Convert(type.vote_id).toHex(vote);
+        };
+        assert.equal("ff000000", toHex("255:0"));
+        assert.equal("00ffffff", toHex("0:"+0xffffff));
+        var out_of_range=function(id){
+            try {
+                toHex(id);
+                return assert(false, 'should have been out of range');
+            } catch (e) {
+                return assert(e.message.indexOf('out of range') !== -1);
+            }
+        };
+        out_of_range("0:"+(0xffffff+1));
+        out_of_range("256:0");
+        return;
+    });
     
     it("set", function() {
         var bool_set = type.set(type.bool);

@@ -1,18 +1,17 @@
-var ByteBuffer, MAX_SIGNED_32, MIN_SIGNED_32, ObjectId, Serializer, Types, chain_types, config, fp, id_type, v;
 
-ByteBuffer = require('bytebuffer');
-// ObjectId = require('./object_id');
-Serializer = require('./serializer');
-v = require('./serializer_validation');
-// chain_types = require('./chain_types');
+// Low-level types that make up operations
 
-import {Address, PublicKey} from "@graphene/ecc"
+var ByteBuffer = require('bytebuffer');
+var Serializer = require('./serializer');
+var v = require('./validation');
+var ObjectId = require('./object_id')
+var fp = require('./fast_parser');
+var chain_types = require('./chain_types')
 
-fp = require('./fast_parser');
+var Types = {}
+module.exports = Types
 
 const HEX_DUMP = process.env.npm_config__graphene_serializer_hex_dump
-
-module.exports = Types = {};
 
 Types.uint8 = {
   fromByteBuffer: function(b) {
@@ -86,9 +85,8 @@ Types.uint32 = {
   }
 };
 
-MIN_SIGNED_32 = -1 * Math.pow(2, 31);
-
-MAX_SIGNED_32 = Math.pow(2, 31) - 1;
+var MIN_SIGNED_32 = -1 * Math.pow(2, 31);
+var MAX_SIGNED_32 = Math.pow(2, 31) - 1;
 
 Types.varint32 = {
   fromByteBuffer: function(b) {
@@ -495,140 +493,140 @@ Types.fixed_array = function(count, st_operation) {
 };
 
 
-// /* Supports instance numbers (11) or object types (1.2.11).  Object type
-// validation is enforced when an object type is used.
-//  */
-// 
-// id_type = function(reserved_spaces, object_type) {
-//   v.required(reserved_spaces, "reserved_spaces");
-//   v.required(object_type, "object_type");
-//   return {
-//     fromByteBuffer: function(b) {
-//       return b.readVarint32();
-//     },
-//     appendByteBuffer: function(b, object) {
-//       v.required(object);
-//       if (object.resolve !== void 0) {
-//         object = object.resolve;
-//       }
-//       if (/^[0-9]+\.[0-9]+\.[0-9]+$/.test(object)) {
-//         object = v.get_instance(reserved_spaces, object_type, object);
-//       }
-//       b.writeVarint32(object);
-//     },
-//     fromObject: function(object) {
-//       v.required(object);
-//       if (object.resolve !== void 0) {
-//         object = object.resolve;
-//       }
-//       if (v.is_digits(object)) {
-//         return v.to_number(object);
-//       }
-//       return v.get_instance(reserved_spaces, object_type, object);
-//     },
-//     toObject: function(object, debug) {
-//       var object_type_id;
-//       if (debug == null) {
-//         debug = {};
-//       }
-//       object_type_id = chain_types.object_type[object_type];
-//       if (debug.use_default && object === void 0) {
-//         return reserved_spaces + "." + object_type_id + ".0";
-//       }
-//       v.required(object);
-//       if (object.resolve !== void 0) {
-//         object = object.resolve;
-//       }
-//       if (/^[0-9]+\.[0-9]+\.[0-9]+$/.test(object)) {
-//         object = v.get_instance(reserved_spaces, object_type, object);
-//       }
-//       return (reserved_spaces + "." + object_type_id + ".") + object;
-//     }
-//   };
-// };
-// 
-// Types.protocol_id_type = function(name) {
-//   return id_type(chain_types.reserved_spaces.protocol_ids, name);
-// };
-// 
-// Types.object_id_type = {
-//   fromByteBuffer: function(b) {
-//     return ObjectId.fromByteBuffer(b);
-//   },
-//   appendByteBuffer: function(b, object) {
-//     v.required(object);
-//     if (object.resolve !== void 0) {
-//       object = object.resolve;
-//     }
-//     object = ObjectId.fromString(object);
-//     object.appendByteBuffer(b);
-//   },
-//   fromObject: function(object) {
-//     v.required(object);
-//     if (object.resolve !== void 0) {
-//       object = object.resolve;
-//     }
-//     return ObjectId.fromString(object);
-//   },
-//   toObject: function(object, debug) {
-//     if (debug == null) {
-//       debug = {};
-//     }
-//     if (debug.use_default && object === void 0) {
-//       return "0.0.0";
-//     }
-//     v.required(object);
-//     if (object.resolve !== void 0) {
-//       object = object.resolve;
-//     }
-//     object = ObjectId.fromString(object);
-//     return object.toString();
-//   }
-// };
-// 
-// Types.vote_id = {
-//   TYPE: 0x000000FF,
-//   ID: 0xFFFFFF00,
-//   fromByteBuffer: function(b) {
-//     var value;
-//     value = b.readUint32();
-//     return {
-//       type: value & this.TYPE,
-//       id: value & this.ID
-//     };
-//   },
-//   appendByteBuffer: function(b, object) {
-//     var value;
-//     v.required(object);
-//     value = object.id << 8 | object.type;
-//     b.writeUint32(value);
-//   },
-//   fromObject: function(object) {
-//     var id, ref, type;
-//     v.required(object, "(type vote_id)");
-//     v.require_test(/^[0-9]+:[0-9]+$/, object, "vote_id format " + object);
-//     ref = object.split(':'), type = ref[0], id = ref[1];
-//     v.require_range(0, 0xff, type, "vote type " + object);
-//     v.require_range(0, 0xffffff, id, "vote id " + object);
-//     return {
-//       type: type,
-//       id: id
-//     };
-//   },
-//   toObject: function(object, debug) {
-//     if (debug == null) {
-//       debug = {};
-//     }
-//     if (debug.use_default && object === void 0) {
-//       return "0:0";
-//     }
-//     v.required(object);
-//     return object.type + ":" + object.id;
-//   },
-//   compare: function(a, b) {
-//     return parseInt(a.id) - parseInt(b.id);
-//   }
-// };
+/*
+    Supports instance numbers (11) or object types (1.2.11).  Object type validation is enforced when an object type is used.
+ */
+var id_type = function(reserved_spaces, object_type) {
+  v.required(reserved_spaces, "reserved_spaces");
+  v.required(object_type, "object_type");
+  return {
+    fromByteBuffer: function(b) {
+      return b.readVarint32();
+    },
+    appendByteBuffer: function(b, object) {
+      v.required(object);
+      if (object.resolve !== void 0) {
+        object = object.resolve;
+      }
+      if (/^[0-9]+\.[0-9]+\.[0-9]+$/.test(object)) {
+        object = v.get_instance(reserved_spaces, object_type, object);
+      }
+      b.writeVarint32(object);
+    },
+    fromObject: function(object) {
+      v.required(object);
+      if (object.resolve !== void 0) {
+        object = object.resolve;
+      }
+      if (v.is_digits(object)) {
+        return v.to_number(object);
+      }
+      return v.get_instance(reserved_spaces, object_type, object);
+    },
+    toObject: function(object, debug) {
+      var object_type_id;
+      if (debug == null) {
+        debug = {};
+      }
+      object_type_id = chain_types.object_type[object_type];
+      if (debug.use_default && object === void 0) {
+        return reserved_spaces + "." + object_type_id + ".0";
+      }
+      v.required(object);
+      if (object.resolve !== void 0) {
+        object = object.resolve;
+      }
+      if (/^[0-9]+\.[0-9]+\.[0-9]+$/.test(object)) {
+        object = v.get_instance(reserved_spaces, object_type, object);
+      }
+      return (reserved_spaces + "." + object_type_id + ".") + object;
+    }
+  };
+};
+
+Types.protocol_id_type = function(name) {
+  return id_type(chain_types.reserved_spaces.protocol_ids, name);
+}
+
+
+Types.object_id_type = {
+  fromByteBuffer: function(b) {
+    return ObjectId.fromByteBuffer(b);
+  },
+  appendByteBuffer: function(b, object) {
+    v.required(object);
+    if (object.resolve !== void 0) {
+      object = object.resolve;
+    }
+    object = ObjectId.fromString(object);
+    object.appendByteBuffer(b);
+  },
+  fromObject: function(object) {
+    v.required(object);
+    if (object.resolve !== void 0) {
+      object = object.resolve;
+    }
+    return ObjectId.fromString(object);
+  },
+  toObject: function(object, debug) {
+    if (debug == null) {
+      debug = {};
+    }
+    if (debug.use_default && object === void 0) {
+      return "0.0.0";
+    }
+    v.required(object);
+    if (object.resolve !== void 0) {
+      object = object.resolve;
+    }
+    object = ObjectId.fromString(object);
+    return object.toString();
+  }
+};
+
+Types.vote_id = {
+  TYPE: 0x000000FF,
+  ID: 0xFFFFFF00,
+  fromByteBuffer: function(b) {
+    var value;
+    value = b.readUint32();
+    return {
+      type: value & this.TYPE,
+      id: value & this.ID
+    };
+  },
+  appendByteBuffer: function(b, object) {
+    var value;
+    v.required(object);
+    value = object.id << 8 | object.type;
+    b.writeUint32(value);
+  },
+  fromObject: function(object) {
+    var id, ref, type;
+    v.required(object, "(type vote_id)");
+    v.require_test(/^[0-9]+:[0-9]+$/, object, "vote_id format " + object);
+    ref = object.split(':'), type = ref[0], id = ref[1];
+    v.require_range(0, 0xff, type, "vote type " + object);
+    v.require_range(0, 0xffffff, id, "vote id " + object);
+    return {
+      type: type,
+      id: id
+    };
+  },
+  toObject: function(object, debug) {
+    if (debug == null) {
+      debug = {};
+    }
+    if (debug.use_default && object === void 0) {
+      return "0:0";
+    }
+    v.required(object);
+    return object.type + ":" + object.id;
+  },
+  compare: function(a, b) {
+    return parseInt(a.id) - parseInt(b.id);
+  }
+};
 
 Types.optional = function(st_operation) {
   v.required(st_operation, "st_operation");
@@ -797,70 +795,3 @@ Types.map = function(key_st_operation, value_st_operation) {
     }
   };
 };
-
-Types.public_key = {
-  _to_public: function(object) {
-    if (object.resolve !== void 0) {
-      object = object.resolve;
-    }
-    if (object.Q) {
-      return object;
-    }
-    return PublicKey.fromPublicKeyString(object);
-  },
-  fromByteBuffer: function(b) {
-    return fp.public_key(b);
-  },
-  appendByteBuffer: function(b, object) {
-    v.required(object);
-    fp.public_key(b, Types.public_key._to_public(object));
-  },
-  fromObject: function(object) {
-    v.required(object);
-    if (object.Q) {
-      return object;
-    }
-    return PublicKey.fromPublicKeyString(object);
-  },
-  toObject: function(object, debug) {
-    if (debug == null) {
-      debug = {};
-    }
-    if (debug.use_default && object === void 0) {
-      return "GPHXyz...public_key";
-    }
-    v.required(object);
-    return Types.public_key._to_public(object).toPublicKeyString();
-  }
-};
-
-Types.address = {
-  _to_address: function(object) {
-    v.required(object);
-    if (object.addy) {
-      return object;
-    }
-    return Address.fromString(object);
-  },
-  fromByteBuffer: function(b) {
-    return new Address(fp.ripemd160(b));
-  },
-  appendByteBuffer: function(b, object) {
-    fp.ripemd160(b, Types.address._to_address(object).toBuffer());
-  },
-  fromObject: function(object) {
-    return Types.address._to_address(object);
-  },
-  toObject: function(object, debug) {
-    if (debug == null) {
-      debug = {};
-    }
-    if (debug.use_default && object === void 0) {
-      return "GPHXyz...address";
-    }
-    return Types.address._to_address(object).toString();
-  }
-};
-
-// ---
-// generated by coffee-script 1.9.2

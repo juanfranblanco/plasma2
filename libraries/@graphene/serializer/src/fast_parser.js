@@ -1,4 +1,3 @@
-import { PublicKey } from "@graphene/ecc"
 
 class FastParser {
     
@@ -15,18 +14,6 @@ class FastParser {
             var b_copy;
             b_copy = b.copy(b.offset, b.offset + len), b.skip(len);
             return new Buffer(b_copy.toBinary(), 'binary');
-        }
-    }
-    
-    static public_key(b, public_key) {
-        if (!b) { return; }
-        if (public_key) {
-            var buffer = public_key.toBuffer();
-            b.append(buffer.toString('binary'), 'binary');
-            return;
-        } else {
-            buffer = FastParser.fixed_data(b, 33);
-            return PublicKey.fromBuffer(buffer);
         }
     }
         

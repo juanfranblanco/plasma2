@@ -1,6 +1,6 @@
 var _my;
 var _internal;
-var v = require('./serializer_validation');
+var v = require('./validation');
 var BigInteger = require('bigi');
 
 module.exports = _my =

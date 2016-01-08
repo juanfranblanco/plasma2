@@ -6,7 +6,7 @@ import WalletApi from "./WalletApi"
 import assert from "assert"
 
 /**
-    Serilizable persisterent state (serilizable types only).. The order generally reflects the actual work-flow order.
+    Serilizable persisterent state (JSON serilizable types only).. The order generally reflects the actual work-flow order.
 */
 const inital_persistent_state = Map({
     

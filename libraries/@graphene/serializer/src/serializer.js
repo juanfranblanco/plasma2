@@ -119,7 +119,6 @@ class Serializer {
         return result;
     }
     
-    
     // <helper_functions>
     
     fromHex(hex) {
@@ -142,8 +141,5 @@ class Serializer {
         return new Buffer(this.toByteBuffer(object).toBinary(), 'binary');
     }
 }
-    
-    // </helper_functions>
 
-module.exports = Serializer;
-
+module.exports = Serializer
