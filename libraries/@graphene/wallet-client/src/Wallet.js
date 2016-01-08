@@ -1,14 +1,14 @@
 
-import { Map, OrderedSet } from "immutable"
+import { fromJS } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
 import { PrivateKey, Signature, hash } from "@graphene/ecc" 
 import WalletApi from "./WalletApi"
 import assert from "assert"
 
 /**
-    Serilizable persisterent state (JSON serilizable types only).. The order generally reflects the actual work-flow order.
+    Serilizable persisterent state (JSON serilizable types only).
 */
-const inital_persistent_state = Map({
+const inital_persistent_state = fromJS({
     
     // True to stay in sync with the server (boolean)
     remote_copy: undefined,
@@ -161,14 +161,12 @@ export default class Wallet {
     /** This API call will remove the wallet state from memory. */
     logout() {
         this.private_key = null
-        this.wallet_object = null
     }
-    
     
     /**
         This method returns the wallet_object representing the state of the wallet.  It is only valid if the wallet has successfully logged in.  If the wallet is known to be in a consistent state (after a login for example) one may instead access the object directly `this.wallet_object` instead.
     
-        @return {Promise} {Immutable.Map} wallet_object or `undefined` if locked
+        @return {Promise} {Immutable} wallet_object or `undefined` if locked
     */
     getState() {
         if( ! this.private_key ) return Promise.resolve()
@@ -178,7 +176,7 @@ export default class Wallet {
     /** 
         This method is used to update the wallet state. If the wallet is configured to keep synchronized with the remote wallet then the server will refer to a copy of the wallets revision history to ensure that no version is overwritten. If the local wallet ever falls on a fork an attempt to upload that wallet will cause the API call to fail; a reconcilation will be needed. After successfully storing the state on the server, save the state to local memory, and optionally disk.
         
-        @arg {Map} wallet_object - mutable or immutable map Map({})
+        @arg {Immutable|object} wallet_object - mutable or immutable object .. no loops, only JSON serilizable data
         @return {Promise} - reject [wallet_locked, etc...], success after state update
     */
     setState( wallet_object )  {
@@ -186,12 +184,7 @@ export default class Wallet {
             if( ! this.private_key )
                 throw new Error("login")
             
-            if( ! Map.isMap( wallet_object ) ) {
-                if( ! typeof wallet_object === 'object')
-                    throw new Error("wallet_object should an 'object' or Map")
-                wallet_object = Map(wallet_object)
-            }
-            
+            wallet_object = fromJS(wallet_object)
             let encryption_pubkey = this.storage.state.get("encryption_pubkey")
             
             resolve(
@@ -310,7 +303,7 @@ function forcePull(server, private_key) {
     let backup_buffer = new Buffer(server.encrypted_data, 'base64')
     return decrypt(backup_buffer, private_key).then( wallet_object => {
         this.storage.setState(state)
-        this.wallet_object = Map( wallet_object )
+        this.wallet_object = fromJS( wallet_object )
     })
 }
 
