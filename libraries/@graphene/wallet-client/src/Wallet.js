@@ -1,5 +1,5 @@
 
-import { fromJS } from "immutable"
+import { fromJS, is } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
 import { PrivateKey, Signature, hash } from "@graphene/ecc" 
 import WalletApi from "./WalletApi"
@@ -188,7 +188,7 @@ export default class Wallet {
             if( ! this.private_key )
                 throw new Error("login")
             
-            if(this.wallet_object === wallet_object) {
+            if(is(this.wallet_object, wallet_object)) {
                 resolve()
                 return
             }
@@ -240,11 +240,11 @@ function sync(private_key = this.private_key) {
         
         // get the most recent server wallet
         var syncPromise = this.api.fetchWallet(public_key, remote_hash_buffer)
-            .then( server =>{
+            .then( server_wallet =>{
             
-            assert(/OK|No Content|Not Modified/.test(server.statusText))
+            assert(/OK|No Content|Not Modified/.test(server_wallet.statusText))
             
-            let has_server_wallet = /OK|Not Modified/.test(server.statusText)
+            let has_server_wallet = /OK|Not Modified/.test(server_wallet.statusText)
             let encrypted_wallet = state.get("encrypted_wallet")
             let has_local_wallet = encrypted_wallet != null
             
@@ -255,7 +255,7 @@ function sync(private_key = this.private_key) {
                 return push(has_server_wallet, private_key)
             
             if( ! has_local_wallet )
-                return pull(server, private_key)
+                return pull(server_wallet, private_key)
             
             // We have 2 wallets (both server and local)
             
@@ -265,20 +265,20 @@ function sync(private_key = this.private_key) {
             let dirty = current_hash.toString('base64') !== remote_hash
             
             // No changes locally or remote
-            if( ! dirty &&  server.statusText === "Not Modified")
+            if( ! dirty &&  server_wallet.statusText === "Not Modified")
                 return
             
             // Push local changes (no conflict)
-            if( dirty && server.statusText === "Not Modified" )
+            if( dirty && server_wallet.statusText === "Not Modified" )
                 return push(has_server_wallet, private_key)
             
-            if( ! dirty && server.statusText === "OK") {
+            if( ! dirty && server_wallet.statusText === "OK") {
                 // The server had this copy of this wallet when another device changed it (meaning that the other device must have been in sync with the wallet when the change was made).  It is safe to pull this wallet and overwrite the local version.
-                return pull(server, private_key)
+                return pull(server_wallet, private_key)
             }
             
             assert(dirty, 'Expecting a locally modified wallet')
-            assert(server.statusText === "OK", 'Expecting a remotely modified wallet')
+            assert(server_wallet.statusText === "OK", 'Expecting a remotely modified wallet')
             
             // An internal wallet comparison is required to resolve
             throw "conflict: both server and local wallet modified"
@@ -290,11 +290,11 @@ function sync(private_key = this.private_key) {
 /** syncPull.bind(this, ...) 
     @private
 */
-function forcePull(server, private_key) {
+function forcePull(server_wallet, private_key) {
     
     let state = this.storage.state
     let remote_copy = state.get("remote_copy")
-    let server_local_hash = new Buffer(server.local_hash, 'base64')
+    let server_local_hash = new Buffer(server_wallet.local_hash, 'base64')
     
     if( remote_copy === false ) {
         let signature = Signature.signBufferSha256(server_local_hash, private_key)
@@ -303,13 +303,13 @@ function forcePull(server, private_key) {
     
     state = state.merge({
         remote_token: null, // unit tests will over-populate remote_token
-        remote_hash: server.local_hash,
-        encrypted_wallet: server.encrypted_data,
-        remote_updated_date: server.updated,
-        remote_created_date: server.created,
+        remote_hash: server_wallet.local_hash,
+        encrypted_wallet: server_wallet.encrypted_data,
+        remote_updated_date: server_wallet.updated,
+        remote_created_date: server_wallet.created,
     })
     
-    let backup_buffer = new Buffer(server.encrypted_data, 'base64')
+    let backup_buffer = new Buffer(server_wallet.encrypted_data, 'base64')
     return decrypt(backup_buffer, private_key).then( wallet_object => {
         this.storage.setState(state)
         this.wallet_object = fromJS( wallet_object )
