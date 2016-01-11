@@ -4,6 +4,7 @@
 Update `./.npmrc` if you need to change something:
 ```sh
 # Example upload limit configuration:
+# See https://www.npmjs.com/package/busboy and @graphene/rest-api package
 @graphene/rest-api:fields = 1024
 @graphene/rest-api:fieldSize = 20480
 @graphene/rest-api:files = 10
@@ -11,7 +12,7 @@ Update `./.npmrc` if you need to change something:
 
 # Show GET and POST requests
 @graphene/rest-api:debug = false
-
+@graphene/rest-api:debug = false
 ```
 See [busboy](https://www.npmjs.com/package/busboy)
 

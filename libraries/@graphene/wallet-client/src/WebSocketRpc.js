@@ -1,8 +1,8 @@
-var Immutable = require("immutable");
+var Immutable = require("immutable")
 
 const SOCKET_DEBUG = process.env.npm_config__graphene_wallet_client_socket_debug
 
-class WebSocketRpc {
+export default class WebSocketRpc {
 
     /**
         @arg {string} ws_server_url - WebSocket URL
@@ -14,24 +14,29 @@ class WebSocketRpc {
         this.web_socket = new WebSocketClient(ws_server_url);
         this.current_reject = null;
         this.on_reconnect = null;
-        // TODO fixme - looks like connect_promise could be resolved or rejected more than once 
         this.connect_promise = new Promise((resolve, reject) => {
             this.current_reject = reject;
             this.web_socket.onopen = () => {
-                if(this.update_rpc_connection_status_callback) this.update_rpc_connection_status_callback("open");
+                if(this.update_rpc_connection_status_callback)
+                    this.update_rpc_connection_status_callback("open");
+                
                 if(this.on_reconnect) this.on_reconnect();
                 resolve();
             }
             // Warning, onerror callback is over-written on each request.  Be cautious to dulicate some logic here.
             this.web_socket.onerror = (error) => {
-                if(this.update_rpc_connection_status_callback) this.update_rpc_connection_status_callback("error");
+                console.error("ERROR\tweb_socket", error)
+                if(this.update_rpc_connection_status_callback)
+                    this.update_rpc_connection_status_callback("error");
+                
                 if (this.current_reject) {
                     this.current_reject(error);
                 }
             };
             this.web_socket.onmessage = (message) => this.listener(JSON.parse(message.data));
             this.web_socket.onclose = () => {
-                if(this.update_rpc_connection_status_callback) this.update_rpc_connection_status_callback("closed");
+                if(this.update_rpc_connection_status_callback)
+                    this.update_rpc_connection_status_callback("closed");
             };
         });
         this.current_callback_id = 0;
@@ -46,7 +51,7 @@ class WebSocketRpc {
         @return {Promise}
     */
     call(method, params) {
-        return request( ++ this.current_callback_id, method, params)
+        return this.request( ++ this.current_callback_id, method, params)
     }
     
     /**
@@ -64,14 +69,13 @@ class WebSocketRpc {
         
         this.subscriptions[this.current_callback_id] = {
             callback,
-            method, params: Immutable.fromJS(params)
+            method, params: Immutable.fromJS(params),
             key: Immutable.fromJS(subscribe_key)
         }
         
         // Wrap parameters, send the subscription callback ID to the server
-        params = [this.current_callback_id, params]
-        
-        return request(this.current_callback_id, method, params)
+        params = { subscribe_id: this.current_callback_id, params }
+        return this.request(this.current_callback_id, method, params)
     }
     
     /**
@@ -105,9 +109,8 @@ class WebSocketRpc {
         }
         
         // Wrap parameters, send the subscription ID to the server
-        params = [subscription_id, params]
-        
-        return request(this.current_callback_id, method, params)
+        params = { unsubscribe_id: subscription_id, params }
+        return this.request(this.current_callback_id, method, params)
     }
     
     close() {
@@ -125,24 +128,23 @@ class WebSocketRpc {
     request(id, method, params) {
         if(SOCKET_DEBUG)
             console.log("[WebSocketRpc] ----- call -----> id:", id, "\t", method, "\t", params);
-            
-        var request = { id, method, params }
         
-        return new Promise((resolve, reject) => {
-            
-            let time = new Date()
-            this.callbacks[id] = { time, resolve, reject }
-            
-            this.web_socket.onerror = (error) => {
+        return this.connect_promise.then(()=> {
+            return new Promise( (resolve, reject) => {
+                let time = new Date()
+                this.callbacks[id] = { time, resolve, reject }
                 
-                if(this.update_rpc_connection_status_callback)
-                    this.update_rpc_connection_status_callback("error")
+                this.web_socket.onerror = (error) => {
+                    
+                    if(this.update_rpc_connection_status_callback)
+                        this.update_rpc_connection_status_callback("error")
+                    
+                    console.log("!!! WebSocket Error ", error);
+                    reject(error);
+                };
                 
-                console.log("!!! WebSocket Error ", error);
-                reject(error);
-            };
-            
-            this.web_socket.send(JSON.stringify(request));
+                this.web_socket.send(JSON.stringify({ id, method, params }));
+            })
         })
     }
     
@@ -186,5 +188,3 @@ class WebSocketRpc {
     }
 
 }
-
-module.exports = WebSocketRpc;

@@ -15,6 +15,7 @@
     "express": "^4.13.3",
     "express-better-ratelimit": "^1.1.2",
     "express-limiter": "^1.6.0",
+    "express-ws": "^1.0.0-rc.2",
     "immutable": "^3.7.5",
     "mysql": "^2.9.0",
     "redux": "^3.0.4",

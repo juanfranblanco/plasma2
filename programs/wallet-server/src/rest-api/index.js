@@ -113,7 +113,7 @@ function uncaught(error) {
 }
 
 /** Simple HTTP status callbacks used to reply to the client */
-function reply( res, action ) {
+export function reply( res, action ) {
     action.reply = ( message, data ) =>{
         if( message.then ) {// Promise
             message

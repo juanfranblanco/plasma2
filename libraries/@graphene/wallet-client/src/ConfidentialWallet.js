@@ -159,32 +159,7 @@ function req(data, field_name) {
     return data
 }
 
-// {
-//    "labeled_keys" : [[LABEL,KEY],...], 
-//    "blind_receipts" : [ {
-//           fc::time_point                  date;
-//           public_key_type             from_key;
-//           string                              from_label;
-//           public_key_type             to_key;
-//           string                              to_label;
-//           asset                              amount;
-//           string                              memo;
-//           authority                         control_authority;
-//           stealth_confirmation::memo_data data;
-//           bool                                used = false;
-//           stealth_confirmation       conf;
-//    },...] 
-// }
 
-// /**
-//  *  When sending a stealth tranfer we assume users are unable to scan
-//  *  the full blockchain; therefore, payments require confirmation data
-//  *  to be passed out of band.   We assume this out-of-band channel is
-//  *  not secure and therefore the contents of the confirmation must be
-//  *  encrypted. 
-//  */
-// struct stealth_confirmation
-// {
 
 
 

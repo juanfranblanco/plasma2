@@ -32,13 +32,7 @@ Update `./.npmrc` if you need to change something:
 # Email configuration, see ./bin/email.sh
 @graphene/wallet-server:mail_script = ./bin/email.sh
 #
-# See https://www.npmjs.com/package/busboy and @graphene/rest-api package
-@graphene/rest-api:fields = 1024
-@graphene/rest-api:fieldSize = 20480
-@graphene/rest-api:files = 10
-@graphene/rest-api:fileSize = 1024000
-# Show GET and POST requests
-@graphene/rest-api:debug = false
+
 ```
 For more, see "config" in [package.json](./package.json)
 

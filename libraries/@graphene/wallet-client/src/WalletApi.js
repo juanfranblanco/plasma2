@@ -12,7 +12,6 @@ export default class WalletApi {
     constructor(ws_rpc) {
         if( ! ws_rpc["call"] ) throw Error("WebSocketRpc object required")
         this.ws_rpc = ws_rpc
-        this.ws_rpc.call = exec.bind(this)
     }
 
     /**
@@ -27,7 +26,7 @@ export default class WalletApi {
         if( invalidEmail(email) ) throw ["invalid email", email]
         let params = { email }
         return this.ws_rpc.call("requestCode", params) 
-            .then( res => res.json() ).then( json => {
+            .then( json => {
             assertRes(json, "OK")
             let { status, statusText, expire_min } = json
             assert(expire_min, 'expire_min')
@@ -51,7 +50,7 @@ export default class WalletApi {
         encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
         signature = toBinary(req(signature, 'signature'))
         let params = { code, encrypted_data, signature }
-        return this.ws_rpc.call("createWallet", params).then( res => res.json() ).then( json => {
+        return this.ws_rpc.call("createWallet", params).then( json => {
             assertRes(json, "OK", json)
             let { status, statusText, created, local_hash } = json
             assert(local_hash, 'local_hash')
@@ -61,8 +60,12 @@ export default class WalletApi {
     }
 
     /**
-        @arg {string} public_key - derived from {@link createWallet.signature}
+        @arg {string|PublicKey} public_key - derived from {@link createWallet.signature}
+        
         @arg {Buffer|string} [local_hash = null] - binary sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
+        
+        @arg {function} fetchCallback - Called if this wallet is updated.  The same object format as the returned promise is used.  This happens anytime the wallet is updated by another client (user may be logged into several devices).
+        
         @return {Promise} {
             status: 200, statusText: "OK",
             encrypted_data: "base64 string encrypted_data",
@@ -70,12 +73,11 @@ export default class WalletApi {
             updated: "{Date}"
         } || {status: 304, statusText: "Not Modified" }
     */
-    fetchWallet(public_key, local_hash) {
+    fetchWallet(public_key, local_hash, fetchCallback) {
         public_key = toString(req(public_key, 'public_key'))
         local_hash = toBinary(local_hash)
         let params = { public_key, local_hash }
-        return this.ws_rpc.call("fetchWallet", params) 
-            .then( res => /No Content|Not Modified/.test(res.statusText) ? res : res.json() )
+        return this.ws_rpc.subscribe("fetchWallet", params, fetchCallback, public_key) 
             .then( json => {
             let { status, statusText, updated, created, local_hash, encrypted_data } = json
             assert(/OK|No Content|Not Modified/.test(statusText), '/OK|No Content|Not Modified/.test(statusText)')
@@ -88,6 +90,15 @@ export default class WalletApi {
             }
             return {status, statusText}
         })
+    }
+    
+    /**
+        Stop listening for wallet updates
+        @arg {string|PublicKey} public_key - derived from {@link createWallet.signature}
+    */
+    fetchWalletUnsubscribe(public_key) {
+        public_key = toString(req(public_key, 'public_key'))
+        return this.ws_rpc.unsubscribe("fetchWallet", null, public_key)
     }
 
     /** 
@@ -102,11 +113,14 @@ export default class WalletApi {
         encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
         signature = toBinary(req(signature, 'signature'))
         let params = { original_local_hash, encrypted_data, signature }
-        return this.ws_rpc.call("saveWallet", params).then( res => assertRes(res, "OK", res).json() )
+        return this.ws_rpc.call("saveWallet", params)
             .then( json => {
             let { status, statusText, updated, local_hash } = json
-            assert(local_hash, 'local_hash')
-            assert(updated, 'updated')
+            assert(/OK|Conflict|Not Found/.test(statusText), statusText)
+            if(statusText === "OK") {
+                assert(local_hash, 'local_hash')
+                assert(updated, 'updated')
+            }
             return { status, statusText, updated, local_hash }
         })
     }
@@ -125,11 +139,14 @@ export default class WalletApi {
         new_encrypted_data = toBinary(req(new_encrypted_data, 'new_encrypted_data'))
         new_signature = toBinary(req(new_signature, 'new_signature'))
         let params = { original_local_hash, original_signature, new_encrypted_data, new_signature }
-        return this.ws_rpc.call("changePassword", params).then( res => assertRes(res, "OK").json() )
+        return this.ws_rpc.call("changePassword", params)
             .then( json => {
             let { status, statusText, updated, local_hash } = json
-            assert(updated, 'updated')
-            assert(local_hash, 'local_hash')
+            assert(/OK|Not Found/.test(statusText), statusText)
+            if(statusText === "OK") {
+                assert(updated, 'updated')
+                assert(local_hash, 'local_hash')
+            }
             return {status, statusText, updated, local_hash}
         })
     }
