@@ -5,6 +5,7 @@ import {createToken} from '@graphene/time-token'
 import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
 import Wallet from "../src/Wallet"
+import WebSocketRpc from "../src/WebSocketRpc"
 import WalletApi from "../src/WalletApi"
 
 const username = "username"
@@ -16,13 +17,13 @@ const remote_url = process.env.npm_package_config_remote_url
 // Configure to use localStorage for the purpose of these tests...
 global.localStorage = require('localStorage')
 const storage = new LocalStoragePersistence("wallet_spec")
-var wallet, api = new WalletApi(remote_url)
+const ws_rpc = new WebSocketRpc(remote_url)
+var wallet, api = new WalletApi(ws_rpc)
 
 function initWallet() {
     storage.clear()
     wallet = new Wallet(storage)
 }
-
 
 describe('Wallet Tests', () => {
     

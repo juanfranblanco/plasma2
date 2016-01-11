@@ -1,7 +1,8 @@
 
 import { fromJS, is } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
-import { PrivateKey, Signature, hash } from "@graphene/ecc" 
+import { PrivateKey, Signature, hash } from "@graphene/ecc"
+import WebSocketRpc from "./WebSocketRpc"
 import WalletApi from "./WalletApi"
 import assert from "assert"
 
@@ -55,8 +56,10 @@ export default class Wallet {
         
         // enable the backup server if one is configured (see useBackupServer)
         let remote_url = this.storage.state.get("remote_url")
-        if( remote_url ) this.api = new WalletApi(remote_url)
-        
+        if( remote_url ) {
+            const ws_rpc = new WebSocketRpc(remote_url)
+            this.api = new WalletApi(ws_rpc)
+        }
         // semi-private method bindings, these are used for testing
         this.sync = sync.bind(this)
         this.signHash = signHash.bind(this) // low level API requests (outside of this class)
@@ -71,7 +74,12 @@ export default class Wallet {
         @return Promise - always resolves, added for convenience
     */
     useBackupServer( remote_url ) {
-        this.api = remote_url ? new WalletApi(remote_url) : null
+        if(remote_url) {
+            const ws_rpc = new WebSocketRpc(remote_url)
+            this.api = new WalletApi(ws_rpc)
+        } else {
+            this.api = null
+        } 
         this.storage.setState({ remote_url })
         return Promise.resolve()
     }

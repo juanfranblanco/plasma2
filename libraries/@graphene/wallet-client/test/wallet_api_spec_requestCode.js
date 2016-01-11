@@ -1,10 +1,12 @@
 import assert from "assert"
-import walletFetch from "../src/fetch"
 import {PrivateKey} from "@graphene/ecc"
+import WebSocketRpc from "../src/WebSocketRpc"
 import WalletApi from "../src/WalletApi"
 
 const remote_url = process.env.npm_package_config_remote_url
-var api = new WalletApi(remote_url)
+
+const ws_rpc = new WebSocketRpc(remote_url)
+var api = new WalletApi(ws_rpc)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate
 const private_key = PrivateKey.fromSeed("")
