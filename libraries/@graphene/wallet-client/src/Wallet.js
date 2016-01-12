@@ -57,8 +57,8 @@ export default class Wallet {
         // enable the backup server if one is configured (see useBackupServer)
         let remote_url = this.storage.state.get("remote_url")
         if( remote_url ) {
-            const ws_rpc = new WebSocketRpc(remote_url)
-            this.api = new WalletApi(ws_rpc)
+            this.ws_rpc = new WebSocketRpc(remote_url)
+            this.api = new WalletApi(this.ws_rpc)
         }
         // semi-private method bindings, these are used for testing
         this.sync = sync.bind(this)
@@ -75,9 +75,10 @@ export default class Wallet {
     */
     useBackupServer( remote_url ) {
         if(remote_url) {
-            const ws_rpc = new WebSocketRpc(remote_url)
-            this.api = new WalletApi(ws_rpc)
+            this.ws_rpc = new WebSocketRpc(remote_url)
+            this.api = new WalletApi(this.ws_rpc)
         } else {
+            this.ws_rpc = null
             this.api = null
         } 
         this.storage.setState({ remote_url })
@@ -214,22 +215,6 @@ export default class Wallet {
         })
     }
     
-    fetchCallback(p) {
-        console.log(">>>> fetchCallback", p)
-        
-    }
-    
-}
-
-/** Used to make level API requests (outside of this class)
-*/
-function signHash() {
-    let private_key = this.private_key
-    let encrypted_wallet = this.storage.state.get("encrypted_wallet")
-    if( ! private_key || ! encrypted_wallet ) return
-    let local_hash = hash.sha256(encrypted_wallet)
-    let signature = Signature.signBufferSha256(local_hash, private_key)
-    return { local_hash, signature }
 }
 
 /**
@@ -242,21 +227,31 @@ function sync(private_key = this.private_key) {
     if( ! private_key || ! this.api )
         return Promise.resolve()
     
-    return new Promise( resolve => {
-        
-        let state = this.storage.state
-        let remote_hash = state.get("remote_hash")
-        let remote_hash_buffer = remote_hash ? new Buffer(remote_hash, 'base64') : null
-        let public_key = private_key.toPublicKey()
-        let push = forcePush.bind(this)
-        let pull = forcePull.bind(this)
-        
-        // get the most recent server wallet
-        var syncPromise = this.api.fetchWallet(public_key, remote_hash_buffer, this.fetchCallback)
-            .then( server_wallet =>{
+    let remote_hash = this.storage.state.get("remote_hash")
+    let public_key = private_key.toPublicKey()
+    
+    return fetchWallet.bind(this)(public_key, remote_hash)
+}
+
+function fetchWallet(public_key, local_hash) {
+    
+    if( this.ws_rpc.getSubscriptionId("fetchWallet", public_key) ) {
+        if(this.wallet_object.get("remote_hash") === local_hash)
+            return Promise.resolve(this.wallet_object.merge({statusText: "Not Modified"}))
+        else
+            return Promise.resolve(this.wallet_object.merge({statusText: "OK"}))
+    }
+    
+    let local_hash_buffer = local_hash ? new Buffer(local_hash, 'base64') : null
+    
+    return new Promise( (resolve, reject) => {
+        resolve(this.api.fetchWallet(public_key, local_hash_buffer, server_wallet =>{
             
             assert(/OK|No Content|Not Modified/.test(server_wallet.statusText))
             
+            let state = this.storage.state
+            let push = forcePush.bind(this)
+            let pull = forcePull.bind(this)
             let has_server_wallet = /OK|Not Modified/.test(server_wallet.statusText)
             let encrypted_wallet = state.get("encrypted_wallet")
             let has_local_wallet = encrypted_wallet != null
@@ -295,10 +290,11 @@ function sync(private_key = this.private_key) {
             
             // An internal wallet comparison is required to resolve
             throw "conflict: both server and local wallet modified"
-        })
-        resolve( syncPromise )
+            
+        }))
     })
 }
+
 
 /** syncPull.bind(this, ...) 
     @private
@@ -417,4 +413,16 @@ function updateWallet(wallet_object, state = this.storage.state) {
     })
     )
 })
+}
+
+
+/** Used to make level API requests (outside of this class)
+*/
+function signHash() {
+    let private_key = this.private_key
+    let encrypted_wallet = this.storage.state.get("encrypted_wallet")
+    if( ! private_key || ! encrypted_wallet ) return
+    let local_hash = hash.sha256(encrypted_wallet)
+    let signature = Signature.signBufferSha256(local_hash, private_key)
+    return { local_hash, signature }
 }

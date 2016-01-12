@@ -59,23 +59,37 @@ export default class WebSocketRpc {
         
         @arg {string} method - API method name (server will provide a subscribe_xxx method)
         @arg {object} params - JSON serilizable parameters
-        @arg {function} callback - called by the server to send you a notification
         @arg {object} [subscribe_key = { method, params }] - client-side unique key for each subscription
+        @arg {function} callback - required, called with a wallet_object initially and for every wallet update
         @return {Promise}
     */
-    subscribe(method, params, callback, subscribe_key = { method, params }) {
+    subscribe(method, params, subscribe_key = { method, params }, callback = null) {
         
-        this.current_callback_id ++
+        let callback_id = ++ this.current_callback_id
+        let subscribe_id = ++ this.current_callback_id
         
-        this.subscriptions[this.current_callback_id] = {
+        this.subscriptions[subscribe_id] = {
             callback,
             method, params: Immutable.fromJS(params),
             key: Immutable.fromJS(subscribe_key)
         }
         
-        // Wrap parameters, send the subscription callback ID to the server
-        params = { subscribe_id: this.current_callback_id, subscribe_key, params }
-        return this.request(this.current_callback_id, method, params)
+        params = { subscribe_id: subscribe_id, subscribe_key, params }
+        return this.request(callback_id, method, params)
+    }
+    
+    getSubscriptionId(method, subscribe_key) {
+        let subscription_id
+        let unSubParams = Immutable.fromJS(subscribe_key)
+        
+        for (let id in this.subscriptions) {
+            let s = this.subscriptions[id]
+            if (Immutable.is(s.key, unSubParams)) {
+                subscription_id = id
+                break
+            }
+        }
+        return subscription_id
     }
     
     /**
@@ -89,17 +103,16 @@ export default class WebSocketRpc {
     unsubscribe(method, params, subscribe_key = { method, params }) {
         
         this.current_callback_id ++
-        let unSubParams = Immutable.fromJS(subscribe_key);
-        let subscription_id
+        let subscription_id = this.getSubscriptionId(method, subscribe_key)
         
-        for (let id in this.subscriptions) {
-            let s = this.subscriptions[id]
-            if (Immutable.is(s.key, unSubParams)) {
-                this.unsub[this.current_callback_id] = id
-                subscription_id = id
-                break
-            }
-        }
+        // for (let id in this.subscriptions) {
+        //     let s = this.subscriptions[id]
+        //     if (Immutable.is(s.key, unSubParams)) {
+        //         this.unsub[this.current_callback_id] = id
+        //         subscription_id = id
+        //         break
+        //     }
+        // }
         
         if( ! subscription_id ) {
             let msg = ("WARN: unsubscribe did not find subscribe_key",
@@ -107,7 +120,7 @@ export default class WebSocketRpc {
             console.error(msg)
             return Promise.reject(msg)
         }
-        
+        this.unsub[this.current_callback_id] = subscription_id
         // Wrap parameters, send the subscription ID to the server
         params = { unsubscribe_id: subscription_id, subscribe_key, params }
         return this.request(this.current_callback_id, method, params)
@@ -148,7 +161,7 @@ export default class WebSocketRpc {
             })
         })
     }
-    
+
     /** @private */
     listener(response) {
         if(SOCKET_DEBUG)

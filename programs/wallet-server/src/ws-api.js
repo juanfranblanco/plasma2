@@ -14,7 +14,14 @@ export function wsResponse(ws, id, statusText, data = {}) {
     data.statusText = statusText
     let response = badRequest ? { error: data } : { result: data }
     response.id = id
-    ws.send( JSON.stringify(response) )
+    if( ws.socket && ws.subscription_id != null ) {
+        // Send a subscription reply
+        ws.socket.send(JSON.stringify({
+            method: "notice",
+            params: [ws.subscription_id, response.result || response.error]
+        }))
+    } else
+        ws.send( JSON.stringify(response) )
 }
 
 

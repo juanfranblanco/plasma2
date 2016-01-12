@@ -64,36 +64,37 @@ export default class WalletApi {
         
         @arg {Buffer|string} [local_hash = null] - binary sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
         
-        @arg {function} [fetchCallback = null] - Called if this wallet is updated.  The same object format as the returned promise is used.  This happens anytime the wallet is updated by another client (user may be logged into several devices).
+        @arg {function} callback(callbackResult) - Called if this wallet is updated.  The same object format as the returned promise is used.  This happens anytime the wallet is updated by another client (user may be logged into several devices).
         
-        @return {Promise} {
+        @typedef {callbackResult} {
             status: 200, statusText: "OK",
             encrypted_data: "base64 string encrypted_data",
             created: "{Date}",
             updated: "{Date}"
         } || {status: 304, statusText: "Not Modified" }
+        @return {Promise} object - {
+            status: 200, statusText: "OK"
+        }
     */
-    fetchWallet(public_key, local_hash, fetchCallback = null) {
+    fetchWallet(public_key, local_hash, callback = null) {
         public_key = toString(req(public_key, 'public_key'))
         local_hash = toBinary(local_hash)
         let params = { public_key, local_hash }
         
-        return fetchCallback ?
-            this.ws_rpc.subscribe("fetchWallet", params, fetchCallback, public_key) :
-            this.ws_rpc.call("fetchWallet", params)
-            .then( json => {
-            let { status, statusText, updated, created, local_hash, public_key, encrypted_data } = json
-            assert(/OK|No Content|Not Modified/.test(statusText), '/OK|No Content|Not Modified/.test(statusText)')
-            if(statusText === "OK") {
-                assert(public_key, 'public_key')
-                assert(encrypted_data, 'encrypted_data')
-                assert(local_hash, 'local_hash')
-                assert(created, 'created')
-                assert(updated, 'updated')
-                return {status, statusText, updated, created, local_hash, encrypted_data}
-            }
-            return {status, statusText}
-        })
+        return this.ws_rpc.subscribe("fetchWallet", params, public_key, callback)
+        //     .then( json => {
+        //     let { status, statusText, updated, created, local_hash, public_key, encrypted_data } = json
+        //     assert(/OK|No Content|Not Modified/.test(statusText), '/OK|No Content|Not Modified/.test(statusText)')
+        //     if(statusText === "OK") {
+        //         assert(public_key, 'public_key')
+        //         assert(encrypted_data, 'encrypted_data')
+        //         assert(local_hash, 'local_hash')
+        //         assert(created, 'created')
+        //         assert(updated, 'updated')
+        //         return {status, statusText, updated, created, local_hash, encrypted_data}
+        //     }
+        //     return {status, statusText}
+        // })
     }
     
     /**

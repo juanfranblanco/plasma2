@@ -18,29 +18,36 @@ export function remove(ws) {
         )
 }
 
-export function subscribe(ws, method, subscribe_key, subscribe_id, dup) {
+/**
+    @return {boolean} success or false for duplicate subscription
+*/
+export function subscribe(ws, method, subscribe_key, subscribe_id) {
+    let success = false
     subscriptions = subscriptions
         .updateIn([method, subscribe_key], Map(), subscribe_map =>{
             if( subscribe_map.has(subscribe_id) ) {
-                dup()
                 return subscribe_map
             }
+            success = true
             return subscribe_map.set(subscribe_id, ws)
         })
+    return success
 }
 
-export function unsubscribe(method, subscribe_key, unsubscribe_id, unknown) {
+export function unsubscribe(method, subscribe_key, unsubscribe_id) {
+    let success = false
     subscriptions = subscriptions
         .updateIn([method, subscribe_key], Map(), subscribe_map =>{
             if( ! subscribe_map.has(unsubscribe_id) ) {
-                unknown()
                 return subscribe_map
             }
+            success = true
             return subscribe_map.remove(unsubscribe_id)
         })
+    return success
 }
 
-export function notify(subscribe_key, method, params) {
+export function getSubscriptionMap(method, subscribe_key) {
     let keys = subscriptions.get(method)
     if( ! keys ) {
         console.log(">>> subscriptions no method", method)
@@ -51,6 +58,11 @@ export function notify(subscribe_key, method, params) {
         console.log(">>> subscriptions no subscribe_key", subscribe_key)
         return
     }
+    return subsription_map
+}
+
+export function notify(method, subscribe_key, params) {
+    let subsription_map = getSubscriptionMap(method, subscribe_key)
     subsription_map.forEach( (ws, subscription_id) => {
         console.log(">>> subscriptions notify", subscription_id, subscribe_key, method, params)
         ws.send(JSON.stringify({

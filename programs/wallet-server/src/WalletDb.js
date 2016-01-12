@@ -129,7 +129,7 @@ export function deleteWallet({ local_hash, signature }) {
 
 export function walletNotify(wallet) {
     wallet.encrypted_data = toBase64(wallet.encrypted_data)
-    subscriptions.notify(wallet.public_key, "fetchWallet", wallet)
+    subscriptions.notify("fetchWallet", wallet.public_key, wallet)
 }
 
 var toBase64 = data => data == null ? data :

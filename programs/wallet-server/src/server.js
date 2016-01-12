@@ -74,9 +74,7 @@ export default function createServer() {
                 id = payload.id
                 let { method, params } = payload
                 let { subscribe_id, unsubscribe_id, subscribe_key } = params
-                // console.log("subscription", subscribe_id, unsubscribe_id )
                 
-                // un-wrap parameters
                 if( subscribe_id != null || unsubscribe_id != null) {
                     
                     if( ! subscribe_key ) {
@@ -84,19 +82,34 @@ export default function createServer() {
                         return
                     }
                     
+                    // un-wrap parameters
                     params = params.params
+                    
                     if( subscribe_id != null ) {
-                        subscriptions.subscribe(ws, method, subscribe_key, subscribe_id, dup => {
+                        if( subscriptions.subscribe(ws, method, subscribe_key, subscribe_id)) {
+                            
+                            // Send the OK that the subscription was successful
+                            wsResponse(ws, id, "OK")
+                            
+                            // Setup the first subscription reply below (this format is detected in ws-api)
+                            ws = { socket: ws, subscription_id: subscribe_id }
+                            
+                            // Do NOT return, allow the subscription call to execute below
+                        } else {
                             wsResponse(ws, id, "Bad Request", { error: "Already subscribed" })
-                        })
+                            return
+                        }
                     }
                     if( unsubscribe_id != null ) {
-                        subscriptions.unsubscribe(method, subscribe_key, subscribe_id, unknown => {
+                        if( subscriptions.unsubscribe(method, subscribe_key, unsubscribe_id)) {
+                            wsResponse(ws, id, "OK")
+                        } else {
                             wsResponse(ws, id, "Bad Request", { error: "Unknown unsubscription" })
-                        })
+                        }
+                        return
                     }
-                    
                 }
+                
                 let methodFunction = actions[method]
                 if( ! methodFunction ) {
                     if( debug ) console.error("ERROR\tunknown method", method)
@@ -134,4 +147,11 @@ export default function createServer() {
 
 
 // x-forwarded-for, behind an Nginx reverse proxy
-let ipAddress = ws =>  ws.upgradeReq.headers['x-forwarded-for'] || ws.upgradeReq.connection.remoteAddress
+let ipAddress = ws => {
+    try {
+        return (ws.upgradeReq && (ws.upgradeReq.headers['x-forwarded-for']) ||
+            ws.upgradeReq.connection.remoteAddress)
+    }catch(e) {
+        return
+    }
+}

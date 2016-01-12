@@ -39,6 +39,8 @@ describe('Wallet Tests', () => {
     // Delete wallet before each test, and reset for the next test
     beforeEach(()=> deleteWallet().then(()=> initWallet()))
     
+    // after(()=> ws_rpc.close())
+    
     it('Server', done => {
         
         wallet.useBackupServer(remote_url)
