@@ -128,7 +128,7 @@ export default class WebSocketRpc {
     */
     request(id, method, params) {
         if(SOCKET_DEBUG)
-            console.log("[WebSocketRpc] ----- call -----> id:", id, "\t", method, "\t", params);
+            console.log("[WebSocketRpc] ----- call ---- >", id, method, params);
         
         return this.connect_promise.then(()=> {
             return new Promise( (resolve, reject) => {
@@ -152,7 +152,7 @@ export default class WebSocketRpc {
     /** @private */
     listener(response) {
         if(SOCKET_DEBUG)
-            console.log("[WebSocketRpc] <--- reply ------", response);
+            console.log("[WebSocketRpc] <--- reply ---- <", response.id, response);
         
         let sub = false,
             callback = null;

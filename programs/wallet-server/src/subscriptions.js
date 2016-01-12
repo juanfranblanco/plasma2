@@ -42,13 +42,20 @@ export function unsubscribe(method, subscribe_key, unsubscribe_id, unknown) {
 
 export function notify(subscribe_key, method, params) {
     let keys = subscriptions.get(method)
-    if( ! keys ) return
+    if( ! keys ) {
+        console.log(">>> subscriptions no method", method)
+        return
+    }
     let subsription_map = keys.get(subscribe_key)
-    if( ! subsription_map ) return
+    if( ! subsription_map ) {
+        console.log(">>> subscriptions no subscribe_key", subscribe_key)
+        return
+    }
     subsription_map.forEach( (ws, subscription_id) => {
+        console.log(">>> subscriptions notify", subscription_id, subscribe_key, method, params)
         ws.send(JSON.stringify({
             method: "notice",
             params: [subscription_id, params]
-        })
+        }))
     })
 }

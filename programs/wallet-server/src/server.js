@@ -24,7 +24,6 @@ const ratelimitConfig = {
     max: npm_package_config_rest_ip_requests_per_hour
 }
 
-
 let sockets = Set()
 
 export default function createServer() {

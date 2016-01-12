@@ -215,7 +215,8 @@ export default class Wallet {
     }
     
     fetchCallback(p) {
-        console.log("fetchCallback", p)
+        console.log(">>>> fetchCallback", p)
+        
     }
     
 }

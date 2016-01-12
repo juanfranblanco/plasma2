@@ -2,6 +2,7 @@ import crypto from "crypto"
 import {hash} from "@graphene/ecc"
 import {Wallet} from "./db/models.js"
 import {Signature, PrivateKey} from "@graphene/ecc"
+import * as subscriptions from "./subscriptions"
 
 /**
     @arg {string} encrypted_data - binary
@@ -30,20 +31,12 @@ export function createWallet(encrypted_data, signature, email_sha1) {
             // return only select fields from the wallet....
             // Do not return wallet.id, db sequences may change.
             .then( wallet =>{
-                walletNotify({public_key, encrypted_data, local_hash, created: wallet.createdAt})
+                walletNotify({public_key, encrypted_data, local_hash,
+                    created: wallet.createdAt, updated: wallet.updatedAt })
                 return { local_hash, created: wallet.createdAt }
             })
     })
 }
-
-
-export function walletNotify(wallet) {
-    wallet.encrypted_data = toBase64(wallet.encrypted_data)
-    ws_rpc.notify("fetchWallet", wallet.public_key, wallet)
-}
-var toBase64 = data => data == null ? data :
-    data["toBuffer"] ? data.toBuffer().toString('base64') :
-    Buffer.isBuffer(data) ? data.toString('base64') : data
 
 /**
     @arg {Buffer} encrypted_data - binary
@@ -66,6 +59,8 @@ export function saveWallet(original_local_hash, encrypted_data, signature) {
         wallet.encrypted_data = encrypted_data
         wallet.local_hash = local_hash
         return wallet.save().then( wallet => {
+            walletNotify({public_key, encrypted_data, local_hash,
+                created: wallet.createdAt, updated: wallet.updatedAt })
             return { local_hash, updated: wallet.updatedAt }
         })
     })
@@ -99,6 +94,14 @@ export function changePassword({ original_local_hash, original_signature,
         wallet.local_hash = new_local_hash
         wallet.public_key = new_pubkey
         return wallet.save().then( wallet => {
+            
+            // Tell any original wallet listeners the wallet is gone
+            walletNotify({ public_key: original_pubkey, encrypted_data: null})
+            
+            walletNotify({
+                public_key: new_pubkey, encrypted_data: wallet.encrypted_data, local_hash: new_local_hash,
+                created: wallet.createdAt, updated: wallet.updatedAt })
+            
             return { local_hash: new_local_hash, updated: wallet.updatedAt }
         })
     })
@@ -111,8 +114,24 @@ export function deleteWallet({ local_hash, signature }) {
     let public_key = sig.recoverPublicKey(local_hash)
     if( ! sig.verifyHash(local_hash, public_key))
         return Promise.reject("signature_verify")
-    return Wallet.findOne({where: {public_key: public_key.toString()}}).then( wallet =>{
+    public_key = public_key.toString()
+    return Wallet.findOne({where: { public_key }}).then( wallet =>{
         if( ! wallet ) return "Not Found"
-        return wallet.destroy().then( ()=>"OK" )
+        return wallet.destroy().then( ()=>{
+            
+            // Tell any original wallet listeners the wallet is gone
+            walletNotify({ public_key, encrypted_data: null})
+            
+            return "OK"
+        })
     })
 }
+
+export function walletNotify(wallet) {
+    wallet.encrypted_data = toBase64(wallet.encrypted_data)
+    subscriptions.notify(wallet.public_key, "fetchWallet", wallet)
+}
+
+var toBase64 = data => data == null ? data :
+    data["toBuffer"] ? data.toBuffer().toString('base64') :
+    Buffer.isBuffer(data) ? data.toString('base64') : data
