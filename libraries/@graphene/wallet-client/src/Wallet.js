@@ -214,6 +214,10 @@ export default class Wallet {
         })
     }
     
+    fetchCallback(p) {
+        console.log("fetchCallback", p)
+    }
+    
 }
 
 /** Used to make level API requests (outside of this class)
@@ -247,7 +251,7 @@ function sync(private_key = this.private_key) {
         let pull = forcePull.bind(this)
         
         // get the most recent server wallet
-        var syncPromise = this.api.fetchWallet(public_key, remote_hash_buffer)
+        var syncPromise = this.api.fetchWallet(public_key, remote_hash_buffer, this.fetchCallback)
             .then( server_wallet =>{
             
             assert(/OK|No Content|Not Modified/.test(server_wallet.statusText))

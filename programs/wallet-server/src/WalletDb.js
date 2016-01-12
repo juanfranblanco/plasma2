@@ -29,9 +29,21 @@ export function createWallet(encrypted_data, signature, email_sha1) {
             signature: signature_buffer.toString('base64'), local_hash })
             // return only select fields from the wallet....
             // Do not return wallet.id, db sequences may change.
-            .then( wallet =>{ return { local_hash, created: wallet.createdAt } })
+            .then( wallet =>{
+                walletNotify({public_key, encrypted_data, local_hash, created: wallet.createdAt})
+                return { local_hash, created: wallet.createdAt }
+            })
     })
 }
+
+
+export function walletNotify(wallet) {
+    wallet.encrypted_data = toBase64(wallet.encrypted_data)
+    ws_rpc.notify("fetchWallet", wallet.public_key, wallet)
+}
+var toBase64 = data => data == null ? data :
+    data["toBuffer"] ? data.toBuffer().toString('base64') :
+    Buffer.isBuffer(data) ? data.toString('base64') : data
 
 /**
     @arg {Buffer} encrypted_data - binary

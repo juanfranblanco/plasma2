@@ -74,7 +74,7 @@ export default class WebSocketRpc {
         }
         
         // Wrap parameters, send the subscription callback ID to the server
-        params = { subscribe_id: this.current_callback_id, params }
+        params = { subscribe_id: this.current_callback_id, subscribe_key, params }
         return this.request(this.current_callback_id, method, params)
     }
     
@@ -109,13 +109,14 @@ export default class WebSocketRpc {
         }
         
         // Wrap parameters, send the subscription ID to the server
-        params = { unsubscribe_id: subscription_id, params }
+        params = { unsubscribe_id: subscription_id, subscribe_key, params }
         return this.request(this.current_callback_id, method, params)
     }
     
     close() {
-        if( Object.keys(this.subscriptions) !== 0 )
-            console.error("WARN: close called with active subscriptions", this.subscriptions)
+        if( Object.keys(this.subscriptions).length !== 0 )
+            console.error("WARN: close called with active subscriptions",
+                Object.keys(this.subscriptions).length)
         
         this.web_socket.close()
     }
@@ -161,13 +162,18 @@ export default class WebSocketRpc {
             response.id = response.params[0];
         }
 
-        if ( ! sub) {
-            callback = this.callbacks[response.id];
-        } else {
+        if ( sub ) {
             callback = this.subscriptions[response.id].callback;
+        } else {
+            callback = this.callbacks[response.id];
         }
 
-        if (callback && ! sub) {
+        if (callback && sub) {
+            
+            callback(response.params[1]);
+        
+        } else if (callback && ! sub) {
+            
             if (response.error) {
                 callback.reject(response.error);
             } else {
@@ -179,9 +185,7 @@ export default class WebSocketRpc {
                 delete this.subscriptions[this.unsub[response.id]];
                 delete this.unsub[response.id];
             }
-
-        } else if (callback && sub) {
-            callback(response.params[1]);
+            
         } else {
             console.log("Warning: unknown websocket response: ", response);
         }

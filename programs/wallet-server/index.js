@@ -1,2 +1,6 @@
 import createServer from "./src/server"
-createServer()
+try {
+    createServer()
+} catch(error) {
+    console.error("ERROR\tcreate server\t", error, 'stack', error.stack)
+}

@@ -7,6 +7,8 @@ import createMiddleware from './middleware'
 import * as actions from './actions'
 import { wsResponse, wsReplySugar } from "./ws-api"
 import {checkToken} from "@graphene/time-token"
+import { Set, Map } from "immutable"
+import * as subscriptions from "./subscriptions"
 
 const {
     /** Server listen port */
@@ -21,6 +23,9 @@ const ratelimitConfig = {
     duration: 60 * 60 * 1000, // 1 hour
     max: npm_package_config_rest_ip_requests_per_hour
 }
+
+
+let sockets = Set()
 
 export default function createServer() {
     const createStoreWithMiddleware = applyMiddleware( createMiddleware() )(createStore)
@@ -44,17 +49,24 @@ export default function createServer() {
         duration: ratelimitConfig.duration/1000/60+' min'
     })
     app.use(limit(ratelimitConfig))
-    // app.get('/wallet_v1', function(req, res, next){
-    //     // console.log('GET Not Supported');
-    //     wsResponse(res, id, "Not Supported")
-    //     res.end()
-    // })
     
-    app.ws("/wallet_v1", (ws, req) => {
-        console.log('New socket')
-        ws.on('open', function open() {
-            console.log("open")
+    app.get('/wallet_v1', function(req, res, next){
+        console.log('GET Not Supported', "IP", ipAddress(ws));
+        wsResponse(res, 0, "Not Supported")
+        res.end()
+    })
+    
+    app.ws("/wallet_v1", (ws, req) => { try {
+        
+        sockets = sockets.add(ws)
+        console.log('>>>> NEW SOCKET', "Total sockets", sockets.count())
+        
+        ws.on('close', ()=> {
+            sockets = sockets.remove(ws)
+            subscriptions.remove(ws)
+            console.log(">>>> CLOSE", "IP", ipAddress(ws), 'Remaining sockets', sockets.count(), "subscriptions", subscriptions.count())
         })
+        
         ws.on('message', msg => {
             let id = 0
             try {
@@ -62,13 +74,30 @@ export default function createServer() {
 
                 id = payload.id
                 let { method, params } = payload
-                let { subscribe_id, unsubscribe_id } = params
+                let { subscribe_id, unsubscribe_id, subscribe_key } = params
                 // console.log("subscription", subscribe_id, unsubscribe_id )
                 
                 // un-wrap parameters
-                if( subscribe_id != null || unsubscribe_id != null)
+                if( subscribe_id != null || unsubscribe_id != null) {
+                    
+                    if( ! subscribe_key ) {
+                        wsResponse(ws, id, "Bad Request", { error: "Missing subscribe_key" })
+                        return
+                    }
+                    
                     params = params.params
-                
+                    if( subscribe_id != null ) {
+                        subscriptions.subscribe(ws, method, subscribe_key, subscribe_id, dup => {
+                            wsResponse(ws, id, "Bad Request", { error: "Already subscribed" })
+                        })
+                    }
+                    if( unsubscribe_id != null ) {
+                        subscriptions.unsubscribe(method, subscribe_key, subscribe_id, unknown => {
+                            wsResponse(ws, id, "Bad Request", { error: "Unknown unsubscription" })
+                        })
+                    }
+                    
+                }
                 let methodFunction = actions[method]
                 if( ! methodFunction ) {
                     if( debug ) console.error("ERROR\tunknown method", method)
@@ -91,7 +120,7 @@ export default function createServer() {
                 console.error("ERROR\tserver\t", error, 'stack', error.stack)
             }} 
         })
-    })
+    } catch(error) { console.error("ERROR\tserver\t", error, 'stack', error.stack) } })
     
     let server = app.listen(npm_package_config_rest_port)
     server.on('listening', ()=>{ console.log('Server listening port %d', npm_package_config_rest_port) })
@@ -105,3 +134,5 @@ export default function createServer() {
 }
 
 
+// x-forwarded-for, behind an Nginx reverse proxy
+let ipAddress = ws =>  ws.upgradeReq.headers['x-forwarded-for'] || ws.upgradeReq.connection.remoteAddress

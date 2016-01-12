@@ -28,15 +28,15 @@ const signature_key1_enc2 = Signature.signBufferSha256(local_hash2, private_key)
 describe('Wallet API client', () => {
 
     /** Ignore, this is clean up from a failed run */
-    before( ()=>{
-        var p1 = deleteWallet("", "data")
-        var p2 = deleteWallet("2", "data2")
-        return Promise.all([ p1, p2 ])
-            .catch(error =>{
-                if(error.res.statusText !== "Not Found" && error.res.statusText !== "OK")
-                    throw error
-            })
-    })
+    before( ()=> Promise
+        .all([ deleteWallet("", "data"), deleteWallet("2", "data2") ])
+        .catch(error =>{
+            if(error.res.statusText !== "Not Found" && error.res.statusText !== "OK")
+                throw error
+        })
+    )
+    
+    after(()=> ws_rpc.close())
 
     it('createWallet', ()=> {
         return api.createWallet(code, encrypted_data, signature)

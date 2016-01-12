@@ -64,7 +64,7 @@ export default class WalletApi {
         
         @arg {Buffer|string} [local_hash = null] - binary sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
         
-        @arg {function} fetchCallback - Called if this wallet is updated.  The same object format as the returned promise is used.  This happens anytime the wallet is updated by another client (user may be logged into several devices).
+        @arg {function} [fetchCallback = null] - Called if this wallet is updated.  The same object format as the returned promise is used.  This happens anytime the wallet is updated by another client (user may be logged into several devices).
         
         @return {Promise} {
             status: 200, statusText: "OK",
@@ -73,15 +73,19 @@ export default class WalletApi {
             updated: "{Date}"
         } || {status: 304, statusText: "Not Modified" }
     */
-    fetchWallet(public_key, local_hash, fetchCallback) {
+    fetchWallet(public_key, local_hash, fetchCallback = null) {
         public_key = toString(req(public_key, 'public_key'))
         local_hash = toBinary(local_hash)
         let params = { public_key, local_hash }
-        return this.ws_rpc.subscribe("fetchWallet", params, fetchCallback, public_key) 
+        
+        return fetchCallback ?
+            this.ws_rpc.subscribe("fetchWallet", params, fetchCallback, public_key) :
+            this.ws_rpc.call("fetchWallet", params)
             .then( json => {
-            let { status, statusText, updated, created, local_hash, encrypted_data } = json
+            let { status, statusText, updated, created, local_hash, public_key, encrypted_data } = json
             assert(/OK|No Content|Not Modified/.test(statusText), '/OK|No Content|Not Modified/.test(statusText)')
             if(statusText === "OK") {
+                assert(public_key, 'public_key')
                 assert(encrypted_data, 'encrypted_data')
                 assert(local_hash, 'local_hash')
                 assert(created, 'created')
