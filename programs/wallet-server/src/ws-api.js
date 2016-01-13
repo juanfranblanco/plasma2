@@ -16,7 +16,6 @@ export function wsResponse(ws, id, statusText, data = {}) {
     response.id = id
     if( ws.websocket && ws.subscription_id != null ) {
         // Send a subscription reply
-        console.log("ws.websocket.send", ws.websocket.send)
         ws.websocket.send(JSON.stringify({
             method: "notice",
             params: [ws.subscription_id, response.result || response.error]

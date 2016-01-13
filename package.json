@@ -28,6 +28,7 @@
     "lzma": "^2.2.3",
     "secp256k1": "^2.0.7",
     "secure-random": "^1.1.1",
+    "localStorage": "^1.0.3",
     "websocket": "^1.0.18",
     "ReconnectingWebSocket": "git+https://github.com/joewalnes/reconnecting-websocket.git"
   },

@@ -176,9 +176,18 @@ export default class WebSocketRpc {
         }
 
         if ( sub ) {
-            callback = this.subscriptions[response.id].callback;
+            let subscription = this.subscriptions[response.id]
+            if( ! subscription) {
+                console.log("ERROR\tWebSocketRpc\tlistener\tUnknown subscription", response.id)
+                return
+            }
+            callback = subscription.callback;
         } else {
             callback = this.callbacks[response.id];
+            if( ! callback) {
+                console.log("ERROR\tWebSocketRpc\tlistener\tUnknown callback", response.id)
+                return
+            }
         }
 
         if (callback && sub) {
@@ -199,8 +208,6 @@ export default class WebSocketRpc {
                 delete this.unsub[response.id];
             }
             
-        } else {
-            console.log("Warning: unknown websocket response: ", response);
         }
     }
 

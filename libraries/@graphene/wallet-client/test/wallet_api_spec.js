@@ -58,21 +58,32 @@ describe('Wallet API client', () => {
     it('fetchWallet (Recovery)', ()=> {
         let local_hash = null // recovery, the local_hash is not known
         return new Promise( resolve => {
-            resolve(api.fetchWallet(public_key, local_hash, json => {
+            api.fetchWallet(public_key, local_hash, json => {
                 assertRes(json, "OK")
                 assert(json.encrypted_data, encrypted_data.toString('base64'), 'encrypted_data')
-            }))
+                resolve( api.fetchWalletUnsubscribe(public_key) )
+            })
         })
     })
 
     it('fetchWallet (Not Modified)', ()=> {
-        return api.fetchWallet(public_key, local_hash)
-            .then( json => assertRes(json, 'Not Modified'))
+        return new Promise( resolve => {
+            api.fetchWallet(public_key, local_hash, json => {
+                assertRes(json, 'Not Modified')
+                assert(json.encrypted_data, encrypted_data.toString('base64'), 'encrypted_data')
+                resolve(api.fetchWalletUnsubscribe(public_key))
+            })
+        })
     })
     
     it('fetchWallet (Not Exist)', ()=> {
-        return api.fetchWallet(public_key2, local_hash2)
-            .then( json => assertRes(json, 'No Content'))
+        return new Promise( resolve => {
+            api.fetchWallet(public_key2, local_hash2, json => {
+                assertRes(json, 'No Content')
+                assert(json.encrypted_data, encrypted_data.toString('base64'), 'encrypted_data')
+                resolve( api.fetchWalletUnsubscribe(public_key))
+            })
+        })
     })
     
     it('saveWallet', ()=> {

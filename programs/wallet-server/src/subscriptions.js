@@ -23,6 +23,7 @@ export function remove(ws) {
 */
 export function subscribe(ws, method, subscribe_key, subscribe_id) {
     let success = false
+    subscribe_id = String(subscribe_id)
     subscriptions = subscriptions
         .updateIn([method, subscribe_key], Map(), subscribe_map =>{
             if( subscribe_map.has(subscribe_id) ) {
@@ -36,6 +37,7 @@ export function subscribe(ws, method, subscribe_key, subscribe_id) {
 
 export function unsubscribe(method, subscribe_key, unsubscribe_id) {
     let success = false
+    unsubscribe_id = String(unsubscribe_id)
     subscriptions = subscriptions
         .updateIn([method, subscribe_key], Map(), subscribe_map =>{
             if( ! subscribe_map.has(unsubscribe_id) ) {
