@@ -66,7 +66,7 @@ export default class WebSocketRpc {
     subscribe(method, params, subscribe_key = { method, params }, callback = null) {
         
         let callback_id = ++ this.current_callback_id
-        let subscribe_id = ++ this.current_callback_id
+        let subscribe_id = this.getSubscriptionId(method, subscribe_key) || ++ this.current_callback_id
         
         this.subscriptions[subscribe_id] = {
             callback,

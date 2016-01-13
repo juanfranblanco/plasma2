@@ -68,6 +68,7 @@ export default function createServer() {
         
         ws.on('message', msg => {
             let id = 0
+            let wsType = ws // standared non-subscription reply
             try {
                 let payload = JSON.parse(msg)
 
@@ -78,7 +79,7 @@ export default function createServer() {
                 if( subscribe_id != null || unsubscribe_id != null) {
                     
                     if( ! subscribe_key ) {
-                        wsResponse(ws, id, "Bad Request", { error: "Missing subscribe_key" })
+                        wsResponse(wsType, id, "Bad Request", { error: "Missing subscribe_key" })
                         return
                     }
                     
@@ -86,25 +87,24 @@ export default function createServer() {
                     params = params.params
                     
                     if( subscribe_id != null ) {
-                        if( subscriptions.subscribe(ws, method, subscribe_key, subscribe_id)) {
+                        if( subscriptions.subscribe(wsType, method, subscribe_key, subscribe_id)) {
                             
                             // Send the OK that the subscription was successful
-                            wsResponse(ws, id, "OK")
+                            wsResponse(wsType, id, "OK")
                             
-                            // Setup the first subscription reply below (this format is detected in ws-api)
-                            ws = { socket: ws, subscription_id: subscribe_id }
+                            // Setup subscription reply (this format is detected in ws-api)
+                            wsType = { websocket: ws, subscription_id: subscribe_id }
                             
                             // Do NOT return, allow the subscription call to execute below
                         } else {
-                            wsResponse(ws, id, "Bad Request", { error: "Already subscribed" })
+                            wsResponse(wsType, id, "Bad Request", { error: "Already subscribed" })
                             return
                         }
-                    }
-                    if( unsubscribe_id != null ) {
+                    } else if( unsubscribe_id != null ) {
                         if( subscriptions.unsubscribe(method, subscribe_key, unsubscribe_id)) {
-                            wsResponse(ws, id, "OK")
+                            wsResponse(wsType, id, "OK")
                         } else {
-                            wsResponse(ws, id, "Bad Request", { error: "Unknown unsubscription" })
+                            wsResponse(wsType, id, "Bad Request", { error: "Unknown unsubscription" })
                         }
                         return
                     }
@@ -113,21 +113,21 @@ export default function createServer() {
                 let methodFunction = actions[method]
                 if( ! methodFunction ) {
                     if( debug ) console.error("ERROR\tunknown method", method)
-                    wsResponse(ws, id, "Bad Request", { error: "Unknown method" })
+                    wsResponse(wsType, id, "Bad Request", { error: "Unknown method" })
                     return
                 }
                 let action = methodFunction( params )
                 console.log("Message", method, action)
                 if( ! action || ! store.dispatch ) {
-                    wsResponse( ws, id, "OK" )
+                    wsResponse( wsType, id, "OK" )
                     return
                 }
                 //  Allow the reducer to reply with a message
-                wsReplySugar( ws, id, action ) // Add a reply function to "action"
+                wsReplySugar( wsType, id, action ) // Add a reply function to "action"
                 store.dispatch( action )
             } catch( error ) { try {
                 console.error("ERROR\tserver\t", error, 'stack', error.stack)
-                wsResponse(ws, id, "Bad Request", typeof error === "string" ? {error} : undefined)
+                wsResponse(wsType, id, "Bad Request", typeof error === "string" ? {error} : undefined)
             } catch( error ) {
                 console.error("ERROR\tserver\t", error, 'stack', error.stack)
             }} 

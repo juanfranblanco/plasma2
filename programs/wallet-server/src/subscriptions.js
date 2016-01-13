@@ -63,11 +63,18 @@ export function getSubscriptionMap(method, subscribe_key) {
 
 export function notify(method, subscribe_key, params) {
     let subsription_map = getSubscriptionMap(method, subscribe_key)
+    if( ! subsription_map )
+        return
+    
     subsription_map.forEach( (ws, subscription_id) => {
         console.log(">>> subscriptions notify", subscription_id, subscribe_key, method, params)
-        ws.send(JSON.stringify({
-            method: "notice",
-            params: [subscription_id, params]
-        }))
+        try {
+            ws.send(JSON.stringify({
+                method: "notice",
+                params: [subscription_id, params]
+            }))
+        } catch( error ) {
+            console.log("ERROR\tsubscriptions\tnotify", error, "stack", error.stack)
+        }
     })
 }

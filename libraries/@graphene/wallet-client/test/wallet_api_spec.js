@@ -57,11 +57,12 @@ describe('Wallet API client', () => {
 
     it('fetchWallet (Recovery)', ()=> {
         let local_hash = null // recovery, the local_hash is not known
-        return api.fetchWallet(public_key, local_hash)
-            .then( json => {
+        return new Promise( resolve => {
+            resolve(api.fetchWallet(public_key, local_hash, json => {
                 assertRes(json, "OK")
                 assert(json.encrypted_data, encrypted_data.toString('base64'), 'encrypted_data')
-            })
+            }))
+        })
     })
 
     it('fetchWallet (Not Modified)', ()=> {
