@@ -45,6 +45,23 @@ export default class WebSocketRpc {
         this.unsub = {};
     }
     
+    close() {
+        return new Promise( resolve => {
+            this.web_socket.onclose = () => {
+                
+                if( Object.keys(this.subscriptions).length !== 0 )
+                    console.error("WARN: close called with active subscriptions",
+                        Object.keys(this.subscriptions).length)
+                
+                if(this.update_rpc_connection_status_callback)
+                    this.update_rpc_connection_status_callback("closed");
+                
+                resolve()
+            };
+            this.web_socket.close()
+        })
+    }
+    
     /**
         @arg {string} method - API method name
         @arg {object} params - JSON serilizable parameters
@@ -124,14 +141,6 @@ export default class WebSocketRpc {
         // Wrap parameters, send the subscription ID to the server
         params = { unsubscribe_id: subscription_id, subscribe_key, params }
         return this.request(this.current_callback_id, method, params)
-    }
-    
-    close() {
-        if( Object.keys(this.subscriptions).length !== 0 )
-            console.error("WARN: close called with active subscriptions",
-                Object.keys(this.subscriptions).length)
-        
-        this.web_socket.close()
     }
     
     /**

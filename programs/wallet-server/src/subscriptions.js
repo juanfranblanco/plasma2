@@ -2,8 +2,11 @@ import { Map } from "immutable"
 
 let subscriptions = Map()
 
-export var count = ()=> subscriptions.count()
-
+export var count = ()=> {
+    let cnt = 0
+    subscriptions.forEach( val => val.forEach( ()=> cnt++ ))
+    return cnt
+}
 export function remove(ws) {
     subscriptions = subscriptions
         .filterNot(

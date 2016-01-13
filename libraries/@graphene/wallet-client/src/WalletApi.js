@@ -69,12 +69,11 @@ export default class WalletApi {
         @typedef {callbackResult} {
             status: 200, statusText: "OK",
             encrypted_data: "base64 string encrypted_data",
+            local_hash: "base64 sha256  encrypted_data",
             created: "{Date}",
             updated: "{Date}"
         } || {status: 304, statusText: "Not Modified" }
-        @return {Promise} object - {
-            status: 200, statusText: "OK"
-        }
+        @return {Promise} object - { status: 200, statusText: "OK" }
     */
     fetchWallet(public_key, local_hash, callback = null) {
         public_key = toString(req(public_key, 'public_key'))
@@ -82,19 +81,6 @@ export default class WalletApi {
         let params = { public_key, local_hash }
         
         return this.ws_rpc.subscribe("fetchWallet", params, public_key, callback)
-        //     .then( json => {
-        //     let { status, statusText, updated, created, local_hash, public_key, encrypted_data } = json
-        //     assert(/OK|No Content|Not Modified/.test(statusText), '/OK|No Content|Not Modified/.test(statusText)')
-        //     if(statusText === "OK") {
-        //         assert(public_key, 'public_key')
-        //         assert(encrypted_data, 'encrypted_data')
-        //         assert(local_hash, 'local_hash')
-        //         assert(created, 'created')
-        //         assert(updated, 'updated')
-        //         return {status, statusText, updated, created, local_hash, encrypted_data}
-        //     }
-        //     return {status, statusText}
-        // })
     }
     
     /**

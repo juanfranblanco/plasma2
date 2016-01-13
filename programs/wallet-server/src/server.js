@@ -43,11 +43,11 @@ export default function createServer() {
     // })
 
     // Limit number of requests per hour by IP
-    console.log("Limit by IP address", {
-        max: ratelimitConfig.max,
-        duration: ratelimitConfig.duration/1000/60+' min'
-    })
-    app.use(limit(ratelimitConfig))
+    // console.log("Limit by IP address", {
+    //     max: ratelimitConfig.max,
+    //     duration: ratelimitConfig.duration/1000/60+' min'
+    // })
+    // app.use(limit(ratelimitConfig))
     
     app.get('/wallet_v1', function(req, res, next){
         console.log('GET Not Supported', "IP", ipAddress(ws));

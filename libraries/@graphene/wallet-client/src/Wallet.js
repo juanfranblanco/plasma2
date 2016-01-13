@@ -1,5 +1,5 @@
 
-import { fromJS, is } from "immutable"
+import { fromJS } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
 import { PrivateKey, Signature, hash } from "@graphene/ecc"
 import WebSocketRpc from "./WebSocketRpc"
@@ -64,17 +64,23 @@ export default class Wallet {
         this.sync = sync.bind(this)
         this.signHash = signHash.bind(this) // low level API requests (outside of this class)
         this.updateWallet = updateWallet.bind(this)
+        this.localHash = localHash.bind(this)
     }
     
-    /** Configure the wallet to look to a remote host to load and/or save your wallet.
+    /**
+        Configure the wallet to run with (provide a URL) or without (pass in null) a wallet backup server.
     
         Calling this method does not immediately trigger any action on the server.
         
-        @arg {string} [ remote_url = null ] - By passing null into this call the wallet will stop synchronizing its state with the remote server.
-        @return Promise - always resolves, added for convenience
+        Every call to this method will disconnect leaving it to the API to the re-connect (if applicable).
+        
+        @arg {string} [ remote_url ] - Provide a URL to start synchronizing, null or undefined to stop synchronizing
+        @return Promise - resolve after close or just resolve immediately
     */
-    useBackupServer( remote_url ) {
-        if(remote_url) {
+    useBackupServer( remote_url = this.storage.state.get("remote_url")) {
+        // close (if applicable)
+        let close = this.ws_rpc ? this.ws_rpc.close() : null
+        if(remote_url !== null) {
             this.ws_rpc = new WebSocketRpc(remote_url)
             this.api = new WalletApi(this.ws_rpc)
         } else {
@@ -82,7 +88,7 @@ export default class Wallet {
             this.api = null
         } 
         this.storage.setState({ remote_url })
-        return Promise.resolve()
+        return Promise.resolve(close)
     }
     
     /**
@@ -167,9 +173,22 @@ export default class Wallet {
         })
     }
     
-    /** This API call will remove the wallet state from memory. */
+    /**
+        This API call will lock, remove unencrypted wallet from memory, and unsubscribe to wallet updates (if a remote copy it kept).
+        @return {Promise} resolve immediately or after a successful unsubscribe
+    */
     logout() {
+        console.log("logout");
+        this.wallet_object = null
+        let public_key = this.private_key ? this.private_key.toPublicKey() : null
         this.private_key = null
+        let unsub
+        if( public_key && this.api ) {
+            unsub = this.api.fetchWalletUnsubscribe(public_key)
+        } else {
+            unsub = Promise.resolve()
+        }
+        return unsub.then(()=> this.useBackupServer())
     }
     
     /**
@@ -197,7 +216,7 @@ export default class Wallet {
             if( ! this.private_key )
                 throw new Error("login")
             
-            if(is(this.wallet_object, wallet_object)) {
+            if(this.wallet_object === wallet_object) {
                 resolve()
                 return
             }
@@ -226,75 +245,95 @@ function sync(private_key = this.private_key) {
     // Wallet is locked OR it is an offline wallet
     if( ! private_key || ! this.api )
         return Promise.resolve()
-    
     let remote_hash = this.storage.state.get("remote_hash")
-    let public_key = private_key.toPublicKey()
-    
-    return fetchWallet.bind(this)(public_key, remote_hash)
+
+    return fetchWallet.bind(this)(private_key, remote_hash)
 }
 
-function fetchWallet(public_key, local_hash) {
+/** Subscribe or skip fetch if already subscribed */
+function fetchWallet(private_key, local_hash) {
+    let state = this.storage.state
+    let public_key = private_key.toPublicKey()
+    let remote_copy = state.get("remote_copy")
+
+    let callback = fetchWalletCallback.bind(this)
     
-    if( this.ws_rpc.getSubscriptionId("fetchWallet", public_key) ) {
-        if(this.wallet_object.get("remote_hash") === local_hash)
-            return Promise.resolve(this.wallet_object.merge({statusText: "Not Modified"}))
-        else
-            return Promise.resolve(this.wallet_object.merge({statusText: "OK"}))
+    if( this.ws_rpc.getSubscriptionId("fetchWallet", public_key.toString()) ) {
+        
+        // We have a subscription so should be up-to-date...
+        let remote_hash = state.get("remote_hash")
+        let statusText = remote_hash == null ? "No Content" :
+            remote_hash === this.localHash() ? "No Modified" : "OK"
+        
+        // Mimic a response object from the server
+        let server_wallet = {
+            statusText,
+            local_hash: state.get("remote_hash"),
+            encrypted_data: state.get("encrypted_wallet"),
+            updated: state.get("remote_updated_date"),
+            created: state.get("remote_created_date")
+        }
+        return callback(server_wallet, private_key)
     }
     
+    // No subscription, fetch and subscribe to future wallet updates
     let local_hash_buffer = local_hash ? new Buffer(local_hash, 'base64') : null
-    
-    return new Promise( (resolve, reject) => {
-        resolve(this.api.fetchWallet(public_key, local_hash_buffer, server_wallet =>{
-            
-            assert(/OK|No Content|Not Modified/.test(server_wallet.statusText))
-            
-            let state = this.storage.state
-            let push = forcePush.bind(this)
-            let pull = forcePull.bind(this)
-            let has_server_wallet = /OK|Not Modified/.test(server_wallet.statusText)
-            let encrypted_wallet = state.get("encrypted_wallet")
-            let has_local_wallet = encrypted_wallet != null
-            
-            if( ! has_server_wallet && ! has_local_wallet )
-                return
-            
-            if( ! has_server_wallet )
-                return push(has_server_wallet, private_key)
-            
-            if( ! has_local_wallet )
-                return pull(server_wallet, private_key)
-            
-            // We have 2 wallets (both server and local)
-            
-            let current_hash = hash.sha256(new Buffer(encrypted_wallet, 'base64'))
-            
-            // Has local modifications since last backup
-            let dirty = current_hash.toString('base64') !== remote_hash
-            
-            // No changes locally or remote
-            if( ! dirty &&  server_wallet.statusText === "Not Modified")
-                return
-            
-            // Push local changes (no conflict)
-            if( dirty && server_wallet.statusText === "Not Modified" )
-                return push(has_server_wallet, private_key)
-            
-            if( ! dirty && server_wallet.statusText === "OK") {
-                // The server had this copy of this wallet when another device changed it (meaning that the other device must have been in sync with the wallet when the change was made).  It is safe to pull this wallet and overwrite the local version.
-                return pull(server_wallet, private_key)
-            }
-            
-            assert(dirty, 'Expecting a locally modified wallet')
-            assert(server_wallet.statusText === "OK", 'Expecting a remotely modified wallet')
-            
-            // An internal wallet comparison is required to resolve
-            throw "conflict: both server and local wallet modified"
-            
-        }))
+    return new Promise( resolve => {
+        let fetch = this.api.fetchWallet(public_key, local_hash_buffer, server_wallet => {
+            resolve(fetch.then(()=> callback(server_wallet, private_key) ))
+        })
     })
 }
 
+function fetchWalletCallback(server_wallet, private_key) {
+    return new Promise( (resolve, reject) => {
+        assert(/OK|No Content|Not Modified/.test(server_wallet.statusText))
+        
+        let state = this.storage.state
+        let push = forcePush.bind(this)
+        let pull = forcePull.bind(this)
+        
+        let has_server_wallet = /OK|Not Modified/.test(server_wallet.statusText)
+        let encrypted_wallet = state.get("encrypted_wallet")
+        let has_local_wallet = encrypted_wallet != null
+        
+        if( ! has_server_wallet && ! has_local_wallet )
+            resolve()
+        
+        if( ! has_server_wallet )
+            resolve( push(has_server_wallet, private_key) )
+        
+        if( ! has_local_wallet )
+            resolve( pull(server_wallet, private_key) )
+        
+        // We have 2 wallets (both server and local)
+        
+        let current_hash = hash.sha256(new Buffer(encrypted_wallet, 'base64'))
+        
+        // Has local modifications since last backup
+        let remote_hash = state.get("remote_hash")
+        let dirty = current_hash.toString('base64') !== remote_hash
+        
+        // No changes locally or remote
+        if( ! dirty &&  server_wallet.statusText === "Not Modified")
+            resolve()
+        
+        // Push local changes (no conflict)
+        if( dirty && server_wallet.statusText === "Not Modified" )
+            resolve( push(has_server_wallet, private_key) )
+        
+        if( ! dirty && server_wallet.statusText === "OK") {
+            // The server had this copy of this wallet when another device changed it (meaning that the other device must have been in sync with the wallet when the change was made).  It is safe to pull this wallet and overwrite the local version.
+            resolve( pull(server_wallet, private_key) )
+        }
+        
+        assert(dirty, 'Expecting a locally modified wallet')
+        assert(server_wallet.statusText === "OK", 'Expecting a remotely modified wallet')
+        
+        // An internal wallet comparison is required to resolve
+        throw "Conflict: both server and local wallet modified"
+    })
+}
 
 /** syncPull.bind(this, ...) 
     @private
@@ -415,6 +454,13 @@ function updateWallet(wallet_object, state = this.storage.state) {
 })
 }
 
+function localHash() {
+    let encrypted_data = this.storage.state.get("encrypted_data")
+    if( ! encrypted_data)
+        return
+    
+    return hash.sha256(encrypted_data).toString('base64')
+}
 
 /** Used to make level API requests (outside of this class)
 */
