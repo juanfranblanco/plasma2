@@ -100,7 +100,7 @@ export default class WalletApi {
             updated: {Date}, status: 200, statusText: "OK" }
     */
     saveWallet(original_local_hash, encrypted_data, signature) {
-        original_local_hash = toBinary(req(original_local_hash, 'original_local_hash'))
+        original_local_hash = toBase64(req(original_local_hash, 'original_local_hash'))
         encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
         signature = toBinary(req(signature, 'signature'))
         let params = { original_local_hash, encrypted_data, signature }
@@ -177,9 +177,9 @@ var toBinary = data => data == null ? data :
 //     typeof(data) === 'string' ? new Buffer(data, 'binary') :
 //     data["toBuffer"] ? data.toBuffer() : data
 // 
-// var toBase64 = data => data == null ? data :
-//     data["toBuffer"] ? data.toBuffer().toString('base64') :
-//     Buffer.isBuffer(data) ? data.toString('base64') : data
+var toBase64 = data => data == null ? data :
+    data["toBuffer"] ? data.toBuffer().toString('base64') :
+    Buffer.isBuffer(data) ? data.toString('base64') : data
 
 var toString = data => data == null ? data :
     data["toString"] ? data.toString() : data // PublicKey.toString()

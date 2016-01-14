@@ -71,8 +71,8 @@ export default function createServer() {
         console.log('>>>> NEW SOCKET', "Total sockets", sockets.count())
         
         ws.on('close', ()=> {
-            sockets = sockets.remove(ws)
             subscriptions.remove(ws)
+            sockets = sockets.remove(ws)
             console.log(">>>> CLOSE", "remaining sockets", sockets.count(),
                 "remaining subscriptions", subscriptions.count())
         })

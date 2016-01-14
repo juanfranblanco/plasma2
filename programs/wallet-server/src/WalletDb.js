@@ -43,7 +43,7 @@ export function createWallet(encrypted_data, signature, email_sha1, walletNotify
     @arg {string} signature - binary
 */
 export function saveWallet(original_local_hash, encrypted_data, signature, walletNotify) {
-    original_local_hash = new Buffer(original_local_hash, 'binary')
+    // original_local_hash = new Buffer(original_local_hash, 'base64')
     encrypted_data = new Buffer(encrypted_data, 'binary')
     let sig = Signature.fromBuffer(new Buffer(signature, 'binary'))
     let lh = hash.sha256(encrypted_data)
@@ -55,7 +55,8 @@ export function saveWallet(original_local_hash, encrypted_data, signature, walle
     let local_hash = lh.toString('base64')
     return Wallet.findOne({where: {public_key}}).then( wallet =>{
         if( ! wallet) return "Not Found"
-        if(wallet.local_hash !== original_local_hash.toString('base64')) return "Conflict"
+        console.log("Conflict?", wallet.local_hash, original_local_hash)
+        if(wallet.local_hash !== original_local_hash) return "Conflict"
         wallet.encrypted_data = encrypted_data
         wallet.local_hash = local_hash
         return wallet.save().then( wallet => {
