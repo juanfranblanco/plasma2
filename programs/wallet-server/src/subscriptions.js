@@ -61,6 +61,7 @@ export function notifyOther(ws, method, subscribe_key, params) {
         return
     
     ws_map.forEach( (ids, subscribe_ws) => {
+        
         // don't notify yourself
         if( ws === subscribe_ws )
             return
@@ -77,15 +78,18 @@ export function notifyOther(ws, method, subscribe_key, params) {
                 // need a better way to know when socket is closed
                 let socketClosed = error.toString() === "Error: not opened"
                 console.log("ERROR\tsubscriptions\tnotifyOther",
-                    socketClosed ? "socket closed" : "other error",
+                    socketClosed ? "<socket closed>" : "<other error>",
                     error, "stack", error.stack)
                 
                 // remove only when socket close error?
-                this.remove(ws) // error.toString() === Error: not opened
+                console.log(1);
+                remove(ws) // error.toString() === Error: not opened
+                console.log(2);
                 
                 return false // stop forEach
             }
         })
+        
     })
 }
 
@@ -102,16 +106,15 @@ export var count = ()=> {
 export function remove(ws) {
     subscriptions = subscriptions
         .filterNot( subscribe_key => subscribe_key
-        .filterNot( subscribe_ws => subscribe_ws
-        .filterNot( ids => {
-            let match = subscribe_ws === ws
-            // console.log("match,ids.keySeq().toJS()", match,ids.keySeq().toJS())
-            if( match && ! ids.isEmpty()) {
-                console.error("WARN\tsubscriptions\tWebSocket closed with active subscription(s)", ids.keySeq().toJS())
-            }
-            return match
-        }
-        ).isEmpty()
-        ).isEmpty()
-    )
+            .filterNot( subscribe_ws => subscribe_ws
+                .filterNot( ids => {
+                    let match = subscribe_ws === ws
+                    // console.log("match,ids.keySeq().toJS()", match,ids.keySeq().toJS())
+                    if( match && ! ids.isEmpty()) {
+                        console.error("WARN\tsubscriptions\tWebSocket closed with active subscription(s)", ids.keySeq().toJS())
+                    }
+                    return match
+                }).isEmpty()
+            ).isEmpty()
+        )
 }

@@ -62,9 +62,8 @@ export default class Wallet {
         }
         // semi-private method bindings, these are used for testing
         this.sync = sync.bind(this)
-        this.signHash = signHash.bind(this) // low level API requests (outside of this class)
         this.updateWallet = updateWallet.bind(this)
-        this.localHash = localHash.bind(this)
+        this.currentHash = currentHash.bind(this)
     }
     
     /**
@@ -222,15 +221,14 @@ export default class Wallet {
             }
             
             wallet_object = fromJS(wallet_object)
-            let encryption_pubkey = this.storage.state.get("encryption_pubkey")
+            // let encryption_pubkey = this.storage.state.get("encryption_pubkey")
             
             resolve(
-            encrypt(wallet_object, encryption_pubkey).then( encrypted_wallet => {
-                return this.updateWallet(wallet_object).catch( error => {
-                    console.log('ERROR setState', error, 'stack', error.stack)
+                this.updateWallet(wallet_object).catch( error => {
+                    console.log('ERROR\tWallet\tsetState', error, 'stack', error.stack)
                     throw error
                 })
-            }))
+            )
         })
     }
     
@@ -263,7 +261,7 @@ function fetchWallet(private_key, local_hash) {
         // We have a subscription so should be up-to-date...
         let remote_hash = state.get("remote_hash")
         let statusText = remote_hash == null ? "No Content" :
-            remote_hash === this.localHash() ? "No Modified" : "OK"
+            remote_hash === this.currentHash().toString('base64') ? "Not Modified" : "OK"
         
         // Mimic a response object from the server
         let server_wallet = {
@@ -287,7 +285,8 @@ function fetchWallet(private_key, local_hash) {
 
 function fetchWalletCallback(server_wallet, private_key) {
     return new Promise( (resolve, reject) => {
-        assert(/OK|No Content|Not Modified/.test(server_wallet.statusText))
+
+        assert(/OK|No Content|Not Modified/.test(server_wallet.statusText), server_wallet.statusText)
         
         let state = this.storage.state
         let push = forcePush.bind(this)
@@ -307,7 +306,6 @@ function fetchWalletCallback(server_wallet, private_key) {
             resolve( pull(server_wallet, private_key) )
         
         // We have 2 wallets (both server and local)
-        
         let current_hash = hash.sha256(new Buffer(encrypted_wallet, 'base64'))
         
         // Has local modifications since last backup
@@ -395,11 +393,12 @@ function updateWallet(wallet_object, state = this.storage.state) {
         throw new Error("login")
     
     let pubkey = state.get("encryption_pubkey")
+    let remote_copy = state.get("remote_copy")
     
     resolve(
         encrypt(wallet_object, pubkey).then( encrypted_data => {
-        if( this.api == null ) {
-            // Going offline, don't change the remote_hash. The remote_hash
+        if( this.api == null || remote_copy !== true ) {
+            // Offline, don't change the remote_hash. The remote_hash
             // must be the last hash sent to the server
             state = state.merge({
                 encrypted_wallet: encrypted_data.toString('base64')
@@ -408,6 +407,7 @@ function updateWallet(wallet_object, state = this.storage.state) {
             this.wallet_object = wallet_object
             return
         }
+        
         let private_key = this.private_key
         let local_hash_buffer = hash.sha256(encrypted_data)
         let local_hash = local_hash_buffer.toString('base64')
@@ -454,21 +454,8 @@ function updateWallet(wallet_object, state = this.storage.state) {
 })
 }
 
-function localHash() {
-    let encrypted_data = this.storage.state.get("encrypted_data")
-    if( ! encrypted_data)
-        return
-    
-    return hash.sha256(encrypted_data).toString('base64')
-}
-
-/** Used to make level API requests (outside of this class)
-*/
-function signHash() {
-    let private_key = this.private_key
+function currentHash() {
     let encrypted_wallet = this.storage.state.get("encrypted_wallet")
-    if( ! private_key || ! encrypted_wallet ) return
-    let local_hash = hash.sha256(encrypted_wallet)
-    let signature = Signature.signBufferSha256(local_hash, private_key)
-    return { local_hash, signature }
+    if( ! encrypted_wallet) return
+    return hash.sha256(new Buffer(encrypted_wallet, 'base64'))
 }

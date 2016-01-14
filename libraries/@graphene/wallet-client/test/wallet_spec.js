@@ -29,7 +29,7 @@ describe('Wallet Tests', () => {
     
     // Ensure there is no wallet on the server
     beforeEach(()=>{
-        return remoteWallet(email).then( wallet => {
+        return remoteWallet().then( wallet => {
             return wallet.keepRemoteCopy(false) // delete
                 .then(()=> wallet.logout())
                 .then(()=> initWallet())
@@ -38,7 +38,6 @@ describe('Wallet Tests', () => {
     })
     
     afterEach(()=> wallet.logout())
-
 
     it('Server wallet', ()=> {
         
@@ -154,10 +153,10 @@ describe('Wallet Tests', () => {
     })
     
     it('Server conflict', () => {
-        return remoteWallet(email).then( wallet => {
+        return remoteWallet().then( wallet => {
             return wallet.setState({ test_wallet: ''})
                 // create a second wallet client (same email, same server wallet)
-                .then(()=> remoteWallet(email)).then( wallet2 => {
+                .then(()=> remoteWallet()).then( wallet2 => {
                 
                 // bring both clients offline
                 wallet.useBackupServer(null)
@@ -175,6 +174,7 @@ describe('Wallet Tests', () => {
                     return wallet.getState().then( wallet_object => {
                         
                         // Be sure the wallet synced up
+                        assert.equal(wallet_object.get("test_wallet"), 'secret')
                         assert.equal(wallet.wallet_object.get("test_wallet"), 'secret')
                         
                         // Cause a conflict updating 2nd client
@@ -190,15 +190,30 @@ describe('Wallet Tests', () => {
         })
     })
     
+    it('Server subscription update', () => {
+        return remoteWallet()
+            .then( wallet1 => remoteWallet()
+            .then( wallet2 => {
+                
+                var p1 = wallet1.setState({ test_wallet: 'secret' })
+                    .then(()=> wallet2.getState()
+                        .then( object => assert.equal(object.get("test_wallet"), 'secret'))
+                    )
+                
+                return p1.then(()=> Promise.all([wallet1.logout(), wallet2.logout()]))
+            }
+        ))
+    })
+    
 })
 
 /** Allows multiple remote wallets */
-function remoteWallet(email) {
-    let code = createToken(hash.sha1(email, 'binary'))
+function remoteWallet(emailParam = email) {
+    let code = createToken(hash.sha1(emailParam, 'binary'))
     let wallet = newWallet()
     wallet.useBackupServer(remote_url)
     wallet.keepRemoteCopy(true, code)
-    return wallet.login(email, username, password).then(()=> wallet )
+    return wallet.login(emailParam, username, password).then(()=> wallet )
 }
 
 function newWallet() {
