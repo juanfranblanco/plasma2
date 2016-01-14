@@ -10,7 +10,7 @@ export default class WebSocketRpc {
     */
     constructor(ws_server_url, update_rpc_connection_status_callback) {
         this.update_rpc_connection_status_callback = update_rpc_connection_status_callback;
-        var WebSocketClient = typeof(WebSocket) !== "undefined" ? require("ReconnectingWebSocket") : require("websocket").w3cwebsocket;
+        var WebSocketClient = typeof(WebSocket) !== "undefined" ? require("ReconnectingWebSocket") : require("ws");
         this.web_socket = new WebSocketClient(ws_server_url);
         this.current_reject = null;
         this.on_reconnect = null;
@@ -24,13 +24,13 @@ export default class WebSocketRpc {
                 resolve();
             }
             // Warning, onerror callback is over-written on each request.  Be cautious to dulicate some logic here.
-            this.web_socket.onerror = (error) => {
-                console.error("ERROR\tweb_socket", error)
+            this.web_socket.onerror = evt => {
+                console.error("ERROR\tWebSocketRpc\tconstructor web_socket onerror", evt.data ? evt.data : "")
                 if(this.update_rpc_connection_status_callback)
                     this.update_rpc_connection_status_callback("error");
                 
                 if (this.current_reject) {
-                    this.current_reject(error);
+                    this.current_reject(evt);
                 }
             };
             this.web_socket.onmessage = (message) => this.listener(JSON.parse(message.data));
@@ -47,8 +47,8 @@ export default class WebSocketRpc {
     
     close() {
         return new Promise( resolve => {
-            this.web_socket.onclose = () => {
-                
+            this.web_socket.onclose = closeEvent => {
+                // console.log("INFO\tWebSocketRpc\tclose") // closeEvent.reason === connection failed
                 if( Object.keys(this.subscriptions).length !== 0 )
                     console.error("WARN: close called with active subscriptions",
                         Object.keys(this.subscriptions).length)
@@ -57,7 +57,7 @@ export default class WebSocketRpc {
                     this.update_rpc_connection_status_callback("closed");
                 
                 resolve()
-            };
+            }
             this.web_socket.close()
         })
     }
@@ -157,13 +157,13 @@ export default class WebSocketRpc {
                 let time = new Date()
                 this.callbacks[id] = { time, resolve, reject }
                 
-                this.web_socket.onerror = (error) => {
+                this.web_socket.onerror = (evt) => {
                     
                     if(this.update_rpc_connection_status_callback)
                         this.update_rpc_connection_status_callback("error")
                     
-                    console.log("!!! WebSocket Error ", error);
-                    reject(error);
+                    console.log("ERROR\tWebSocketRpc\trequest", evt.data ? evt.data : "")
+                    reject(evt);
                 };
                 
                 this.web_socket.send(JSON.stringify({ id, method, params }));

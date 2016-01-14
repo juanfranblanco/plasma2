@@ -48,25 +48,25 @@ describe('Wallet Tests', () => {
     // after(()=> wallet.logout().then(()=> wallet.useBackupServer()))
     
     it('Server only', ()=> {
-        return Promise.resolve()
-        // wallet.useBackupServer(remote_url)
-        // wallet.keepRemoteCopy(true, code)
-        // 
-        // let create = wallet
-        //     .login(email, username, password)
-        //     // create the initial wallet
-        //     .then(()=> wallet.setState({ test_wallet: 'secret'}) )
-        //     // update the wallet
-        //     .then(()=> wallet.setState({ test_wallet: 'secret2'}) )
-        // 
-        // return create.then(()=>{
-        //     
-        //     // Wallet is in memory
-        //     assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
-        //     
-        //     // Wallet is on the server
-        //     return assertServerWallet({ test_wallet: 'secret2'})
-        // })
+        
+        wallet.useBackupServer(remote_url)
+        wallet.keepRemoteCopy(true, code)
+        
+        let create = wallet
+            .login(email, username, password)
+            // create the initial wallet
+            .then(()=> wallet.setState({ test_wallet: 'secret'}) )
+            // update the wallet
+            .then(()=> wallet.setState({ test_wallet: 'secret2'}) )
+        
+        return create.then(()=>{
+            
+            // Wallet is in memory
+            assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
+            
+            // Wallet is on the server
+            return assertServerWallet({ test_wallet: 'secret2'})
+        })
     })
     
     it('Disk only', done => {
@@ -217,52 +217,61 @@ function newWallet() {
 
 function assertNoServerWallet(walletParam = wallet) {
     if( ! walletParam.private_key ) throw new Error("wallet locked")
-    return api(api => api.fetchWallet( walletParam.private_key.toPublicKey() ).then( json=> {
-        assert(json.encrypted_data == null, 'No Server Wallet')
-    }))
+    return newApi(api =>{
+        return api.fetchWallet( walletParam.private_key.toPublicKey() ).then( json=> {
+            assert(json.encrypted_data == null, 'No Server Wallet')
+        })
+    })
 }
 
 function assertServerWallet(expectedWallet, walletParam = wallet) {
     if( ! walletParam.private_key ) throw new Error("wallet locked")
-    return new Promise( (resolve, reject) => {
-        let p1 = api(api => api.fetchWallet( walletParam.private_key.toPublicKey(), json => {
+    let p1 = new Promise( (resolve, reject) => {
+        console.log("assertServerWallet");
+        let public_key = walletParam.private_key.toPublicKey()
+        let p2 = newApi(api => api.fetchWallet( public_key, null, json => {
             try {
                 assert(json.encrypted_data, 'No Server Wallet')
                 let backup_buffer = new Buffer(json.encrypted_data, 'base64')
-                let p2 = decrypt(backup_buffer, walletParam.private_key).then( wallet_object => {
+                let p3 = decrypt(backup_buffer, walletParam.private_key).then( wallet_object => {
                     assert.equal(
                         JSON.stringify(wallet_object,null,0),
                         JSON.stringify(expectedWallet,null,0)
                     )
                 })
-                resolve(Promise.all([ p1, p2 ]))
+                let p4 = api.fetchWalletUnsubscribe(public_key)
+                return Promise.all([ p1, resolve([ p2, p3, p4 ]) ])
             } catch( error ) {
-                reject( error )
+                return reject( error )
             }
         }))
     })
+    return p1
 }
 
 function deleteWallet(emailParam = email) {
     let sig = wallet.signHash()
     if( ! sig ) return Promise.resolve()
     let { local_hash, signature } = sig
-    return api(api => api.deleteWallet( local_hash, signature ).catch( error =>{
-        if( ! error.res.statusText === "Not Found") {
-            console.error("ERROR", error, "stack", error.stack)
-            throw error
-        }
-    }))
+    return newApi(api => {
+        return api.deleteWallet( local_hash, signature ).catch( error =>{
+            if( ! error.res.statusText === "Not Found") {
+                console.error("ERROR", error, "stack", error.stack)
+                throw error
+            }
+        })
+    })
 }
 
-function api(callback) {
-    const ws_rpc = new WebSocketRpc(remote_url)
+function newApi(callback) {
+    let ws_rpc = new WebSocketRpc(remote_url)
+    let ret
     try {
-        var ret = callback( new WalletApi(ws_rpc) )
+        let api = new WalletApi(ws_rpc)
+        ret = callback( api )
     } finally {
-        ws_rpc.close()
+        return ret ? ret.then(()=> ws_rpc.close()) : ws_rpc.close()
     }
-    return ret
 }
 
 function resolve(promise, done) {

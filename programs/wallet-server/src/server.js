@@ -25,14 +25,23 @@ const ratelimitConfig = {
 }
 
 let sockets = Set()
+let WebSocketServer = require("ws").Server
 
 export default function createServer() {
     const createStoreWithMiddleware = applyMiddleware( createMiddleware() )(createStore)
     const store = createStoreWithMiddleware( reducer )
 
-    var app = express()
-    var expressWs = require('express-ws')(app)
-    
+    // var app = express()
+    // var expressWs = require('express-ws')(app)
+    let wss = new WebSocketServer({port: npm_package_config_rest_port})
+    wss.on('listening', ()=>{ console.log('Server listening port %d', npm_package_config_rest_port) })
+    wss.on('close', ()=>{ console.log('Server closed port %d', npm_package_config_rest_port) })
+    wss.on('error', error =>{
+        console.error('wallet-server::createServer\t', error, 'stack', error.stack)
+        console.error('wallet-server::createServer\trestart')
+        // createServer()
+    })
+     
     // app.use((req, res, next) => {
     //     let origin = req.get('Origin')
     //     res.set('Access-Control-Allow-Origin', origin)
@@ -49,14 +58,15 @@ export default function createServer() {
     // })
     // app.use(limit(ratelimitConfig))
     
-    app.get('/wallet_v1', function(req, res, next){
-        console.log('GET Not Supported', "IP", ipAddress(ws));
-        wsResponse(res, 0, "Not Supported")
-        res.end()
-    })
+    // app.get('/wallet_v1', function(req, res, next){
+    //     console.log('GET Not Supported', "IP", ipAddress(ws));
+    //     wsResponse(res, 0, "Not Supported")
+    //     res.end()
+    // })
     
-    app.ws("/wallet_v1", (ws, req) => { try {
-        
+    wss.on("connection", ws => { try {
+    // app.ws("/wallet_v1", (ws, req) => { try {
+    
         sockets = sockets.add(ws)
         console.log('>>>> NEW SOCKET', "Total sockets", sockets.count())
         
@@ -67,8 +77,15 @@ export default function createServer() {
         })
         
         ws.on('message', msg => {
+            
             let id = 0
             let wsType = ws // standared non-subscription reply
+            
+            if( ws.upgradeReq.url !== "/wallet_v1") {
+                wsResponse(wsType, id, "Bad Request", { error: "Unknown URL" })
+                return
+            }
+            
             try {
                 let payload = JSON.parse(msg)
 
@@ -77,7 +94,6 @@ export default function createServer() {
                 let { subscribe_id, unsubscribe_id, subscribe_key } = params
                 
                 if( subscribe_id != null || unsubscribe_id != null) {
-                    
                     if( ! subscribe_key ) {
                         wsResponse(wsType, id, "Bad Request", { error: "Missing subscribe_key" })
                         return
@@ -87,7 +103,8 @@ export default function createServer() {
                     params = params.params
                     
                     if( subscribe_id != null ) {
-                        if( subscriptions.subscribe(wsType, method, subscribe_key, subscribe_id)) {
+                    console.log("subscribe_id", subscribe_id)
+                        if( subscriptions.subscribe(ws, method, subscribe_key, subscribe_id)) {
                             
                             // Send the OK that the subscription was successful
                             wsResponse(wsType, id, "OK")
@@ -101,7 +118,7 @@ export default function createServer() {
                             return
                         }
                     } else if( unsubscribe_id != null ) {
-                        if( subscriptions.unsubscribe(method, subscribe_key, unsubscribe_id)) {
+                        if( subscriptions.unsubscribe(ws, method, subscribe_key, unsubscribe_id)) {
                             wsResponse(wsType, id, "OK")
                         } else {
                             wsResponse(wsType, id, "Bad Request", { error: "Unknown unsubscription" })
@@ -134,15 +151,7 @@ export default function createServer() {
         })
     } catch(error) { console.error("ERROR\tserver\t", error, 'stack', error.stack) } })
     
-    let server = app.listen(npm_package_config_rest_port)
-    server.on('listening', ()=>{ console.log('Server listening port %d', npm_package_config_rest_port) })
-    server.on('close', ()=>{ console.log('Server closed port %d', npm_package_config_rest_port) })
-    server.on('error', error =>{
-        console.error('wallet-server::createServer\t', error, error.stack)
-        console.error('wallet-server::createServer\trestart')
-        createServer()
-    })
-    return { server, app }
+    return { server: wss }
 }
 
 

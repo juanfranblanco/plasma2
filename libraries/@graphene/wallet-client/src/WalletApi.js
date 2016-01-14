@@ -148,6 +148,7 @@ export default class WalletApi {
         @return {Promise} resolve (successful) or cache (error) 
     */
     deleteWallet(local_hash, signature) {
+        console.log(22);
         local_hash = toBinary(req(local_hash, 'local_hash'))
         signature = toBinary(req(signature, 'signature'))
         let params = { local_hash, signature }

@@ -1,4 +1,5 @@
 import http from 'http'
+import * as subscriptions from "./subscriptions"
 
 // Response helpers..  Create: response_codes = { "Accepted": 202, ...}
 
@@ -27,6 +28,12 @@ export function wsResponse(ws, id, statusText, data = {}) {
 
 /** Simple HTTP status callbacks used to reply to the client */
 export function wsReplySugar( ws, id, action ) {
+    
+    action.walletNotify = (wallet) =>{
+        wallet.encrypted_data = toBase64(wallet.encrypted_data)
+        subscriptions.notifyOther(ws, "fetchWallet", wallet.public_key, wallet)
+    }
+    
     action.reply = ( message, data ) =>{
         if( message.then ) {// Promise
             message
@@ -43,7 +50,7 @@ export function wsReplySugar( ws, id, action ) {
                 wsResponse(ws, id, code_description, data)
             })
             .catch( error =>{
-                console.error("ERROR\tws-api caught\t", error, 'stack', error.stack)//, JSON.stringify(error))
+                console.error("ERROR\tws-api\treply\t", error, 'stack', error.stack)//, JSON.stringify(error))
                 wsResponse(ws, id, "Bad Request", error)
             })
             return
@@ -53,3 +60,7 @@ export function wsReplySugar( ws, id, action ) {
     action.reply.ok = data =>{ wsResponse( ws, id, "OK", data ) }
     action.reply.badRequest = data =>{ wsResponse( ws, id, "Bad Request", data ) }
 }
+
+var toBase64 = data => data == null ? data :
+    data["toBuffer"] ? data.toBuffer().toString('base64') :
+    Buffer.isBuffer(data) ? data.toString('base64') : data

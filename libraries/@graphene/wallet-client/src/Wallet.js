@@ -178,7 +178,6 @@ export default class Wallet {
         @return {Promise} resolve immediately or after a successful unsubscribe
     */
     logout() {
-        console.log("logout");
         this.wallet_object = null
         let public_key = this.private_key ? this.private_key.toPublicKey() : null
         this.private_key = null
@@ -188,6 +187,7 @@ export default class Wallet {
         } else {
             unsub = Promise.resolve()
         }
+        // useBackupServer() will close the connection 
         return unsub.then(()=> this.useBackupServer())
     }
     

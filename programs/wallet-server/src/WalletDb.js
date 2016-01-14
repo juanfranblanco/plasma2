@@ -8,7 +8,7 @@ import * as subscriptions from "./subscriptions"
     @arg {string} encrypted_data - binary
     @arg {string} signature - binary
 */
-export function createWallet(encrypted_data, signature, email_sha1) {
+export function createWallet(encrypted_data, signature, email_sha1, walletNotify) {
     encrypted_data = new Buffer(encrypted_data, 'binary')
     let signature_buffer = new Buffer(signature, 'binary')
     let sig = Signature.fromBuffer(signature_buffer)
@@ -42,7 +42,7 @@ export function createWallet(encrypted_data, signature, email_sha1) {
     @arg {Buffer} encrypted_data - binary
     @arg {string} signature - binary
 */
-export function saveWallet(original_local_hash, encrypted_data, signature) {
+export function saveWallet(original_local_hash, encrypted_data, signature, walletNotify) {
     original_local_hash = new Buffer(original_local_hash, 'binary')
     encrypted_data = new Buffer(encrypted_data, 'binary')
     let sig = Signature.fromBuffer(new Buffer(signature, 'binary'))
@@ -67,7 +67,7 @@ export function saveWallet(original_local_hash, encrypted_data, signature) {
 }
 
 export function changePassword({ original_local_hash, original_signature,
-    new_encrypted_data, new_signature }) {
+    new_encrypted_data, new_signature }, walletNotify) {
     new_encrypted_data = new Buffer(new_encrypted_data, 'binary')
     let original_pubkey
     {
@@ -98,22 +98,20 @@ export function changePassword({ original_local_hash, original_signature,
             // Tell any original wallet listeners the wallet is gone
             walletNotify({ public_key: original_pubkey, encrypted_data: null})
             
-            walletNotify({
-                public_key: new_pubkey, encrypted_data: wallet.encrypted_data, local_hash: new_local_hash,
-                created: wallet.createdAt, updated: wallet.updatedAt })
-            
             return { local_hash: new_local_hash, updated: wallet.updatedAt }
         })
     })
 }
 
-export function deleteWallet({ local_hash, signature }) {
+export function deleteWallet({ local_hash, signature }, walletNotify) {
     local_hash = new Buffer(local_hash, 'binary')
     signature = new Buffer(signature, 'binary')
     let sig = Signature.fromBuffer(signature)
     let public_key = sig.recoverPublicKey(local_hash)
+    
     if( ! sig.verifyHash(local_hash, public_key))
         return Promise.reject("signature_verify")
+    
     public_key = public_key.toString()
     return Wallet.findOne({where: { public_key }}).then( wallet =>{
         if( ! wallet ) return "Not Found"
@@ -127,11 +125,3 @@ export function deleteWallet({ local_hash, signature }) {
     })
 }
 
-export function walletNotify(wallet) {
-    wallet.encrypted_data = toBase64(wallet.encrypted_data)
-    subscriptions.notify("fetchWallet", wallet.public_key, wallet)
-}
-
-var toBase64 = data => data == null ? data :
-    data["toBuffer"] ? data.toBuffer().toString('base64') :
-    Buffer.isBuffer(data) ? data.toString('base64') : data
