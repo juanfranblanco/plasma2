@@ -47,7 +47,6 @@ export default class Wallet {
         @arg {function} storage - see {@link LocalStoragePersistence}.
     */
     constructor(storage) {
-        // storage knows if it should run RAM only or persist to disk
         this.storage = storage
         this.private_key = null
         if( this.storage.state.isEmpty() ) {
@@ -59,6 +58,7 @@ export default class Wallet {
         if( remote_url ) {
             this.ws_rpc = new WebSocketRpc(remote_url)
             this.api = new WalletApi(this.ws_rpc)
+            this.instance = this.ws_rpc.instance
         }
         // semi-private method bindings, these are used for testing
         this.sync = sync.bind(this)
@@ -82,6 +82,7 @@ export default class Wallet {
         if(remote_url !== null) {
             this.ws_rpc = new WebSocketRpc(remote_url)
             this.api = new WalletApi(this.ws_rpc)
+            this.instance = this.ws_rpc.instance
         } else {
             this.ws_rpc = null
             this.api = null
@@ -116,7 +117,7 @@ export default class Wallet {
     keepRemoteCopy( save = true, token = this.storage.state.get("remote_token") ) {
         let state = this.storage.state
         if( save === true && ! state.get("remote_url"))
-            throw new Error("configuration_error, remote_copy without remote_url")
+            throw new Error(this.instance+":configuration_error, remote_copy without remote_url")
         
         this.storage.setState({ remote_copy: save, remote_token: token })
         return this.sync()
@@ -225,7 +226,7 @@ export default class Wallet {
             
             resolve(
                 this.updateWallet(wallet_object).catch( error => {
-                    console.log('ERROR\tWallet\tsetState', error, 'stack', error.stack)
+                    console.log('ERROR\tWallet:'+this.instance+'\tsetState', error, 'stack', error.stack)
                     throw error
                 })
             )
@@ -291,9 +292,7 @@ function fetchWallet(private_key, local_hash) {
 function fetchWalletCallback(server_wallet, private_key) {
     return new Promise( (resolve, reject) => {
 
-        console.log("server_wallet", server_wallet)
-        assert(/OK|No Content|Not Modified/.test(server_wallet.statusText), server_wallet.statusText)
-        
+        assert(/OK|No Content|Not Modified/.test(server_wallet.statusText), this.instance + ":" + server_wallet.statusText)
         
         let state = this.storage.state
         let push = forcePush.bind(this)
@@ -332,11 +331,11 @@ function fetchWalletCallback(server_wallet, private_key) {
             resolve( pull(server_wallet, private_key) )
         }
         
-        assert(dirtyLocal, 'Expecting a locally modified wallet')
-        assert(server_wallet.statusText === "OK", 'Expecting a remotely modified wallet')
+        assert(dirtyLocal, this.instance + 'Expecting a locally modified wallet')
+        assert(server_wallet.statusText === "OK", this.instance + 'Expecting a remotely modified wallet')
         
         // An internal wallet comparison is required to resolve
-        throw "Conflict: both server and local wallet modified"
+        throw this.instance + ":Conflict both server and local wallet modified"
     })
 }
 
@@ -365,7 +364,7 @@ function forcePull(server_wallet, private_key) {
     return decrypt(backup_buffer, private_key).then( wallet_object => {
         this.storage.setState(state)
         this.wallet_object = fromJS( wallet_object )
-        console.log("forcePull new hash", server_wallet.local_hash, this.currentHash().toString('base64'))
+        console.log(this.instance + ":forcePull new hash", server_wallet.local_hash, this.currentHash().toString('base64'))
     })
 }
 
@@ -378,7 +377,7 @@ function forcePush(has_server_wallet, private_key) {
     if( remote_copy === false && has_server_wallet ) {
         let remote_hash = state.get("remote_hash")
         if( ! remote_hash )
-            throw new Error("Delete error, is this wallet in-sync?")
+            throw new Error(this.instance + ":Delete error, is this wallet in-sync?")
         
         let remote_hash_buffer = new Buffer(remote_hash, 'base64')
         let signature = Signature.signBufferSha256(remote_hash_buffer, private_key)
@@ -393,76 +392,78 @@ function forcePush(has_server_wallet, private_key) {
 */
 function updateWallet(wallet_object, state = this.storage.state) {
     return new Promise( resolve => {
-    if( ! wallet_object )
-        throw new Error("Missing wallet_object")
     
-    if( ! this.private_key )
-        throw new Error("login")
-    
-    let pubkey = state.get("encryption_pubkey")
-    let remote_copy = state.get("remote_copy")
-    
-    resolve(
-        encrypt(wallet_object, pubkey).then( encrypted_data => {
-        if( this.api == null || remote_copy !== true ) {
-            // Offline, don't change the remote_hash. The remote_hash
-            // must be the last hash sent to the server
+        if( ! wallet_object )
+            throw new Error("Missing wallet_object")
+        
+        if( ! this.private_key )
+            throw new Error("login")
+        
+        let pubkey = state.get("encryption_pubkey")
+        let remote_copy = state.get("remote_copy")
+        
+        let p1 = encrypt(wallet_object, pubkey).then( encrypted_data => {
+
+            // Save locally first
             state = state.merge({
                 encrypted_wallet: encrypted_data.toString('base64')
             })
             this.storage.setState(state)
             this.wallet_object = wallet_object
-            return
-        }
-        
-        let private_key = this.private_key
-        let local_hash_buffer = hash.sha256(encrypted_data)
-        let local_hash = local_hash_buffer.toString('base64')
-        let signature = Signature.signBufferSha256(local_hash_buffer, private_key)
-        let code = state.get("remote_token")
-        
-        if( code != null ) {
-            // create the server-side wallet for the first time
-            return this.api.createWallet(code, encrypted_data, signature)
-                .then( json => {
-                assert.equal(json.local_hash, local_hash, 'local_hash')
-                state = state.merge({
-                    remote_token: null,
-                    remote_hash: local_hash,
-                    encrypted_wallet: encrypted_data.toString('base64'),
-                    remote_created_date: json.remote_created_date
-                })
-                this.storage.setState(state)
-                this.wallet_object = wallet_object
-            })
-        } else {
-            // update the server wallet
-            let remote_hash = state.get("remote_hash")
-            if( ! remote_hash )
-                throw new Error("Unable to update wallet.  You probably need to provide a remote_token.")
             
-            let remote_hash_buffer = remote_hash ? new Buffer(remote_hash, 'base64') : null
-            return this.api.saveWallet( remote_hash_buffer, encrypted_data, signature) .then( json => {
-                
-                if(json.statusText === "OK") state = state.merge({
-                    remote_hash: local_hash,
-                    remote_updated_date: json.remote_updated_date
+            if( this.api == null || remote_copy !== true ) {
+                return
+            }
+            
+            // Try to save remotely
+            let private_key = this.private_key
+            let local_hash_buffer = hash.sha256(encrypted_data)
+            let local_hash = local_hash_buffer.toString('base64')
+            let signature = Signature.signBufferSha256(local_hash_buffer, private_key)
+            let code = state.get("remote_token")
+            
+            if( code != null ) {
+                // create the server-side wallet for the first time
+                return this.api.createWallet(code, encrypted_data, signature).then( json => {
+                    
+                    assert.equal(json.local_hash, local_hash, 'local_hash')
+                    
+                    state = state.merge({
+                        remote_token: null,
+                        remote_hash: local_hash,
+                        // encrypted_wallet: encrypted_data.toString('base64'),
+                        remote_created_date: json.remote_created_date
+                    })
+                    this.storage.setState(state)
                 })
+            } else {
+                // update the server wallet
+                let remote_hash = state.get("remote_hash")
+                if( ! remote_hash )
+                    throw new Error(this.instance + ":Unable to update wallet.  You probably need to provide a remote_token.")
                 
-                state = state.merge({
-                    encrypted_wallet: encrypted_data.toString('base64')
+                let remote_hash_buffer = remote_hash ? new Buffer(remote_hash, 'base64') : null
+                
+                return this.api.saveWallet( remote_hash_buffer, encrypted_data, signature) .then( json => {
+                    
+                    if(json.statusText === "OK") {
+                        
+                        assert.equal(json.local_hash, local_hash, 'local_hash')
+                        
+                        state = state.merge({
+                            remote_hash: local_hash,
+                            remote_updated_date: json.remote_updated_date
+                        })
+                        this.storage.setState(state)
+                    }
+                        
+                    if( json.statusText !== "OK" )
+                        throw new Error(this.instance + ":Unexpected WalletApi.saveWallet status: " + json.statusText )
                 })
-                
-                this.storage.setState(state)
-                this.wallet_object = wallet_object
-                
-                if( json.statusText !== "OK" )
-                    throw new Error( "Unexpected WalletApi.saveWallet status: " + json.statusText )
-            })
-        }
+            }
+        })
+        resolve(p1)
     })
-    )
-})
 }
 
 function currentHash() {
