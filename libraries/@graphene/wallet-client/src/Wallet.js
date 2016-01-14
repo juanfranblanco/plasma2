@@ -278,6 +278,11 @@ function fetchWallet(private_key, local_hash) {
     let local_hash_buffer = local_hash ? new Buffer(local_hash, 'base64') : null
     return new Promise( resolve => {
         let fetch = this.api.fetchWallet(public_key, local_hash_buffer, server_wallet => {
+            let remote_hash = server_wallet.local_hash
+            let statusText = remote_hash == null ? "No Content" :
+                remote_hash === this.currentHash().toString('base64') ? "Not Modified" : "OK"
+            
+            server_wallet.statusText = statusText
             resolve(fetch.then(()=> callback(server_wallet, private_key) ))
         })
     })
@@ -286,7 +291,9 @@ function fetchWallet(private_key, local_hash) {
 function fetchWalletCallback(server_wallet, private_key) {
     return new Promise( (resolve, reject) => {
 
+        console.log("server_wallet", server_wallet)
         assert(/OK|No Content|Not Modified/.test(server_wallet.statusText), server_wallet.statusText)
+        
         
         let state = this.storage.state
         let push = forcePush.bind(this)
@@ -310,22 +317,22 @@ function fetchWalletCallback(server_wallet, private_key) {
         
         // Has local modifications since last backup
         let remote_hash = state.get("remote_hash")
-        let dirty = current_hash.toString('base64') !== remote_hash
+        let dirtyLocal = current_hash.toString('base64') !== remote_hash
         
         // No changes locally or remote
-        if( ! dirty &&  server_wallet.statusText === "Not Modified")
+        if( ! dirtyLocal &&  server_wallet.statusText === "Not Modified")
             resolve()
         
         // Push local changes (no conflict)
-        if( dirty && server_wallet.statusText === "Not Modified" )
+        if( dirtyLocal && server_wallet.statusText === "Not Modified" )
             resolve( push(has_server_wallet, private_key) )
         
-        if( ! dirty && server_wallet.statusText === "OK") {
+        if( ! dirtyLocal && server_wallet.statusText === "OK") {
             // The server had this copy of this wallet when another device changed it (meaning that the other device must have been in sync with the wallet when the change was made).  It is safe to pull this wallet and overwrite the local version.
             resolve( pull(server_wallet, private_key) )
         }
         
-        assert(dirty, 'Expecting a locally modified wallet')
+        assert(dirtyLocal, 'Expecting a locally modified wallet')
         assert(server_wallet.statusText === "OK", 'Expecting a remotely modified wallet')
         
         // An internal wallet comparison is required to resolve
@@ -337,7 +344,6 @@ function fetchWalletCallback(server_wallet, private_key) {
     @private
 */
 function forcePull(server_wallet, private_key) {
-    
     let state = this.storage.state
     let remote_copy = state.get("remote_copy")
     let server_local_hash = new Buffer(server_wallet.local_hash, 'base64')
@@ -359,6 +365,7 @@ function forcePull(server_wallet, private_key) {
     return decrypt(backup_buffer, private_key).then( wallet_object => {
         this.storage.setState(state)
         this.wallet_object = fromJS( wallet_object )
+        console.log("forcePull new hash", server_wallet.local_hash, this.currentHash().toString('base64'))
     })
 }
 
@@ -434,7 +441,6 @@ function updateWallet(wallet_object, state = this.storage.state) {
             if( ! remote_hash )
                 throw new Error("Unable to update wallet.  You probably need to provide a remote_token.")
             
-            
             let remote_hash_buffer = remote_hash ? new Buffer(remote_hash, 'base64') : null
             return this.api.saveWallet( remote_hash_buffer, encrypted_data, signature) .then( json => {
                 
@@ -461,6 +467,6 @@ function updateWallet(wallet_object, state = this.storage.state) {
 
 function currentHash() {
     let encrypted_wallet = this.storage.state.get("encrypted_wallet")
-    if( ! encrypted_wallet) return
+    if( ! encrypted_wallet) return new Buffer("")
     return hash.sha256(new Buffer(encrypted_wallet, 'base64'))
 }

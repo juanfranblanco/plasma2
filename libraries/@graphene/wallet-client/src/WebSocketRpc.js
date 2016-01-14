@@ -1,6 +1,7 @@
 var Immutable = require("immutable")
 
 const SOCKET_DEBUG = process.env.npm_config__graphene_wallet_client_socket_debug
+let instance = 0
 
 export default class WebSocketRpc {
 
@@ -9,6 +10,7 @@ export default class WebSocketRpc {
         @arg {function} update_rpc_connection_status_callback called with ("open"|"error"|"closed").
     */
     constructor(ws_server_url, update_rpc_connection_status_callback) {
+        this.instance = ++instance
         this.update_rpc_connection_status_callback = update_rpc_connection_status_callback;
         var WebSocketClient = typeof(WebSocket) !== "undefined" ? require("ReconnectingWebSocket") : require("ws");
         this.web_socket = new WebSocketClient(ws_server_url);
@@ -52,7 +54,7 @@ export default class WebSocketRpc {
                 let { method, params, key } = this.subscriptions[id]
                 unsubs.push(this.unsubscribe(method, params, key))
             } catch( error ) {
-                console.error("WARN\tWebSocketRpc\tclose\t","unsubscribe",error, "stack", error.stack)
+                console.error("WARN\tWebSocketRpc\tclose\t",this.instance,"unsubscribe",error, "stack", error.stack)
             }
         }
         let unsub = Promise.all(unsubs)
@@ -60,7 +62,7 @@ export default class WebSocketRpc {
             this.web_socket.onclose = closeEvent => {
                 // console.log("INFO\tWebSocketRpc\tclose") // closeEvent.reason === connection failed
                 if( Object.keys(this.subscriptions).length !== 0 )
-                    console.error("WARN\tWebSocketRpc\tclose\t","active subscriptions",
+                    console.error("WARN\tWebSocketRpc\tclose\t",this.instance,"active subscriptions",
                         Object.keys(this.subscriptions).length)
                 
                 if(this.update_rpc_connection_status_callback)
@@ -118,7 +120,7 @@ export default class WebSocketRpc {
             let subscription_id = this.getSubscriptionId(method, subscribe_key)
             
             if( ! subscription_id ) {
-                let msg = ("WARN: unsubscribe did not find subscribe_key",
+                let msg = ("WARN: unsubscribe did not find subscribe_key",this.instance,
                     "subscribe_key", subscribe_key, " for method", method).join(' ')
                 console.error(msg)
                 return Promise.reject(msg)
@@ -138,7 +140,7 @@ export default class WebSocketRpc {
     */
     request(id, method, params) {
         if(SOCKET_DEBUG)
-            console.log("[WebSocketRpc] ----- call ---- >", id, method, params);
+            console.log("[WebSocketRpc:"+this.instance+"] ----- call ---- >", id, method, params);
         
         return this.connect_promise.then(()=> {
             return new Promise( (resolve, reject) => {
@@ -150,7 +152,7 @@ export default class WebSocketRpc {
                     if(this.update_rpc_connection_status_callback)
                         this.update_rpc_connection_status_callback("error")
                     
-                    console.log("ERROR\tWebSocketRpc\trequest", evt.data ? evt.data : "")
+                    console.log("ERROR\tWebSocketRpc\trequest",this.instance, evt.data ? evt.data : "")
                     reject(evt);
                 };
                 
@@ -162,7 +164,7 @@ export default class WebSocketRpc {
     /** @private */
     listener(response) {
         if(SOCKET_DEBUG)
-            console.log("[WebSocketRpc] <--- reply ---- <", response.id, response);
+            console.log("[WebSocketRpc:"+this.instance+"] <--- reply ---- <", response.id, response);
         
         let sub = false,
             callback = null;
@@ -175,14 +177,14 @@ export default class WebSocketRpc {
         if ( sub ) {
             let subscription = this.subscriptions[response.id]
             if( ! subscription) {
-                console.log("ERROR\tWebSocketRpc\tlistener\tUnknown subscription", response.id)
+                console.log("ERROR\tWebSocketRpc:"+this.instance+"\tlistener\tUnknown subscription", response.id)
                 return
             }
             callback = subscription.callback;
         } else {
             callback = this.callbacks[response.id];
             if( ! callback) {
-                console.log("ERROR\tWebSocketRpc\tlistener\tUnknown callback", response.id)
+                console.log("ERROR\tWebSocketRpc:"+this.instance+"\tlistener\tUnknown callback", response.id)
                 return
             }
         }

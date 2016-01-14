@@ -206,8 +206,9 @@ describe('Multi Wallet', () => {
         return Promise.all([ remoteWallet(), remoteWallet() ]).then( result =>{
             let [ wallet1, wallet2 ] = result
             
-            var p1 = wallet1.setState({ test_wallet: 'secret' })
-                .then(()=> wallet2.getState()
+            var p1 =
+                wallet1.setState({ test_wallet: 'secret' }).then(()=>
+                wallet2.getState()
                     .then( object2 => assert.equal(object2.get("test_wallet"), 'secret'))
                     .then( ()=> wallet2.setState({ test_wallet: 'secret2' }))
                     // .then( wallet1.getState().then( object1 => assert.equal(object1.get("test_wallet"), 'secret2')))
