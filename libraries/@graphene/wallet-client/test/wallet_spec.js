@@ -226,10 +226,12 @@ function assertNoServerWallet(walletParam = wallet) {
 
 function assertServerWallet(expectedWallet, walletParam = wallet) {
     if( ! walletParam.private_key ) throw new Error("wallet locked")
+    let ws_rpc = new WebSocketRpc(remote_url)
+    let api = new WalletApi(ws_rpc)
     let p1 = new Promise( (resolve, reject) => {
         console.log("assertServerWallet");
         let public_key = walletParam.private_key.toPublicKey()
-        let p2 = newApi(api => api.fetchWallet( public_key, null, json => {
+        let p2 = api.fetchWallet( public_key, null, json => {
             try {
                 assert(json.encrypted_data, 'No Server Wallet')
                 let backup_buffer = new Buffer(json.encrypted_data, 'base64')
@@ -240,13 +242,13 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
                     )
                 })
                 let p4 = api.fetchWalletUnsubscribe(public_key)
-                return Promise.all([ p1, resolve([ p2, p3, p4 ]) ])
+                resolve([ p3, p4 ])
             } catch( error ) {
-                return reject( error )
+                reject( error )
             }
-        }))
+        }).catch( error => reject(error))
     })
-    return p1
+    return p1.then(()=> ws_rpc.close())
 }
 
 function deleteWallet(emailParam = email) {
@@ -267,7 +269,7 @@ function newApi(callback) {
     let ws_rpc = new WebSocketRpc(remote_url)
     let ret
     try {
-        let api = new WalletApi(ws_rpc)
+        
         ret = callback( api )
     } finally {
         return ret ? ret.then(()=> ws_rpc.close()) : ws_rpc.close()
