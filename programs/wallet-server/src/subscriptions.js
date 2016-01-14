@@ -82,9 +82,7 @@ export function notifyOther(ws, method, subscribe_key, params) {
                     error, "stack", error.stack)
                 
                 // remove only when socket close error?
-                console.log(1);
-                remove(ws) // error.toString() === Error: not opened
-                console.log(2);
+                remove(ws)
                 
                 return false // stop forEach
             }

@@ -382,7 +382,7 @@ function forcePush(has_server_wallet, private_key) {
         return this.updateWallet(this.wallet_object, state)
 }
 
-/** Create or update a wallet on the server.  Updates this.storage with state (if succeeds)
+/** Create or update a wallet on the server.
 */
 function updateWallet(wallet_object, state = this.storage.state) {
     return new Promise( resolve => {
@@ -436,17 +436,22 @@ function updateWallet(wallet_object, state = this.storage.state) {
             
             
             let remote_hash_buffer = remote_hash ? new Buffer(remote_hash, 'base64') : null
-            return this.api.saveWallet(
-                remote_hash_buffer, encrypted_data, signature)
-                .then( json => {
-                assert.equal(json.local_hash, local_hash, 'local_hash')
-                state = state.merge({
+            return this.api.saveWallet( remote_hash_buffer, encrypted_data, signature) .then( json => {
+                
+                if(json.statusText === "OK") state = state.merge({
                     remote_hash: local_hash,
-                    encrypted_wallet: encrypted_data.toString('base64'),
                     remote_updated_date: json.remote_updated_date
                 })
+                
+                state = state.merge({
+                    encrypted_wallet: encrypted_data.toString('base64')
+                })
+                
                 this.storage.setState(state)
                 this.wallet_object = wallet_object
+                
+                if( json.statusText !== "OK" )
+                    throw new Error( "Unexpected WalletApi.saveWallet status: " + json.statusText )
             })
         }
     })

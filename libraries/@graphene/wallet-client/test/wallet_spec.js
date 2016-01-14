@@ -197,7 +197,9 @@ describe('Wallet Tests', () => {
                 
                 var p1 = wallet1.setState({ test_wallet: 'secret' })
                     .then(()=> wallet2.getState()
-                        .then( object => assert.equal(object.get("test_wallet"), 'secret'))
+                        .then( object2 => assert.equal(object2.get("test_wallet"), 'secret'))
+                        // .then( ()=> wallet2.setState({ test_wallet: 'secret2' }))
+                        // .then( wallet1.getState().then( object1 => assert.equal(object1.get("test_wallet"), 'secret2')))
                     )
                 
                 return p1.then(()=> Promise.all([wallet1.logout(), wallet2.logout()]))
