@@ -209,25 +209,15 @@ describe('Multi Wallet', () => {
             var p1 = Promise.all([ remoteWallet(), remoteWallet() ]).then( result =>{
                 
                 let [ wallet1, wallet2 ] = result
-                
-                let secret1 = wallet =>{
-                    console.log("assert secret1")
-                    assert.equal(wallet.wallet_object.get("test_wallet"), 'secret')
-                }
-                
-                let secret2 = wallet =>{
-                    console.log("assert secret2")
-                    assert.equal(wallet.wallet_object.get("test_wallet"), 'secret')
-                }
+                let secret1 = assertSubscribe("secret", 1)
+                let secret2 = assertSubscribe("secret", 2)
                 
                 let p1 = new Promise( r1 =>{
                     let p2 = new Promise( r2 =>{
                         
+                        let setter = wallet1.setState({ test_wallet: 'secret' })
                         wallet1.subscribe( secret1, r1 )
                         wallet2.subscribe( secret2, r2 )
-                        
-                        let setter = wallet1.setState({ test_wallet: 'secret' }).then(()=>{ console.log("setter") });
-                        
                         resolve( setter.then(()=>Promise.all([ p1, p2 ])) )
                         
                     })
@@ -240,6 +230,11 @@ describe('Multi Wallet', () => {
     })
     
 })
+
+let assertSubscribe = (expected, label) => wallet =>{
+    // console.log("assertWalletEqual",label, expected)
+    assert.equal(wallet.wallet_object.get("test_wallet"), expected)
+}
 
 function newWallet() {
     let storage = new LocalStoragePersistence("wallet_spec")
