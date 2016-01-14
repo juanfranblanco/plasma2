@@ -50,7 +50,7 @@ export default class WebSocketRpc {
             this.web_socket.onclose = closeEvent => {
                 // console.log("INFO\tWebSocketRpc\tclose") // closeEvent.reason === connection failed
                 if( Object.keys(this.subscriptions).length !== 0 )
-                    console.error("WARN\tWebSocketRpc\tclose", "active subscriptions",
+                    console.error("WARN\tWebSocketRpc\tclose\t","active subscriptions",
                         Object.keys(this.subscriptions).length)
                 
                 if(this.update_rpc_connection_status_callback)
@@ -84,7 +84,6 @@ export default class WebSocketRpc {
         
         let callback_id = ++ this.current_callback_id
         let subscribe_id = this.getSubscriptionId(method, subscribe_key) || ++ this.current_callback_id
-        
         this.subscriptions[subscribe_id] = {
             callback,
             method, params: Immutable.fromJS(params),
@@ -93,20 +92,6 @@ export default class WebSocketRpc {
         
         params = { subscribe_id: subscribe_id, subscribe_key, params }
         return this.request(callback_id, method, params)
-    }
-    
-    getSubscriptionId(method, subscribe_key) {
-        let subscription_id
-        let unSubParams = Immutable.fromJS(subscribe_key)
-        
-        for (let id in this.subscriptions) {
-            let s = this.subscriptions[id]
-            if (Immutable.is(s.key, unSubParams)) {
-                subscription_id = id
-                break
-            }
-        }
-        return subscription_id
     }
     
     /**
@@ -118,29 +103,22 @@ export default class WebSocketRpc {
         @return {Promise}
     */
     unsubscribe(method, params, subscribe_key = { method, params }) {
-        
-        this.current_callback_id ++
-        let subscription_id = this.getSubscriptionId(method, subscribe_key)
-        
-        // for (let id in this.subscriptions) {
-        //     let s = this.subscriptions[id]
-        //     if (Immutable.is(s.key, unSubParams)) {
-        //         this.unsub[this.current_callback_id] = id
-        //         subscription_id = id
-        //         break
-        //     }
-        // }
-        
-        if( ! subscription_id ) {
-            let msg = ("WARN: unsubscribe did not find subscribe_key",
-                "subscribe_key", subscribe_key, " for method", method).join(' ')
-            console.error(msg)
-            return Promise.reject(msg)
-        }
-        this.unsub[this.current_callback_id] = subscription_id
-        // Wrap parameters, send the subscription ID to the server
-        params = { unsubscribe_id: subscription_id, subscribe_key, params }
-        return this.request(this.current_callback_id, method, params)
+        return new Promise( (resolve, reject) => {
+            this.current_callback_id ++
+            let subscription_id = this.getSubscriptionId(method, subscribe_key)
+            
+            if( ! subscription_id ) {
+                let msg = ("WARN: unsubscribe did not find subscribe_key",
+                    "subscribe_key", subscribe_key, " for method", method).join(' ')
+                console.error(msg)
+                return Promise.reject(msg)
+            }
+            
+            this.unsub[this.current_callback_id] = { subscription_id, resolve }
+            // Wrap parameters, send the subscription ID to the server
+            params = { unsubscribe_id: subscription_id, subscribe_key, params }
+            this.request(this.current_callback_id, method, params).catch( error => reject(error))
+        })
     }
     
     /**
@@ -210,14 +188,29 @@ export default class WebSocketRpc {
             } else {
                 callback.resolve(response.result);
             }
-            delete this.callbacks[response.id];
-
+            delete this.callbacks[response.id]
             if (this.unsub[response.id]) {
-                delete this.subscriptions[this.unsub[response.id]];
+                let { subscription_id, resolve } = this.unsub[response.id]
+                delete this.subscriptions[subscription_id];
                 delete this.unsub[response.id];
+                resolve()
             }
             
         }
+    }
+    
+    getSubscriptionId(method, subscribe_key) {
+        let subscription_id
+        let unSubParams = Immutable.fromJS(subscribe_key)
+        
+        for (let id in this.subscriptions) {
+            let s = this.subscriptions[id]
+            if (Immutable.is(s.key, unSubParams)) {
+                subscription_id = id
+                break
+            }
+        }
+        return subscription_id
     }
 
 }

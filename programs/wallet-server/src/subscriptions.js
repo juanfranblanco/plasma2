@@ -14,13 +14,13 @@ export function subscribe(ws, method, subscribe_key, subscribe_id) {
     subscribe_id = String(subscribe_id)
     
     subscriptions = subscriptions
-        .updateIn([method, subscribe_key, ws], Map(), subscribe_map =>{
-            if( subscribe_map.has(subscribe_id) ) {
+        .updateIn([method, subscribe_key, ws], Map(), ids =>{
+            if( ids.has(subscribe_id) ) {
                 console.log("WARN\tsubscriptions\tAlready subscribed", subscribe_id);
-                return subscribe_map
+                return ids
             }
             success = true
-            return subscribe_map.set(subscribe_id, subscribe_id)
+            return ids.set(subscribe_id, subscribe_id)
         })
     return success
 }
@@ -36,13 +36,13 @@ export function unsubscribe(ws, method, subscribe_key, unsubscribe_id) {
     let success = false
     unsubscribe_id = String(unsubscribe_id)
     subscriptions = subscriptions
-        .updateIn([method, subscribe_key, ws], Map(), subscribe_map =>{
-            if( ! subscribe_map.has(unsubscribe_id) ) {
+        .updateIn([method, subscribe_key, ws], Map(), ids =>{
+            if( ! ids.has(unsubscribe_id) ) {
                 console.log("WARN\tsubscriptions\tNot subscribed", unsubscribe_id);
-                return subscribe_map
+                return ids
             }
             success = true
-            return subscribe_map.remove(unsubscribe_id)
+            return ids.remove(unsubscribe_id)
         })
     return success
 }
@@ -82,37 +82,26 @@ export function notifyOther(ws, method, subscribe_key, params) {
 export var count = ()=> {
     let cnt = 0
     subscriptions
-        .forEach( (subscribe_key, method) => subscribe_key
-        .forEach( (subscribe_map, ws) => cnt += subscribe_map.count()
-    ))
+        .forEach( subscribe_key => subscribe_key
+        .forEach( subscribe_ws => subscribe_ws
+        .forEach( ids => cnt += ids.count()
+    )))
     return cnt
 }
 
 export function remove(ws) {
     subscriptions = subscriptions
-        .filterNot( (subscribe_key, method)=> subscribe_key
-            .filterNot( (subscribe_map, subscribe_ws)=> {
-                let match = subscribe_ws === ws
-                if( match && ! subscribe_map.isEmpty()) {
-                    console.error("WARN\tsubscriptions\tWebSocket closed with active subscription(s)", subscribe_map.keySeq().toJS())
-                }
-                return match
+        .filterNot( subscribe_key => subscribe_key
+        .filterNot( subscribe_ws => subscribe_ws
+        .filterNot( ids => {
+            let match = subscribe_ws === ws
+            // console.log("match,ids.keySeq().toJS()", match,ids.keySeq().toJS())
+            if( match && ! ids.isEmpty()) {
+                console.error("WARN\tsubscriptions\tWebSocket closed with active subscription(s)", ids.keySeq().toJS())
             }
+            return match
+        }
+        ).isEmpty()
         ).isEmpty()
     )
 }
-
-// export function getSubscriptionMap(method, subscribe_key) {
-//     let keys = subscriptions.get(method)
-//     if( ! keys ) {
-//         console.log(">>> subscriptions no method", method)
-//         return
-//     }
-//     let subsription_map = keys.get(subscribe_key)
-//     if( ! subsription_map ) {
-//         console.log(">>> subscriptions no subscribe_key", subscribe_key)
-//         return
-//     }
-//     return subsription_map
-// }
-

@@ -39,7 +39,8 @@ describe('Wallet Tests', () => {
     
     afterEach(()=> wallet.logout())
 
-    it('Server only', ()=> {
+
+    it('Server wallet', ()=> {
         
         wallet.useBackupServer(remote_url)
         wallet.keepRemoteCopy(true, code)
@@ -61,7 +62,7 @@ describe('Wallet Tests', () => {
         })
     })
     
-    it('Disk only', ()=> {
+    it('Disk wallet', ()=> {
         
         // Create a local wallet
         wallet.keepLocalCopy(true)
@@ -89,7 +90,7 @@ describe('Wallet Tests', () => {
         })
     })
     
-    it('Memory', ()=> {
+    it('Memory wallet', ()=> {
         // keepLocalCopy false may not be necessary (off is the default), however it will also delete anything on disk
         wallet.keepLocalCopy(false)
         let create = wallet
@@ -243,7 +244,7 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
                     )
                 })
                 let p4 = api.fetchWalletUnsubscribe(public_key)
-                resolve([ p3, p4 ])
+                resolve(Promise.all([ p3, p4 ]))
             } catch( error ) {
                 reject( error )
             }

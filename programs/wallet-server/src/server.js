@@ -37,8 +37,8 @@ export default function createServer() {
     wss.on('listening', ()=>{ console.log('Server listening port %d', npm_package_config_rest_port) })
     wss.on('close', ()=>{ console.log('Server closed port %d', npm_package_config_rest_port) })
     wss.on('error', error =>{
-        console.error('wallet-server::createServer\t', error, 'stack', error.stack)
-        console.error('wallet-server::createServer\trestart')
+        console.error('ERROR\tserver\tonerror\t', error, 'stack', error.stack)
+        // console.error('ERROR\tserver\tonerror\trestart')
         // createServer()
     })
      
@@ -103,7 +103,7 @@ export default function createServer() {
                     params = params.params
                     
                     if( subscribe_id != null ) {
-                    console.log("subscribe_id", subscribe_id)
+                        
                         if( subscriptions.subscribe(ws, method, subscribe_key, subscribe_id)) {
                             
                             // Send the OK that the subscription was successful
@@ -117,6 +117,7 @@ export default function createServer() {
                             wsResponse(wsType, id, "Bad Request", { error: "Already subscribed" })
                             return
                         }
+                        
                     } else if( unsubscribe_id != null ) {
                         if( subscriptions.unsubscribe(ws, method, subscribe_key, unsubscribe_id)) {
                             wsResponse(wsType, id, "OK")
