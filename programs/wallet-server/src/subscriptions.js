@@ -67,13 +67,23 @@ export function notifyOther(ws, method, subscribe_key, params) {
         
         ids.forEach( subscription_id => {
             try {
-                console.log("INFO\tsubscriptions\tnotify", subscription_id, subscribe_key, method, params)
+                console.log("INFO\tsubscriptions\tnotifyOther", subscription_id, subscribe_key, method, params)
                 subscribe_ws.send(JSON.stringify({
                     method: "notice",
                     params: [subscription_id, params]
                 }))
             } catch( error ) {
-                console.log("ERROR\tsubscriptions\tnotify", error, "stack", error.stack)
+                
+                // need a better way to know when socket is closed
+                let socketClosed = error.toString() === "Error: not opened"
+                console.log("ERROR\tsubscriptions\tnotifyOther",
+                    socketClosed ? "socket closed" : "other error",
+                    error, "stack", error.stack)
+                
+                // remove only when socket close error?
+                this.remove(ws) // error.toString() === Error: not opened
+                
+                return false // stop forEach
             }
         })
     })

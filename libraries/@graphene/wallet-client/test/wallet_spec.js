@@ -121,7 +121,7 @@ describe('Wallet Tests', () => {
         let create = wallet.login(email, username, password)
             // create the initial wallet
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )
-
+        
         return create.then(()=>{
             
             // disconnect from the backup server
@@ -139,7 +139,7 @@ describe('Wallet Tests', () => {
                 return assertServerWallet({ test_wallet: 'secret'})//server unchanged
                     .then(()=>{
                     
-                    wallet.useBackupServer(remote_url)//hookup again
+                    wallet.useBackupServer(remote_url)//configure to hookup again
                     
                     // there were 2 updates, now sync remotely
                     return wallet.keepRemoteCopy(true)//backup to server

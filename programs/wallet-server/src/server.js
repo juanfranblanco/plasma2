@@ -73,7 +73,8 @@ export default function createServer() {
         ws.on('close', ()=> {
             sockets = sockets.remove(ws)
             subscriptions.remove(ws)
-            console.log(">>>> CLOSE", "IP", ipAddress(ws), 'Remaining sockets', sockets.count(), "subscriptions", subscriptions.count())
+            console.log(">>>> CLOSE", "remaining sockets", sockets.count(),
+                "remaining subscriptions", subscriptions.count())
         })
         
         ws.on('message', msg => {

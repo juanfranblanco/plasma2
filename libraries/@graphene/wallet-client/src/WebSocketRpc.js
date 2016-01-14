@@ -25,7 +25,7 @@ export default class WebSocketRpc {
             }
             // Warning, onerror callback is over-written on each request.  Be cautious to dulicate some logic here.
             this.web_socket.onerror = evt => {
-                console.error("ERROR\tWebSocketRpc\tconstructor web_socket onerror", evt.data ? evt.data : "")
+                console.error("ERROR\tWebSocketRpc\tconstructor\tweb_socket onerror", evt.data ? evt.data : "")
                 if(this.update_rpc_connection_status_callback)
                     this.update_rpc_connection_status_callback("error");
                 
@@ -46,7 +46,17 @@ export default class WebSocketRpc {
     }
     
     close() {
-        return new Promise( resolve => {
+        let unsubs = []
+        for (let id in this.subscriptions) {
+            try {
+                let { method, params, key } = this.subscriptions[id]
+                unsubs.push(this.unsubscribe(method, params, key))
+            } catch( error ) {
+                console.error("WARN\tWebSocketRpc\tclose\t","unsubscribe",error, "stack", error.stack)
+            }
+        }
+        let unsub = Promise.all(unsubs)
+        return unsub.then(()=> new Promise( resolve => {
             this.web_socket.onclose = closeEvent => {
                 // console.log("INFO\tWebSocketRpc\tclose") // closeEvent.reason === connection failed
                 if( Object.keys(this.subscriptions).length !== 0 )
@@ -59,7 +69,7 @@ export default class WebSocketRpc {
                 resolve()
             }
             this.web_socket.close()
-        })
+        }))
     }
     
     /**
