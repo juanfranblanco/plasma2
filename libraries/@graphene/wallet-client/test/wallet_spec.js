@@ -31,7 +31,7 @@ describe('Wallet Tests', () => {
     beforeEach(()=>{
         initWallet()
         wallet.useBackupServer(remote_url)
-        wallet.keepRemoteCopy(true, code)
+        wallet.keepRemoteCopy(true)
         // "login" will sync from the server
         return wallet.login(email, username, password)
             .then(()=> wallet.keepRemoteCopy(false))// delete
@@ -42,11 +42,6 @@ describe('Wallet Tests', () => {
     
     afterEach(()=> wallet.logout())
 
-    // Delete wallet before each test, and reset for the next test
-    // beforeEach(()=> deleteWallet().then(()=> initWallet()))
-    
-    // after(()=> wallet.logout().then(()=> wallet.useBackupServer()))
-    
     it('Server only', ()=> {
         
         wallet.useBackupServer(remote_url)
@@ -69,7 +64,7 @@ describe('Wallet Tests', () => {
         })
     })
     
-    it('Disk only', done => {
+    it('Disk only', ()=> {
         
         // Create a local wallet
         wallet.keepLocalCopy(true)
@@ -78,7 +73,7 @@ describe('Wallet Tests', () => {
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )// create
             .then(()=> wallet.setState({ test_wallet: 'secret2'}) )// update
         
-        let assertPromise = create.then(()=>{
+        return create.then(()=>{
             
             // Wallet is in memory
             assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
@@ -95,10 +90,9 @@ describe('Wallet Tests', () => {
             return assertNoServerWallet()
             
         })
-        resolve(assertPromise, done)
     })
     
-    it('Memory', done => {
+    it('Memory', ()=> {
         // keepLocalCopy false may not be necessary (off is the default), however it will also delete anything on disk
         wallet.keepLocalCopy(false)
         let create = wallet
@@ -106,7 +100,7 @@ describe('Wallet Tests', () => {
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )// create
             .then(()=> wallet.setState({ test_wallet: 'secret2'}) )// update
         
-        let assertPromise = create.then(()=> {
+        return create.then(()=> {
             
             // Wallet is in memory
             assert.equal(wallet.wallet_object.get("test_wallet"), "secret2")
@@ -119,10 +113,10 @@ describe('Wallet Tests', () => {
             // It is not on the server
             return assertNoServerWallet()
         })
-        resolve(assertPromise, done)
     })
     
-    it('Server offline updates', () => {
+    it('Server offline updates', ()=> {
+        
         wallet.useBackupServer(remote_url)
         wallet.keepRemoteCopy(true, code)
         
@@ -189,7 +183,7 @@ describe('Wallet Tests', () => {
                         return wallet2.getState()
                             .then( ()=> assert(false, '2nd client should not update'))
                             .catch( error => {
-                            assert(/^conflict/.test(error), 'Expecting conflict')
+                            assert(/^Conflict/.test(error), 'Expecting conflict')
                         })
                         
                     })
@@ -217,11 +211,21 @@ function newWallet() {
 
 function assertNoServerWallet(walletParam = wallet) {
     if( ! walletParam.private_key ) throw new Error("wallet locked")
-    return newApi(api =>{
-        return api.fetchWallet( walletParam.private_key.toPublicKey() ).then( json=> {
-            assert(json.encrypted_data == null, 'No Server Wallet')
-        })
+    let ws_rpc = new WebSocketRpc(remote_url)
+    let api = new WalletApi(ws_rpc)
+    let p1 = new Promise( (resolve, reject) => {
+        // console.log("assertServerWallet");
+        let public_key = walletParam.private_key.toPublicKey()
+        let p2 = api.fetchWallet( public_key, null, json => {
+            try {
+                assert.equal(json.statusText, "No Content")
+            } catch( error ) {
+                reject( error )
+            }
+        }).catch( error => reject(error))
+        resolve(p2.then(()=> api.fetchWalletUnsubscribe(public_key)))
     })
+    return p1.then(()=> ws_rpc.close())
 }
 
 function assertServerWallet(expectedWallet, walletParam = wallet) {
@@ -229,7 +233,7 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
     let ws_rpc = new WebSocketRpc(remote_url)
     let api = new WalletApi(ws_rpc)
     let p1 = new Promise( (resolve, reject) => {
-        console.log("assertServerWallet");
+        // console.log("assertServerWallet");
         let public_key = walletParam.private_key.toPublicKey()
         let p2 = api.fetchWallet( public_key, null, json => {
             try {
@@ -251,34 +255,34 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
     return p1.then(()=> ws_rpc.close())
 }
 
-function deleteWallet(emailParam = email) {
-    let sig = wallet.signHash()
-    if( ! sig ) return Promise.resolve()
-    let { local_hash, signature } = sig
-    return newApi(api => {
-        return api.deleteWallet( local_hash, signature ).catch( error =>{
-            if( ! error.res.statusText === "Not Found") {
-                console.error("ERROR", error, "stack", error.stack)
-                throw error
-            }
-        })
-    })
-}
+// function deleteWallet(emailParam = email) {
+//     let sig = wallet.signHash()
+//     if( ! sig ) return Promise.resolve()
+//     let { local_hash, signature } = sig
+//     return newApi(api => {
+//         return api.deleteWallet( local_hash, signature ).catch( error =>{
+//             if( ! error.res.statusText === "Not Found") {
+//                 console.error("ERROR", error, "stack", error.stack)
+//                 throw error
+//             }
+//         })
+//     })
+// }
 
-function newApi(callback) {
-    let ws_rpc = new WebSocketRpc(remote_url)
-    let ret
-    try {
-        
-        ret = callback( api )
-    } finally {
-        return ret ? ret.then(()=> ws_rpc.close()) : ws_rpc.close()
-    }
-}
+// function newApi(callback) {
+//     let ws_rpc = new WebSocketRpc(remote_url)
+//     let ret
+//     try {
+//         
+//         ret = callback( api )
+//     } finally {
+//         return ret ? ret.then(()=> ws_rpc.close()) : ws_rpc.close()
+//     }
+// }
 
-function resolve(promise, done) {
-    if( ! promise ) throw new TypeError("Missing: promise")
-    return promise
-        .then( result =>{ if( done ) done(); return result })
-        .catch(error =>{ console.error(error, 'stack', error.stack); throw error})
-}
+// function resolve(promise, done) {
+//     if( ! promise ) throw new TypeError("Missing: promise")
+//     return promise
+//         .then( result =>{ if( done ) done(); return result })
+//         .catch(error =>{ console.error(error, 'stack', error.stack); throw error})
+// }

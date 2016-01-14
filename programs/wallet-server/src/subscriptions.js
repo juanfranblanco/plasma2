@@ -91,7 +91,7 @@ export var count = ()=> {
 export function remove(ws) {
     subscriptions = subscriptions
         .filterNot( (subscribe_key, method)=> subscribe_key
-            .filter( (subscribe_map, subscribe_ws)=> {
+            .filterNot( (subscribe_map, subscribe_ws)=> {
                 let match = subscribe_ws === ws
                 if( match && ! subscribe_map.isEmpty()) {
                     console.error("WARN\tsubscriptions\tWebSocket closed with active subscription(s)", subscribe_map.keySeq().toJS())
