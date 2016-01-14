@@ -50,7 +50,7 @@ export default class WebSocketRpc {
             this.web_socket.onclose = closeEvent => {
                 // console.log("INFO\tWebSocketRpc\tclose") // closeEvent.reason === connection failed
                 if( Object.keys(this.subscriptions).length !== 0 )
-                    console.error("WARN: close called with active subscriptions",
+                    console.error("WARN\tWebSocketRpc\tclose", "active subscriptions",
                         Object.keys(this.subscriptions).length)
                 
                 if(this.update_rpc_connection_status_callback)

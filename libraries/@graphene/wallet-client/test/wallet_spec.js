@@ -29,15 +29,12 @@ describe('Wallet Tests', () => {
     
     // Ensure there is no wallet on the server
     beforeEach(()=>{
-        initWallet()
-        wallet.useBackupServer(remote_url)
-        wallet.keepRemoteCopy(true)
-        // "login" will sync from the server
-        return wallet.login(email, username, password)
-            .then(()=> wallet.keepRemoteCopy(false))// delete
-            .then(()=> wallet.logout())
-            .then(()=> initWallet())
-            .catch( error=>{ console.error("wallet_spec\tbeforeEach", error); throw error })
+        return remoteWallet(email).then( wallet => {
+            return wallet.keepRemoteCopy(false) // delete
+                .then(()=> wallet.logout())
+                .then(()=> initWallet())
+                .catch( error=>{ console.error("wallet_spec\tbeforeEach", error); throw error })
+        })
     })
     
     afterEach(()=> wallet.logout())
@@ -187,8 +184,8 @@ describe('Wallet Tests', () => {
                         })
                         
                     })
-                })
-            })
+                }).then(()=> wallet2.logout())
+            }).then(()=> wallet.logout())
         })
     })
     
@@ -254,35 +251,3 @@ function assertServerWallet(expectedWallet, walletParam = wallet) {
     })
     return p1.then(()=> ws_rpc.close())
 }
-
-// function deleteWallet(emailParam = email) {
-//     let sig = wallet.signHash()
-//     if( ! sig ) return Promise.resolve()
-//     let { local_hash, signature } = sig
-//     return newApi(api => {
-//         return api.deleteWallet( local_hash, signature ).catch( error =>{
-//             if( ! error.res.statusText === "Not Found") {
-//                 console.error("ERROR", error, "stack", error.stack)
-//                 throw error
-//             }
-//         })
-//     })
-// }
-
-// function newApi(callback) {
-//     let ws_rpc = new WebSocketRpc(remote_url)
-//     let ret
-//     try {
-//         
-//         ret = callback( api )
-//     } finally {
-//         return ret ? ret.then(()=> ws_rpc.close()) : ws_rpc.close()
-//     }
-// }
-
-// function resolve(promise, done) {
-//     if( ! promise ) throw new TypeError("Missing: promise")
-//     return promise
-//         .then( result =>{ if( done ) done(); return result })
-//         .catch(error =>{ console.error(error, 'stack', error.stack); throw error})
-// }
