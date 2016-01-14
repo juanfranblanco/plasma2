@@ -102,12 +102,12 @@ export var count = ()=> {
 }
 
 export function remove(ws) {
-    console.log("DEBUG remove,ws st",count())
+    // console.log("DEBUG remove,ws st",count())
     subscriptions = subscriptions
         .filterNot( subscribe_key => subscribe_key
             .filterNot( subscribe_ws => subscribe_ws
                 .filterNot( ids => {
-                    console.log("DEBUG ids.toJS()", ids.toJS())
+                    // console.log("DEBUG ids.toJS()", ids.toJS())
                     let match = subscribe_ws === ws
                     if( match && ! ids.isEmpty()) {
                         console.error("WARN\tsubscriptions\tWebSocket closed with active subscription(s)", ids.keySeq().toJS())
@@ -116,5 +116,5 @@ export function remove(ws) {
                 })
             )
         )
-    console.log("DEBUG remove,ws en",count())
+    // console.log("DEBUG remove,ws en",count())
 }

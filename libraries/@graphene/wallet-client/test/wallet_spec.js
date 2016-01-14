@@ -193,7 +193,7 @@ describe('Multi Wallet', () => {
                         return wallet2.getState()
                             .then( ()=> assert(false, '2nd client should not update'))
                             .catch( error => {
-                            assert(/^Conflict/.test(error), 'Expecting conflict')
+                            assert(/^Conflict/.test(error), 'Expecting conflict ' + error)
                         })
                         
                     })
@@ -202,21 +202,41 @@ describe('Multi Wallet', () => {
         })
     })
     
-    it('Server subscription update', () => {
-        return Promise.all([ remoteWallet(), remoteWallet() ]).then( result =>{
-            let [ wallet1, wallet2 ] = result
+    it('Server subscription update', ()=>{
+        return new Promise( (resolve, reject) => {
             
-            var p1 =
-                wallet1.setState({ test_wallet: 'secret' }).then(()=>
-                wallet2.getState()
-                    .then( object2 => assert.equal(object2.get("test_wallet"), 'secret'))
-                    .then( ()=> wallet2.setState({ test_wallet: 'secret2' }))
-                    // .then( wallet1.getState().then( object1 => assert.equal(object1.get("test_wallet"), 'secret2')))
-                )
-            
-            return p1.then(()=> Promise.all([wallet1.logout(), wallet2.logout()]))
-            
+            // Create two remote wallets, same wallet but different connections (just like different devices)
+            var p1 = Promise.all([ remoteWallet(), remoteWallet() ]).then( result =>{
+                
+                let [ wallet1, wallet2 ] = result
+                
+                let secret1 = wallet =>{
+                    console.log("assert secret1")
+                    assert.equal(wallet.wallet_object.get("test_wallet"), 'secret')
+                }
+                
+                let secret2 = wallet =>{
+                    console.log("assert secret2")
+                    assert.equal(wallet.wallet_object.get("test_wallet"), 'secret')
+                }
+                
+                let p1 = new Promise( r1 =>{
+                    let p2 = new Promise( r2 =>{
+                        
+                        wallet1.subscribe( secret1, r1 )
+                        wallet2.subscribe( secret2, r2 )
+                        
+                        let setter = wallet1.setState({ test_wallet: 'secret' }).then(()=>{ console.log("setter") });
+                        
+                        resolve( setter.then(()=>Promise.all([ p1, p2 ])) )
+                        
+                    })
+                })
+                
+            })
+            p1.catch( error => reject(error))
         })
+        
     })
     
 })
