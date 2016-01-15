@@ -14,26 +14,30 @@ const public_key = private_key.toPublicKey().toString()
 
 describe('Email API', () => {
     
-    it('requestCode', function(done) {
-        this.timeout(5000)
-        let email = "alice@example.bitbucket"
-        api.requestCode(email).then(()=>{ done() })
-            .catch( error =>{ console.error(error, error.stack); throw error })
-    })
+    // This should work, but it tends to spam ones inbox
+    
+    // it('requestCode', function(done) {
+    //     this.timeout(5000)
+    //     let email = "alice@example.bitbucket"
+    //     api.requestCode(email).then(()=>{ done() })
+    //         .catch( error =>{ console.error(error, error.stack); throw error })
+    // })
     
 })
 
 /** These test may depend on each other.    */
 describe('Email Actions', () => {
 
-    it('requestCode', function(done) {
-        let email = "alice@example.bitbucket"
-        this.timeout(5000)
-        err(api.requestCode(email).then( json =>{
-            assert(json.expire_min, 'expire_min')
-            done()
-        }))
-    })
+    // This should work, but it tends to spam ones inbox
+    
+    // it('requestCode', function(done) {
+    //     let email = "alice@example.bitbucket"
+    //     this.timeout(5000)
+    //     err(api.requestCode(email).then( json =>{
+    //         assert(json.expire_min, 'expire_min')
+    //         done()
+    //     }))
+    // })
 
 })
 

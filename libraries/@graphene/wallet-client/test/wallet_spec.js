@@ -203,23 +203,22 @@ describe('Multi Wallet', () => {
     })
     
     it('Server subscription update', ()=>{
+        
         return new Promise( (resolve, reject) => {
             
             // Create two remote wallets, same wallet but different connections (just like different devices)
             let main = Promise.all([ remoteWallet(), remoteWallet() ]).then( result =>{
                 
                 let [ wallet1, wallet2 ] = result
-                let secret1 = assertSubscribe("secret", 1)
-                let secret2 = assertSubscribe("secret", 2)
-                let secret3 = assertSubscribe("secretB", 3)
-                let secret4 = assertSubscribe("secretB", 4)
                 
                 let p1 = new Promise( r1 =>{
                     let p2 = new Promise( r2 =>{
                         
-                        let setter = wallet1.setState({ test_wallet: 'secret' })
+                        let secret1 = assertSubscribe("secret", 1)
+                        let secret2 = assertSubscribe("secret", 2)
                         wallet1.subscribe( secret1, r1 )
                         wallet2.subscribe( secret2, r2 )
+                        let setter = wallet1.setState({ test_wallet: 'secret' })
                         
                         setter.then(()=>Promise.all([ p1, p2 ])).then(()=>{
                             
@@ -230,9 +229,11 @@ describe('Multi Wallet', () => {
                                 let p4 = new Promise( r4 =>{
                                     // console.log(1);
                                     
-                                    let setter2 = wallet2.setState({ test_wallet: 'secretB' })
+                                    let secret3 = assertSubscribe("secretB", 3)
+                                    let secret4 = assertSubscribe("secretB", 4)
                                     wallet1.subscribe( secret3, r3 )
                                     wallet2.subscribe( secret4, r4 )
+                                    let setter2 = wallet2.setState({ test_wallet: 'secretB' })
                                     
                                     resolve( setter2.then(()=>Promise.all([ p3, p4 ])) )
                                     

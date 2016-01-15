@@ -74,13 +74,13 @@ export default class Wallet {
         this.sync = sync.bind(this)
         this.updateWallet = updateWallet.bind(this)
         this.currentHash = currentHash.bind(this)
-        this.notifySubscribers = notifySubscribers.bind(this)
+        this.notifyResolve = notifyResolve.bind(this)
     }
     
     /**
         Configure the wallet to run with (provide a URL) or without (pass in null) a wallet backup server.
     
-        Calling this method does not immediately trigger any action on the server.
+        Calling this method does not immediately trigger any action on the server.  It will however notify subscribers if the remote_url changes.
         
         Every call to this method will disconnect leaving it to the API to the re-connect (if applicable).
         
@@ -99,14 +99,17 @@ export default class Wallet {
             this.api = null
             this.instance = null
         } 
-        this.storage.setState({ remote_url })
-        return Promise.resolve(close)
+        if(remote_url != this.storage.state.get("remote_url")) {
+            this.notify = true
+            this.storage.setState({ remote_url })
+        }
+        return this.notifyResolve(Promise.resolve(close))
     }
     
     /**
         Configure the wallet to keep a local copy on disk.  This allows the user to access the wallet even if the server is no longer available. This option can be disabled on public computers where the wallet data should never touch disk and should be deleted when the user logs out.
         
-        By default a local copy will NOT be kept.
+        By default a local copy will NOT be kept.  Subscribers will not be notified.
         
         @arg {boolean} [save = true] -  Save (or delete / do not save) all state changes to disk
     */
@@ -117,7 +120,7 @@ export default class Wallet {
     /**
         Configure the wallet to save its data on the remote server. If this is set to false, then it will be removed from the server. If it is set to true, then it will be uploaded to the server. If the wallet is not currently saved on the server a token will be required to allow the creation of the new wallet's data on the remote server.  If this is set to false, then it will be removed from the server. If it is set to true, then it will be uploaded to the server. If the wallet is not currently saved on the server a token will be required to allow the creation of a new wallet.
         
-        The default is <b>undefined</b> (neither upload nor remove).
+        The default is <b>undefined</b> (neither upload nor remove).  Subscribers are notified if the configuration changes.
         
         The upload or delete operation may be deferred pending: {@link this.login} and {@link this.useBackupServer}
         
@@ -131,14 +134,19 @@ export default class Wallet {
         if( save === true && ! state.get("remote_url"))
             throw new Error(this.instance+":configuration_error, remote_copy without remote_url")
         
+        if( save != this.storage.state.get("remote_copy") || token != this.storage.state.get("remote_token"))
+            this.notify = true
+        
         this.storage.setState({ remote_copy: save, remote_token: token })
-        return this.sync()
+        return this.notifyResolve( this.sync() )
     }
     
     /**
         This API call is used to load the wallet. If a backup server has been specified then it will attempt to fetch the latest version from the server, otherwise it will load the local wallet into memory. The configuration set by keepLocalCopy will determine whether or not the wallet is saved to disk as a side effect of logging in.
         
         The wallet is unlocked in RAM when it combines these as follows: lowercase(email) + lowercase(username) + password to come up with a matching public / private key. If keepRemoteCopy is enabled, the email used to obtain the token must match the email used here. Also, if keepRemoteCopy is enabled, the server will store only a one-way hash of the email (and not the email itself) so that it can track resources by unique emails but still respect email privacy also giving the server no advantage in guessing the email portion of the password salt.
+        
+        If the login is successful, subscribers are notified after any potential remote sync has finished but before this method resolves.
         
         @arg {string} email 
         @arg {string} username
@@ -175,13 +183,14 @@ export default class Wallet {
                     encryption_pubkey: public_key.toString(),
                     // email_sha1: email_sha1.toString('base64')
                 })
+                this.notify = true
             }
             
             // check server, decrypt and set this.wallet_object (if a wallet is found)
             var p = this.sync(private_key).then(()=> {
                 this.private_key = private_key
             })
-            resolve(p)
+            resolve(this.notifyResolve(p))
         })
     }
     
@@ -205,17 +214,17 @@ export default class Wallet {
         }
         
         // useBackupServer() will close the connection 
-        return unsub.then(()=> this.useBackupServer())
+        return this.notifyResolve( unsub.then(()=> this.useBackupServer()) )
     }
     
     /**
         This method returns the wallet_object representing the state of the wallet.  It is only valid if the wallet has successfully logged in.  If the wallet is known to be in a consistent state (after a login for example) one may instead access the object directly `this.wallet_object` instead.
-    
+        
         @return {Promise} {Immutable} wallet_object or `undefined` if locked
     */
     getState() {
         if( ! this.private_key ) return Promise.resolve()
-        return this.sync().then(()=> this.wallet_object )
+        return this.notifyResolve( this.sync().then(()=> this.wallet_object ))
     }
 
     /** 
@@ -241,16 +250,12 @@ export default class Wallet {
             wallet_object = fromJS(wallet_object)
             // let encryption_pubkey = this.storage.state.get("encryption_pubkey")
             
-            resolve(
+            resolve( this.notifyResolve(
                 this.updateWallet(wallet_object).catch( error => {
                     console.log('ERROR\tWallet:'+this.instance+'\tsetState', error, 'stack', error.stack)
-                    this.notifySubscribers()
                     throw error
-                }).then( ret =>{
-                    this.notifySubscribers()
-                    return ret
                 })
-            )
+            ))
         })
     }
     
@@ -279,9 +284,11 @@ export default class Wallet {
     
 }
 
+// Used by notifyResolve 
 function notifySubscribers() {
-    if( this.dispatched ) return
+    if( this.dispatched || ! this.notify ) return
     this.dispatched = true
+    this.notify = false
     setTimeout(()=>{
         this.dispatched = false
         this.subscribers.forEach( (resolve, callback) => {
@@ -295,6 +302,23 @@ function notifySubscribers() {
         })
     }, 20 )
 }
+
+/**
+    Called once at the end of each API call.  Calling this function only once per API call prevents duplicate notifications from going out which aids in efficiency and testing.
+
+    @private
+*/
+function notifyResolve(promise) {
+    let notify = notifySubscribers.bind(this)
+    return promise.then(ret =>{
+        notify()
+        return ret
+    }).catch( error => {
+        notify()
+        throw error
+    })
+}
+
 
 /**
     Take the most recent server wallet and the local wallet then decide what to do: 'pull' from the server, or 'push' changes to the server ...
@@ -378,29 +402,22 @@ function fetchWalletCallback(server_wallet, private_key) {
         if( ! has_server_wallet && ! has_local_wallet ) {
             assert(/No Content/.test(server_wallet.statusText))
             this.remote_status = "No Content"
-            this.notifySubscribers()
+            this.notify = true
             resolve()
             return
         }
         
-        let notifyResolve = (p, remote_status) => resolve(
-            p.then(ret =>{
-                this.remote_status = remote_status
-                this.notifySubscribers()
-                return ret
-            }).catch( error => {
-                this.notifySubscribers()
-                throw error
-            })
-        )
-        
         if( ! has_server_wallet ) {
-            notifyResolve( push(has_server_wallet, private_key), "Not Modified" )
+            this.notify = true
+            this.remote_status = "Not Modified"
+            resolve( push(has_server_wallet, private_key) )
             return
         }
         
         if( ! has_local_wallet ) {
-            notifyResolve( pull(server_wallet, private_key), "Not Modified" )
+            this.notify = true
+            this.remote_status = "Not Modified"
+            resolve( pull(server_wallet, private_key) )
             return
         }
         
@@ -414,20 +431,24 @@ function fetchWalletCallback(server_wallet, private_key) {
         // No changes locally or remote
         if( ! dirtyLocal &&  server_wallet.statusText === "Not Modified") {
             this.remote_status = "Not Modified"
-            this.notifySubscribers()
+            this.notify = true
             resolve()
             return
         }
         
         // Push local changes (no conflict)
         if( dirtyLocal && server_wallet.statusText === "Not Modified" ) {
-            notifyResolve( push(has_server_wallet, private_key), "Not Modified" )
+            this.notify = true
+            this.remote_status = "Not Modified"
+            resolve( push(has_server_wallet, private_key) )
             return
         }
         
         if( ! dirtyLocal && server_wallet.statusText === "OK") {
             // The server had this copy of this wallet when another device changed it (meaning that the other device must have been in sync with the wallet when the change was made).  It is safe to pull this wallet and overwrite the local version.
-            notifyResolve( pull(server_wallet, private_key), "Not Modified" )
+            this.remote_status = "Not Modified"
+            this.notify = true
+            resolve( pull(server_wallet, private_key) )
             return
         }
         
@@ -435,7 +456,7 @@ function fetchWalletCallback(server_wallet, private_key) {
         assert(server_wallet.statusText === "OK", this.instance + 'Expecting a remotely modified wallet')
         
         this.remote_status = "Conflict"
-        this.notifySubscribers()
+        this.notify = true
         
         // An internal wallet comparison is required to resolve
         // Unit test checks this message for /^Conflict/
@@ -468,6 +489,7 @@ function forcePull(server_wallet, private_key) {
     return decrypt(backup_buffer, private_key).then( wallet_object => {
         this.storage.setState(state)
         this.wallet_object = fromJS( wallet_object )
+        this.notify = true
         // console.log(this.instance + ":forcePull new hash", state.get("remote_hash"), this.currentHash().toString('base64'))
     })
 }
@@ -485,11 +507,14 @@ function forcePush(has_server_wallet, private_key) {
         
         let remote_hash_buffer = new Buffer(remote_hash, 'base64')
         let signature = Signature.signBufferSha256(remote_hash_buffer, private_key)
+        this.notify = true
         return this.api.deleteWallet( remote_hash_buffer, signature )
     }
-    if( this.wallet_object && remote_copy === true )
+    if( this.wallet_object && remote_copy === true ) {
+        this.notify = true
         //updateWallet updates storage
         return this.updateWallet(this.wallet_object, state)
+    }
 }
 
 /** Create or update a wallet on the server.
@@ -514,6 +539,7 @@ function updateWallet(wallet_object, state = this.storage.state) {
             })
             this.storage.setState(state)
             this.wallet_object = wallet_object
+            this.notify = true
             
             if( this.api == null || remote_copy !== true ) {
                 resolve()
@@ -542,6 +568,7 @@ function updateWallet(wallet_object, state = this.storage.state) {
                     })
                     this.storage.setState(state)
                     this.remote_status = "Not Modified"
+                    this.notify = true
                 })
             
             } else {
@@ -562,10 +589,12 @@ function updateWallet(wallet_object, state = this.storage.state) {
                         })
                         this.storage.setState(state)
                         this.remote_status = "Not Modified"
+                        this.notify = true
                         return
                     }
                     
                     if( json.statusText !== "OK" ) {
+                        this.notify = true
                         this.remote_status = json.statusText // Probably "Conflict"
                         throw new Error(this.instance + ":Unexpected WalletApi.saveWallet status: " + json.statusText )
                     }
