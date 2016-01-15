@@ -207,7 +207,7 @@ describe('Multi Wallet', () => {
         
         return new Promise( (resolve, reject) => {
             
-            // Create two remote wallets, same wallet but different connections (just like different devices)
+            // Create two remote wallets, same wallet but different connections (different devices)
             let main = Promise.all([ remoteWallet(), remoteWallet() ]).then( result =>{
                 
                 let [ wallet1, wallet2 ] = result
@@ -239,10 +239,13 @@ describe('Multi Wallet', () => {
                                     let setter2 = wallet2.setState({ test_wallet: 'secretB' })
                                     
                                     setter2.then(()=>Promise.all([ p3, p4 ])).then(()=>{
+                                        
                                         wallet1.unsubscribe( secret3 )
                                         wallet2.unsubscribe( secret4 )
+                                        
                                         resolve( Promise.all([ wallet1.logout(), wallet2.logout() ]))
-                                    })
+                                    
+                                    }).catch( error => reject(error))
                                     
                                 })
                             })
@@ -259,7 +262,6 @@ describe('Multi Wallet', () => {
     })
     
 })
-
 
 let assertSubscribe = (expected, label) => wallet =>{
     console.log("assertWalletEqual",label, expected)
