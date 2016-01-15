@@ -55,7 +55,6 @@ export function saveWallet(original_local_hash, encrypted_data, signature, walle
     let local_hash = lh.toString('base64')
     return Wallet.findOne({where: {public_key}}).then( wallet =>{
         if( ! wallet) return "Not Found"
-        console.log("Conflict?", wallet.local_hash, original_local_hash)
         if(wallet.local_hash !== original_local_hash) return "Conflict"
         wallet.encrypted_data = encrypted_data
         wallet.local_hash = local_hash
