@@ -18,20 +18,19 @@ export default class RateLimit {
         let event = Date.now()
         let expired = event - this.duration
 
-        
         this.hits = this.hits
-            // Log this event
+        
+            // Add this event
             .update(key, List(), events => events.push(event))
             
             // Remove expired events
             .update(key, events => events.filter(event => event > expired))
             
-            // Remove keys that no longer have any events
+            // Remove "other" keys that no longer have any events
             .filterNot( keys => keys.isEmpty())
         
-        this.hits.forEach( (events, key) =>
-            console.log("INFO\tRateLimit\t", key, "\t",
-                events.count(), "of", this.max_requests_per_duration))
+        console.log("INFO\tRateLimit\t", key, "\t",
+            this.hits.get(key).count(), "of", this.max_requests_per_duration)
         
         return this.hits.get(key).count() > this.max_requests_per_duration
     }
