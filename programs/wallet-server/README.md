@@ -22,8 +22,8 @@ Unit tests are run from [@graphene/wallet-client](../../libraries/@graphene/wall
 Update `./.npmrc` if you need to change something:
 ```sh
 # Server Port
-@graphene/wallet-server:rest_port = 9080
-@graphene/wallet-server:rest_ip_requests_per_hour = 10
+@graphene/wallet-server:network_port = 9080
+@graphene/wallet-server:network_ip_requests_per_hour = 100
 #
 # Email - tokens have the time in them, expire_min is tested when verifying
 @graphene/time-token:expire_min = 10
