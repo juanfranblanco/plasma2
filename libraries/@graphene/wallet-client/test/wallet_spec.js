@@ -193,8 +193,11 @@ describe('Multi Wallet', () => {
                         return wallet2.getState()
                             .then( ()=> assert(false, '2nd client should not update'))
                             .catch( error => {
-                            assert(/^Conflict/.test(error), 'Expecting conflict ' + error)
-                        })
+                                
+                                assert.equal(wallet2.remote_status, "Conflict")
+                                assert(/^Conflict/.test(error), 'Expecting conflict ' + error)
+                                
+                            })
                         
                     })
                 }).then(()=> wallet2.logout())

@@ -8,7 +8,13 @@
     "mail_from": "alice@example.com",
     "mail_subject": "Verify your wallet backup token",
     "mail_script": "./bin/email.sh",
-    "mail_token_url": "https://bitshares.org/wallet?token=${token}"
+    "mail_token_url": "https://bitshares.org/wallet?token=${token}",
+    "mysql_database": "wallet_server",
+    "mysql_user": "root",
+    "mysql_password": "",
+    "mysql_host": "localhost",
+    "mysql_port": "3306",
+    "sql_debug": "true"
   },
   "main": "index.js",
   "dependencies": {

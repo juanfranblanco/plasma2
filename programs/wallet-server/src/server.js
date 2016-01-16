@@ -19,7 +19,7 @@ const {
 } = process.env
 
 const ratelimitConfig = {
-    duration: 60 * 10 * 1000, // 1 hour
+    duration: 60 * 60 * 1000, // 1 hour
     max: npm_package_config_network_ip_requests_per_hour
 }
 

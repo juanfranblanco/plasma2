@@ -1,10 +1,42 @@
 var Sequelize = require("sequelize");
 
-module.exports = new Sequelize('wallet_server', 'root', '', {
-    host: "localhost",
-    port: 3306,
+const {
+
+    /** MySQL  */
+    npm_package_config_mysql_database,
+    
+    
+    /** MySQL  */
+    npm_package_config_mysql_user,
+    
+    
+    /** MySQL  */
+    npm_package_config_mysql_password,
+    
+    
+    /** MySQL  */
+    npm_package_config_mysql_host,
+    
+    
+    /** MySQL  */
+    npm_package_config_mysql_port,
+    
+    
+    /** INFO Show SQL statements. */
+    npm_package_config_sql_debug
+    
+    
+} = process.env
+
+module.exports = new Sequelize(
+    npm_package_config_mysql_database,
+    npm_package_config_mysql_user,
+    npm_package_config_mysql_password, {
+    host: npm_package_config_mysql_host,
+    port: npm_package_config_mysql_port,
     dialect: 'mysql',
     logging: (args)=>{
-        // console.log(args)
+        if( npm_package_config_sql_debug )
+            console.log(args)
     } 
 });

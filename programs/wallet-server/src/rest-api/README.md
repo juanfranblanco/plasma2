@@ -1,3 +1,8 @@
+
+# Deprecated
+# REST was replaced by websockets .. Unless there is a reason to have a REST fall-back this will probably be removed.
+
+
 # Express JS REST to API middleware.
 
 # Configure
