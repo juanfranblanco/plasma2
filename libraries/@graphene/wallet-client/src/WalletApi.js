@@ -47,8 +47,8 @@ export default class WalletApi {
         }
      */
     createWallet(code, encrypted_data, signature) {
-        encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
-        signature = toBinary(req(signature, 'signature'))
+        encrypted_data = toBase64(req(encrypted_data, 'encrypted_data'))
+        signature = toBase64(req(signature, 'signature'))
         let params = { code, encrypted_data, signature }
         return this.ws_rpc.call("createWallet", params).then( json => {
             assertRes(json, "OK", json)
@@ -77,7 +77,7 @@ export default class WalletApi {
     */
     fetchWallet(public_key, local_hash, callback = null) {
         public_key = toString(req(public_key, 'public_key'))
-        local_hash = toBinary(local_hash)
+        local_hash = toBase64(local_hash)
         let params = { public_key, local_hash }
         
         return this.ws_rpc.subscribe("fetchWallet", params, public_key, callback)
@@ -101,8 +101,8 @@ export default class WalletApi {
     */
     saveWallet(original_local_hash, encrypted_data, signature) {
         original_local_hash = toBase64(req(original_local_hash, 'original_local_hash'))
-        encrypted_data = toBinary(req(encrypted_data, 'encrypted_data'))
-        signature = toBinary(req(signature, 'signature'))
+        encrypted_data = toBase64(req(encrypted_data, 'encrypted_data'))
+        signature = toBase64(req(signature, 'signature'))
         let params = { original_local_hash, encrypted_data, signature }
         return this.ws_rpc.call("saveWallet", params)
             .then( json => {
@@ -125,10 +125,10 @@ export default class WalletApi {
         @return {Promise} {status: 200, statusText: "OK", updated: "{Date}", local_hash}
     */
     changePassword(original_local_hash, original_signature, new_encrypted_data, new_signature) {
-        original_local_hash = toBinary(req(original_local_hash, 'original_local_hash'))
-        original_signature = toBinary(req(original_signature, 'original_signature'))
-        new_encrypted_data = toBinary(req(new_encrypted_data, 'new_encrypted_data'))
-        new_signature = toBinary(req(new_signature, 'new_signature'))
+        original_local_hash = toBase64(req(original_local_hash, 'original_local_hash'))
+        original_signature = toBase64(req(original_signature, 'original_signature'))
+        new_encrypted_data = toBase64(req(new_encrypted_data, 'new_encrypted_data'))
+        new_signature = toBase64(req(new_signature, 'new_signature'))
         let params = { original_local_hash, original_signature, new_encrypted_data, new_signature }
         return this.ws_rpc.call("changePassword", params)
             .then( json => {
@@ -148,8 +148,8 @@ export default class WalletApi {
         @return {Promise} resolve (successful) or cache (error) 
     */
     deleteWallet(local_hash, signature) {
-        local_hash = toBinary(req(local_hash, 'local_hash'))
-        signature = toBinary(req(signature, 'signature'))
+        local_hash = toBase64(req(local_hash, 'local_hash'))
+        signature = toBase64(req(signature, 'signature'))
         let params = { local_hash, signature }
         return this.ws_rpc.call("deleteWallet", params) 
             .then(res => assertRes(res, "OK" ))
@@ -168,9 +168,9 @@ export default class WalletApi {
 export var invalidEmail = email => ! email || ! /^[^ ^@.]+@[a-z0-9][\.a-z0-9_-]*\.[a-z0-9]{2,}$/i.test( email )
 
 // @return {string} binary
-var toBinary = data => data == null ? data :
-    Buffer.isBuffer(data) ? data.toString('binary') :
-    data["toBuffer"] ? data.toBuffer().toString('binary') : data
+// var toBinary = data => data == null ? data :
+//     Buffer.isBuffer(data) ? data.toString('binary') :
+//     data["toBuffer"] ? data.toBuffer().toString('binary') : data
 
 // 
 // var toBuffer = data => data == null ? data :

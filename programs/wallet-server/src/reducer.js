@@ -35,7 +35,6 @@ export default function reducer(state, action) {
                 break
             case 'fetchWallet':
                 var { public_key, local_hash } = action
-                local_hash = local_hash ? new Buffer(local_hash, 'binary').toString('base64') : ''
                 var r = Wallet
                     .findOne({ where: {public_key} })
                     .then( wallet => {
