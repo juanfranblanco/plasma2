@@ -61,7 +61,7 @@ export default function createServer() {
             
             // be carefull, an exception here will crash the server!
             
-            let id = 0
+            let id
             let wsType = ws // standared non-subscription reply
             
             try {

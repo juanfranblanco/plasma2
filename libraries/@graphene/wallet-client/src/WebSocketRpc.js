@@ -1,6 +1,6 @@
 var Immutable = require("immutable")
 
-const SOCKET_DEBUG = process.env.npm_config__graphene_wallet_client_socket_debug
+const SOCKET_DEBUG = JSON.parse( process.env.npm_config__graphene_wallet_client_socket_debug || false )
 let instance = 0
 
 export default class WebSocketRpc {
@@ -184,7 +184,7 @@ export default class WebSocketRpc {
         } else {
             callback = this.callbacks[response.id];
             if( ! callback) {
-                console.log("ERROR\tWebSocketRpc:"+this.instance+"\tlistener\tUnknown callback", response.id)
+                console.log("ERROR\tWebSocketRpc:"+this.instance+"\tlistener\tUnknown callback", response.id, response)
                 return
             }
         }
