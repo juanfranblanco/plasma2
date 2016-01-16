@@ -1,4 +1,6 @@
+import logging from "./src/logging"
 import createServer from "./src/server"
+
 try {
     createServer()
 } catch(error) {

@@ -4,24 +4,22 @@
 npm install
 ```
 
-## Database
+# Create Database
 ```bash
 #  Assumes your user is the default root (with no password)
 mysqladmin -u root create wallet_server
 node src/db/models.js
 ```
 
-# Commands
-See "scripts" in [package.json](./package.json)
+# Run
+`npm start`
 
-Example: `npm start` or `npm run [cli|dev]`
+# Configuration
+The first time you start the server it will create a random `@graphene/local-secret:secret` value and instruct you to save this value in your local `./.npmrc` file.  This is used to validate the codes (tokens) sent to the user's email.
 
-Unit tests are run from [@graphene/wallet-client](../../libraries/@graphene/wallet-client)..
+If your contributing to this code-base, the unit tests in `@graphene/wallet-client` require the same secret value. 
 
-# Configure
-The first time you start the server it will create a random @graphene/local-secret:secret value and instruct you to save this value in your local .npmrc file.  This is used to validate the codes (tokens) sent to the user's email.  The unit tests in @graphene/wallet-client require the same secret value so that test wallets may be created. 
-
-Update `./.npmrc` if you need to change something:
+Update `./.npmrc` with anything you need to change.  These properties have default values in `./package.json` as follows:
 ```sh
 # Server Port
 @graphene/wallet-server:network_port = 9080
@@ -41,7 +39,18 @@ Update `./.npmrc` if you need to change something:
 
 # debug
 # Show SQL statements.
+@graphene/wallet-server:log_info  = true
+@graphene/wallet-server:log_debug  = false
 @graphene/wallet-server:sql_debug  = false
 ```
 See "config" in [package.json](./package.json)
 
+# Running for Developers
+If contributing, the `dev` script will monitor and hot load code changes.  
+ 
+`npm run dev`
+
+There is a `npm run cli` script that is geared towards running commands in the server's environment.
+
+Unit tests are run from [@graphene/wallet-client](../../libraries/@graphene/wallet-client)..
+See "scripts" in [package.json](./package.json)

@@ -1,3 +1,4 @@
+import logging from "./src/logging"
 import replApi from "./src/ReplApi"
 
 console.log("Press Enter to see the prompt, press Ctrl+C several times to exit.")

@@ -29,7 +29,7 @@ export default class RateLimit {
             // Remove "other" keys that no longer have any events
             .filterNot( keys => keys.isEmpty())
         
-        console.log("INFO\tRateLimit\t", key, "\t",
+        if(global.INFO) console.log("INFO\tRateLimit\t", key, "\t",
             this.hits.get(key).count(), "of", this.max_requests_per_duration)
         
         return this.hits.get(key).count() > this.max_requests_per_duration

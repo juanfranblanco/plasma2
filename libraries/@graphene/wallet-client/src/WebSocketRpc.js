@@ -60,7 +60,7 @@ export default class WebSocketRpc {
         let unsub = Promise.all(unsubs)
         return unsub.then(()=> new Promise( resolve => {
             this.web_socket.onclose = closeEvent => {
-                // console.log("INFO\tWebSocketRpc\tclose") // closeEvent.reason === connection failed
+                // if(global.INFO) console.log("INFO\tWebSocketRpc\tclose") // closeEvent.reason === connection failed
                 if( Object.keys(this.subscriptions).length !== 0 )
                     console.error("WARN\tWebSocketRpc\tclose\t",this.instance,"active subscriptions",
                         Object.keys(this.subscriptions).length)

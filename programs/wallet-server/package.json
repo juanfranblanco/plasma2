@@ -14,7 +14,9 @@
     "mysql_password": "",
     "mysql_host": "localhost",
     "mysql_port": "3306",
-    "sql_debug": "true"
+    "log_info": "true",
+    "sql_debug": "false",
+    "log_debug": "false"
   },
   "main": "index.js",
   "dependencies": {

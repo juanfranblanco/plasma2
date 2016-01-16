@@ -1,7 +1,8 @@
 
-import {createStore, applyMiddleware} from 'redux'
 import reducer from './reducer'
-import createMiddleware from './middleware'
+import {createStore} from 'redux'
+// import {createStore, applyMiddleware} from 'redux'
+// import createMiddleware from './middleware'
 import * as actions from './actions'
 import { wsResponse, wsReplySugar } from "./ws-api"
 import {checkToken} from "@graphene/time-token"
@@ -29,16 +30,17 @@ let sockets = Set()
 let WebSocketServer = require("ws").Server
 
 export default function createServer() {
-    const createStoreWithMiddleware = applyMiddleware( createMiddleware() )(createStore)
-    const store = createStoreWithMiddleware( reducer )
+    // const createStoreWithMiddleware = applyMiddleware( createMiddleware() )(createStore)
+    // const store = createStoreWithMiddleware( reducer )
+    const store = createStore( reducer )
 
     let wss = new WebSocketServer({port: npm_package_config_network_port})
-    wss.on('listening', ()=>{ console.log('INFO\tServer listening port %d', npm_package_config_network_port) })
-    wss.on('close', ()=>{ console.log('INFO\tServer closed port %d', npm_package_config_network_port) })
+    wss.on('listening', ()=>{ if(global.INFO) console.log('INFO\tServer listening port %d', npm_package_config_network_port) })
+    wss.on('close', ()=>{ if(global.INFO) console.log('INFO\tServer closed port %d', npm_package_config_network_port) })
     wss.on('error', error =>{ console.error('ERROR\tserver\tonerror\t', error, 'stack', error.stack) })
      
     // Limit number of requests per hour by IP
-    console.log("INFO\tserver\tLimit by IP address", {
+    if(global.INFO) console.log("INFO\tserver\tLimit by IP address", {
         max: ratelimitConfig.max,
         duration: ratelimitConfig.duration/1000/60+' min'
     })
@@ -46,12 +48,12 @@ export default function createServer() {
     wss.on("connection", ws => { try {
     
         sockets = sockets.add(ws)
-        console.log('INFO\tNEW SOCKET',"\tIP", ipAddress(ws), "\tTotal sockets", sockets.count())
+        if(global.INFO) console.log('INFO\tNEW SOCKET',"\tIP", ipAddress(ws), "\tTotal sockets", sockets.count())
         
         ws.on('close', ()=> { try {
             subscriptions.remove(ws)
             sockets = sockets.remove(ws)
-            console.log("INFO\tserver\tclose", "remaining sockets", sockets.count(),
+            if(global.INFO) console.log("INFO\tserver\tclose", "remaining sockets", sockets.count(),
                 "remaining subscriptions", subscriptions.count())
         } catch(error) { console.error("ERROR\tserver\tclose", error, 'stack', error.stack) } })
         
@@ -123,7 +125,7 @@ export default function createServer() {
                     return
                 }
                 let action = methodFunction( params )
-                console.log("INFO\tserver\tmessage", method, action)
+                if(global.DEBUG) console.log("DEBUG\tserver\tmessage", method, action)
                 if( ! action || ! store.dispatch ) {
                     wsResponse( wsType, id, "OK" )
                     return
