@@ -35,9 +35,9 @@ export default function createServer() {
     const store = createStore( reducer )
 
     let wss = new WebSocketServer({port: npm_package_config_network_port})
-    wss.on('listening', ()=>{ if(global.INFO) console.log('INFO\tServer listening port %d', npm_package_config_network_port) })
-    wss.on('close', ()=>{ if(global.INFO) console.log('INFO\tServer closed port %d', npm_package_config_network_port) })
-    wss.on('error', error =>{ console.error('ERROR\tserver\tonerror\t', error, 'stack', error.stack) })
+    wss.on('listening', ()=>{ if(global.INFO) console.log('INFO\tserver\tlistening port %d', npm_package_config_network_port) })
+    wss.on('close', ()=>{ if(global.INFO) console.log('INFO\tserver\tclosed port %d', npm_package_config_network_port) })
+    wss.on('error', error =>{ console.error('ERROR\tserver\tonerror', error, 'stack', error.stack) })
      
     // Limit number of requests per hour by IP
     if(global.INFO) console.log("INFO\tserver\tLimit by IP address", {
@@ -48,7 +48,7 @@ export default function createServer() {
     wss.on("connection", ws => { try {
     
         sockets = sockets.add(ws)
-        if(global.INFO) console.log('INFO\tNEW SOCKET',"\tIP", ipAddress(ws), "\tTotal sockets", sockets.count())
+        if(global.INFO) console.log('INFO\tserver\tNEW SOCKET',"\tIP", ipAddress(ws), "\tTotal sockets", sockets.count())
         
         ws.on('close', ()=> { try {
             subscriptions.remove(ws)

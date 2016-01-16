@@ -68,7 +68,7 @@ export function notifyOther(ws, method, subscribe_key, params) {
         
         ids.forEach( subscription_id => {
             try {
-                if(global.INFO) console.log("INFO\tsubscriptions\tnotifyOther", subscription_id, subscribe_key, method, params)
+                if(global.DEBUG) console.log("DEBUG\tsubscriptions\tnotifyOther", subscription_id, subscribe_key, method, params)
                 subscribe_ws.send(JSON.stringify({
                     method: "notice",
                     params: [subscription_id, params]
