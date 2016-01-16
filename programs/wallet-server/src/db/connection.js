@@ -36,7 +36,7 @@ module.exports = new Sequelize(
     port: npm_package_config_mysql_port,
     dialect: 'mysql',
     logging: (args)=>{
-        if( npm_package_config_sql_debug )
+        if( global.SQL_DEBUG )
             console.log("SQL_DEBUG ",args)
     } 
 });
