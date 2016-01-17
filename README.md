@@ -20,7 +20,8 @@ PATH="$PLASMA_HOME/node_modules/.bin:$PATH"
 
 # Programs
 ```bash
-# see README.md
+# Since you installed the dependencies here and setup your environment, you do not need to `npm install` again.
+# Look at README.md in ./programs/wallet-server...
 cd programs/wallet-server
 ```
 

@@ -12,12 +12,14 @@ node src/db/models.js
 ```
 
 # Run
-`npm start`
+```bash
+npm start
+```
 
 # Configuration
-The first time you start the server it will create a random `@graphene/local-secret:secret` value and instruct you to save this value in your local `./.npmrc` file.  This is used to validate the codes (tokens) sent to the user's email.
+The first time you start this server it will create a random `@graphene/local-secret:secret` value and log this information with instructions to save this value in your local `./.npmrc` file.  This is used to generate and validate the codes (tokens) sent to the user's email.  Access to this secret should be restricted, it will allow unlimited creation of new wallets on the server.
 
-If your contributing to this code-base, the unit tests in `@graphene/wallet-client` require the same secret value. 
+To run the unit tests and to develop with the Wallet Client API, save this secret again under `./npmrc` in `$PLASMA_HOME/libraries/@graphene/wallet-client`.  While this server is running, goto another window setup for this environment and from `$PLASMA_HOME/libraries/@graphene/wallet-client`, run `npm test`.
 
 Update `./.npmrc` with anything you need to change.  These properties have default values in `./package.json` as follows:
 ```sh
