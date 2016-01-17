@@ -1,7 +1,7 @@
 {
   "name": "plasma",
   "version": "1.0.0",
-  "description": "Root development and deployment environment Cryptonomex JavaScript libraries and programs.",
+  "description": "Root development and deployment environment Cryptonomex JavaScript libraries and programs.  Contains a larger base set of dependencies.  ",
   "scripts": {
     "doc": "esdoc -c esdoc.json"
   },
@@ -29,7 +29,11 @@
     "localStorage": "^1.0.3",
     "lzma": "^2.2.3",
     "secp256k1": "^2.0.7",
-    "secure-random": "^1.1.1"
+    "secure-random": "^1.1.1",
+    "ws": "^1.0.1",
+    "mysql": "^2.9.0",
+    "redux": "^3.0.4",
+    "sequelize": "^3.14.2"    
   },
   "devDependencies": {
     "assert": "^1.3.0",
@@ -44,6 +48,8 @@
     "esdoc": "^0.4.3",
     "json-loader": "^0.5.4",
     "mocha": "^2.3.4",
-    "ws": "^1.0.1"
+    "repl": "^0.1.3",
+    "repl-promised": "^0.1.0",
+    "repl.history": "^0.1.3"
   }
 }
