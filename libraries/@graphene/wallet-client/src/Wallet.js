@@ -224,7 +224,7 @@ export default class Wallet {
         @return {Promise} {Immutable} wallet_object or `undefined` if locked
     */
     getState() {
-        if( ! this.private_key ) return Promise.resolve()
+        if( ! this.private_key ) return Promise.reject("login")
         return this.notifyResolve( this.sync().then(()=> this.wallet_object ))
     }
 
@@ -241,7 +241,7 @@ export default class Wallet {
     setState( wallet_object )  {
         return new Promise( resolve => {
             if( ! this.private_key )
-                throw new Error("login")
+                throw "wallet_locked"
             
             if(this.wallet_object === wallet_object) {
                 resolve()

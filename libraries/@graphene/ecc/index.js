@@ -5,5 +5,6 @@ module.exports = {
     PrivateKey: require('./src/key_private'),
     PublicKey: require('./src/key_public'),
     Signature: require('./src/signature'),
+    brainKey: require('./src/brain_key'),
     hash: require('./src/hash')
 }
