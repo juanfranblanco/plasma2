@@ -47,7 +47,9 @@ export default class Wallet {
     /**
         Variables:
         
-        {string} this.remote_status - Last status from server [undefined|Not Modified|No Content|Conflict|OK].  OK means the wallet synchronizing, a notice is not sent until this is complete.
+        {string} this.remote_status - Last status from server [undefined|Not Modified|No Content|Conflict|OK].  OK means the wallet is synchronizing, a notice is not sent until this is complete.
+        
+        {string} this.local_status - Last status from encryption and storage routines [null|Processing|"error text"].  A null value indicates that memory and local storage (if used) are in sync, Processing indicates in progress, "error text" could be any error.
         
         {Immutable.Map|Immutable.List} this.wallet_object - When unlocked, this is the unencrypted wallet object
         
@@ -56,11 +58,14 @@ export default class Wallet {
         @arg {LocalStoragePersistence} storage
     */
     constructor(storage) {
+        this.wallet_object = Map()
         this.storage = storage
         this.subscribers = Map()
         if( this.storage.state.isEmpty() ) {
+            // If storage were async, set this.local_status would be set upon completion
             storage.setState( inital_persistent_state )
         }
+        this.local_status = null
         
         // enable the backup server if one is configured (see useBackupServer)
         let remote_url = this.storage.state.get("remote_url")
@@ -152,47 +157,42 @@ export default class Wallet {
         @arg {string} email 
         @arg {string} username
         @arg {string} password
-        @return {Promise} - reject Error([email_required | username_required | password_required | invalid_password ]), success - getState is ready
+        @throws Error([email_required | username_required | password_required | invalid_password ])
+        @return {Promise} - can be ignored unless one is interested in the remote wallet syncing.
     */
     login( email, username, password ) {
-        return new Promise( resolve => {
-            if( this.private_key ) {
-                resolve()
-                return
-            }
-            
-            if( ! email ) throw new Error( "email_required" )
-            if( ! username ) throw new Error( "username_required" )
-            if( ! password ) throw new Error( "password_required" )
-            
-            let private_key = PrivateKey.fromSeed(
-                email.trim().toLowerCase() + "\t" +
-                username.trim().toLowerCase() + "\t" +
-                password
-            )
-            
-            let public_key = private_key.toPublicKey()
-            
-            if( this.storage.state.get("encryption_pubkey") ) {
-                // check login (email, username, and password)
-                if( this.storage.state.get("encryption_pubkey") !== public_key.toString())
-                    throw new Error( "invalid_password" )
-            } else {
-                // first login
-                // let email_sha1 = hash.sha1( email.trim().toLowerCase() )
-                this.storage.setState({
-                    encryption_pubkey: public_key.toString(),
-                    // email_sha1: email_sha1.toString('base64')
-                })
-                this.notify = true
-            }
-            
-            // check server, decrypt and set this.wallet_object (if a wallet is found)
-            var p = this.sync(private_key).then(()=> {
-                this.private_key = private_key
+
+        if( this.private_key ) {
+            return Promise.resolve()
+        }
+        
+        if( ! email ) throw new Error( "email_required" )
+        if( ! username ) throw new Error( "username_required" )
+        if( ! password ) throw new Error( "password_required" )
+        
+        let private_key = PrivateKey.fromSeed(
+            email.trim().toLowerCase() + "\t" +
+            username.trim().toLowerCase() + "\t" +
+            password
+        )
+        
+        let public_key = private_key.toPublicKey()
+        
+        if( this.storage.state.get("encryption_pubkey") ) {
+            // check login (email, username, and password)
+            if( this.storage.state.get("encryption_pubkey") !== public_key.toString())
+                throw new Error( "invalid_password" )
+        } else {
+            // first login
+            this.storage.setState({
+                encryption_pubkey: public_key.toString()
             })
-            resolve(this.notifyResolve(p))
-        })
+            this.notify = true
+        }
+        
+        this.private_key = private_key
+        
+        return this.notifyResolve( this.sync(private_key) )
     }
     
     /**
@@ -200,7 +200,7 @@ export default class Wallet {
         @return {Promise} resolve immediately or after a successful unsubscribe
     */
     logout() {
-        this.wallet_object = null
+        this.wallet_object = Map()
         this.remote_status = null
         
         // capture the public key first:
@@ -231,33 +231,32 @@ export default class Wallet {
     /** 
         This method is used to update the wallet state. If the wallet is configured to keep synchronized with the remote wallet then the server will refer to a copy of the wallets revision history to ensure that no version is overwritten. If the local wallet ever falls on a fork an attempt to upload that wallet will cause the API call to fail; a reconcilation will be needed. After successfully storing the state on the server, save the state to local memory, and optionally disk.
         
-        This method does not perform any updates if the wallet_object is the same (use the Immutable.Js API to ensure this will work).
+        This method does not perform any updates if the wallet_object is the same (using Immutable.Js will help ensure that this will work).
         
-        After all synchronization, the Immutable version of wallet_object ends up in `this.wallet_object`.
+        The Immutable version of wallet_object ends up in `this.wallet_object` (synchronizing may be in progress)
         
         @arg {Immutable|object} wallet_object - mutable or immutable object .. no loops, only JSON serilizable data
-        @return {Promise} - reject [wallet_locked, etc...], success after state update
+        @throws {Error} - [wallet_locked, etc...]
+        @return {Promise} - resolve or reject on completion.  One may also monitor this.local_status and this.remote_status.
     */
     setState( wallet_object )  {
-        return new Promise( resolve => {
-            if( ! this.private_key )
-                throw "wallet_locked"
-            
-            if(this.wallet_object === wallet_object) {
-                resolve()
-                return
-            }
-            
-            wallet_object = fromJS(wallet_object)
-            // let encryption_pubkey = this.storage.state.get("encryption_pubkey")
-            
-            resolve( this.notifyResolve(
-                this.updateWallet(wallet_object).catch( error => {
-                    console.log('ERROR\tWallet:'+this.instance+'\tsetState', error, 'stack', error.stack)
-                    throw error
-                })
-            ))
-        })
+        if( ! this.private_key )
+            throw new Error("wallet_locked")
+        
+        if(this.wallet_object === wallet_object) {
+            return Promise.resolve()
+        }
+        
+        this.notify = true
+        this.local_status = "Pending"
+        this.wallet_object = fromJS(wallet_object)
+        
+        return this.notifyResolve(
+            this.updateWallet().catch( error => {
+                console.log('ERROR\tWallet:'+this.instance+'\tsetState', error, 'stack', error.stack)
+                throw error
+            })
+        )
     }
     
     /**
@@ -497,6 +496,7 @@ function forcePull(server_wallet, private_key) {
     return decrypt(backup_buffer, private_key).then( wallet_object => {
         this.storage.setState(state)
         this.wallet_object = fromJS( wallet_object )
+        this.local_status = null
         this.notify = true
         // console.log(this.instance + ":forcePull new hash", state.get("remote_hash"), this.localHash().toString('base64'))
     })
@@ -518,6 +518,7 @@ function forcePush(has_server_wallet, private_key) {
         this.notify = true
         return this.deleteWallet( remote_hash_buffer, signature )
     }
+    // if( this.wallet_object ) is probably unnecessary, an unset empty_wallet is a empty Map.. Does not hurt to check though. 
     if( this.wallet_object && remote_copy === true ) {
         this.notify = true
         //updateWallet updates storage
@@ -527,7 +528,7 @@ function forcePush(has_server_wallet, private_key) {
 
 /** Create or update a wallet on the server.
 */
-function updateWallet(wallet_object, state = this.storage.state) {
+function updateWallet(wallet_object = this.wallet_object, state = this.storage.state) {
     return new Promise( resolve => {
     
         if( ! wallet_object )
@@ -547,6 +548,7 @@ function updateWallet(wallet_object, state = this.storage.state) {
             })
             this.storage.setState(state)
             this.wallet_object = wallet_object
+            this.local_status = null
             this.notify = true
             
             if( this.api == null || remote_copy !== true ) {

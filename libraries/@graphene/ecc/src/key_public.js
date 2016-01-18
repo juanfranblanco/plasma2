@@ -59,28 +59,39 @@ class PublicKey {
   }
 
   /**
-  {param1} public_key string
-  {return} PublicKey
+      @arg {string} public_key - like GPHXyz...
+      @arg {string} address_prefix - like GPH
+      @return PublicKey
+  */
+  static fromString(public_key, address_prefix) {
+      try {
+        var prefix = public_key.slice(0, address_prefix.length);
+        assert.equal(
+            address_prefix, prefix,
+            `Expecting key to begin with ${address_prefix}, instead got ${prefix}`);
+        public_key = public_key.slice(address_prefix.length);
+
+        public_key = new Buffer(base58.decode(public_key), 'binary');
+        var checksum = public_key.slice(-4);
+        public_key = public_key.slice(0, -4);
+        var new_checksum = hash.ripemd160(public_key);
+        new_checksum = new_checksum.slice(0, 4);
+        assert.deepEqual(checksum, new_checksum, 'Checksum did not match');
+        return PublicKey.fromBuffer(public_key);
+      } catch (e) {
+        console.error('fromPublicKeyString', e);
+        return null;
+      }
+  }
+  
+  /**
+      Alias for {@link fromString}
+      @arg {string} public_key - like GPHXyz...
+      @arg {string} address_prefix - like GPH
+      @return PublicKey
   */
   static fromPublicKeyString(public_key, address_prefix = config.address_prefix) {
-    try {
-      var prefix = public_key.slice(0, address_prefix.length);
-      assert.equal(
-          address_prefix, prefix,
-          `Expecting key to begin with ${address_prefix}, instead got ${prefix}`);
-      public_key = public_key.slice(address_prefix.length);
-
-      public_key = new Buffer(base58.decode(public_key), 'binary');
-      var checksum = public_key.slice(-4);
-      public_key = public_key.slice(0, -4);
-      var new_checksum = hash.ripemd160(public_key);
-      new_checksum = new_checksum.slice(0, 4);
-      assert.deepEqual(checksum, new_checksum, 'Checksum did not match');
-      return PublicKey.fromBuffer(public_key);
-    } catch (e) {
-      console.error('fromPublicKeyString', e);
-      return null;
-    }
+    return PublicKey.fromString(public_key, address_prefix)
   };
 
   toAddressString(address_prefix = config.address_prefix) {

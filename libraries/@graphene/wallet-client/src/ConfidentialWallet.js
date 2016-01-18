@@ -1,18 +1,16 @@
 import assert from "assert"
-import { fromJS, Map } from "immutable"
-import { brainKey } from "@graphene/ecc"
+import { fromJS, Map, List } from "immutable"
+import { brainKey, PrivateKey } from "@graphene/ecc"
 /**
     Serilizable persisterent state (JSON serilizable types only)..
 */
 const empty_wallet = fromJS({
     
-    confidential: {
-        //  { LABEL: KEY } No two keys can have the same label
-        labeled_keys: {},
-        
-        // [blind_receipt,...]
-        blind_receipts: []
-    }
+    //  [ LABEL: KEY ] No two keys can have the same label, no two labels can have the same key
+    labeled_keys: [],
+    
+    // [blind_receipt,...]
+    blind_receipts: []
 
 })
 
@@ -62,29 +60,39 @@ export default class ConfidentialWallet {
         this.keys = Map()
     }
     
-    
     /**
         This method can be used to set or change the label for a public_key.
 
-        @note No two keys can have the same label, a label may be renamed 
+        This is a one-to-one: one key per label, one label per key.  If there is a conflict, the label is renamed. 
 
         @arg {string|PublicKey} - public_key string (like: GPHXyz...)
         @arg {string} - label string (like: GPHXyz...)
         @return {Promise} resolve if the label was set, otherwise reject
      */
     setKeyLabel( public_key, label ) {
+        
         public_key = toString(req(public_key, "public_key"))
         req(label, 'label')
         
-        let wallet_object = this.wallet.wallet_object
-        if( ! wallet_object )
-            wallet_object = empty_wallet
+        let labelIndex = labeled_keys.findIndex( label_key => label_key[0] === label )
+        let keyIndex = labeled_keys.findIndex( label_key => label_key[1] === public_key )
         
-        return this.wallet.setState(
-            wallet_object.updateIn(["confidential", "labeled_keys"],
-            Map(), // default (incase this map does not exist)
-            keys => keys.set(label, public_key))
-        )
+        if( labelIndex > -1 && keyIndex === labelIndex) {
+            // already added
+console.log("labelIndex,keyIndex", labelIndex,keyIndex)
+            return Promise.resolve()
+            
+        }
+
+        return this.wallet.setState( this.wallet.wallet_object.updateIn(["labeled_keys"], List(),
+            labeled_keys =>{
+
+                
+                // rename or prefix (-1)
+                let index = keyIndex === -1 ? keyIndex : labelIndex
+                return labeled_keys.set(index, [ label, public_key ])
+            }
+        ))
         
     }
     
@@ -93,12 +101,9 @@ export default class ConfidentialWallet {
     */
     getKeyLabel( public_key ) {
         public_key = toString(req(public_key, "public_key"))
-        let wallet_object = this.wallet.wallet_object
-        if( ! wallet_object )
-            return
-        
-        return wallet_object.getIn(["confidential", "labeled_keys"], Map())
-            .find( (pubkey, label) => pubkey === public_key)
+        let label_key = this.wallet.wallet_object.getIn(["labeled_keys"], List())
+            .find( label_key => label_key[1] === public_key )
+        return label_key ? label_key[0] : null
     }
     
     /**
@@ -106,7 +111,7 @@ export default class ConfidentialWallet {
         
         "Stealth accounts" are labeled private keys.  They will also be able to manage "stealth contacts" which are nothing more than labeled public keys.
         
-        @throws {string} [label_exists]
+        @throws {Error} [locked|label_exists]
         @arg {string} label
         @arg {string} brain_key
         @return {PublicKey}
@@ -116,14 +121,17 @@ export default class ConfidentialWallet {
         req(label, "label")
         req(brain_key, "brain_key")
         
-        if( wallet_object.getIn(["confidential", "labeled_keys"], Map()).get( label ) )
-            throw "label_exists"
+        if( ! this.wallet.private_key )
+            throw new Error("locked")
+        
+        if( this.wallet.wallet_object.getIn(["labeled_keys"], Map()).get( label ) )
+            throw new Error("label_exists")
         
         brain_key = brainKey.normalize( brain_key )
         let private_key = PrivateKey.fromSeed( brain_key )
         let public_key = private_key.toPublicKey()
         
-        this.setKeyLabel( public_key, label ) 
+        this.setKeyLabel( public_key, label )
         this.keys = this.keys.set(toString(public_key), private_key.toWif())
         
         return public_key

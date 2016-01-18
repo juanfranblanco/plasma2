@@ -6,6 +6,8 @@ var type = require('../src/types');
 var p = require('../src/precision');
 var th = require('./test_helper');
 
+import { is } from "immutable"
+
 describe("types", function() {
     
     it("vote_id",function() {
@@ -25,7 +27,7 @@ describe("types", function() {
         };
         out_of_range("0:"+(0xffffff+1));
         out_of_range("256:0");
-        return;
+        
     });
     
     it("set", function() {
@@ -33,14 +35,20 @@ describe("types", function() {
         // Note, 1,0 sorts to 0,1
         assert.equal("020001", Convert(bool_set).toHex([1,0]));
         th.error("duplicate", function() { return Convert(bool_set).toHex([1,1]); });
-        return;
+        
     });
     
     it("map", function() {
         var bool_map = type.map(type.bool, type.bool);
-        assert.equal("0201010000", Convert(bool_map).toHex([[1,1],[0,0]]));
+        assert.equal("0200000101", Convert(bool_map).toHex([[1,1],[0,0]]));
         th.error("duplicate", function() { return Convert(bool_map).toHex([[1,1],[1,1]]); });
-        return;
+        
+    })
+    
+    it("deterministic", function() {
+        // map (protocol_id_type "account"), (uint16)
+        let t = type.map(type.protocol_id_type("account"), type.uint16);
+        assert.deepEqual( t.fromObject([[1,1],[0,0]]), [[0,0],[1,1]], 'did not sort' )
     });
     
     it("precision number strings", function() {
@@ -78,7 +86,7 @@ describe("types", function() {
         check("1.1",  1,      "11");
         check("-1",   1,      "-10");
         check("-1.1", 1,      "-11");
-        return;
+        
     });
     
     return it("precision number long", function() {
@@ -105,7 +113,7 @@ describe("types", function() {
             '92233720368547758075', _precision = 1
         );
         });
-        return;
+        
     });
 });
 
