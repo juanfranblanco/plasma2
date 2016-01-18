@@ -1,11 +1,7 @@
-// import {Map} from "immutable"
-// import {encrypt, decrypt } from "../src/WalletActions"
-// import {createToken} from '@graphene/time-token'
-// import WebSocketRpc from "../src/WebSocketRpc"
-// import WalletApi from "../src/WalletApi"
 import assert from "assert"
-import {PublicKey } from "@graphene/ecc"
+import {PublicKey, PrivateKey } from "@graphene/ecc"
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
+// import { is, fromJS } from "immutable"
 
 import Wallet from "../src/Wallet"
 import ConfidentialWallet from "../src/ConfidentialWallet"
@@ -13,8 +9,6 @@ import ConfidentialWallet from "../src/ConfidentialWallet"
 const username = "username"
 const password = "password"
 const email = "alice_spec@example.bitbucket"
-// const code = createToken(hash.sha1(email, 'binary'))
-// const remote_url = process.env.npm_package_config_remote_url
 
 // Configure to use localStorage for the purpose of these tests...
 global.localStorage = require('localStorage')
@@ -48,17 +42,27 @@ describe('Confidential Wallet', () => {
         
     })
     
-    it('Create blind account', ()=> {
+    it('Blind accounts', ()=> {
         
         let create = ()=> confidentialWallet.createBlindAccount("a1", "brainkey")
         
+        assert.deepEqual( confidentialWallet.getBlindAccounts().toJS(), {} )
         assert.throws(create , /locked/, "This test should require an unlocked wallet" )
         
         wallet.login(username, password, email)
         assert(create().Q, 'Needs to return a PublicKey')
         
-        assert.throws(create, /label_exists/ )
+        assert.throws(create, /label_exists/, "Expecting a 'label_exists' exception" )
         
+        assert.deepEqual(
+            confidentialWallet.getBlindAccounts().toJS(),
+            { "a1":  PrivateKey.fromSeed("brainkey").toPublicKey().toString() }
+        )
+        
+        assert.deepEqual(
+            confidentialWallet.getMyBlindAccounts().toJS(),
+            { "a1":  PrivateKey.fromSeed("brainkey").toPublicKey().toString() }
+        )
     })
     
 })

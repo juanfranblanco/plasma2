@@ -11,6 +11,8 @@ export default class WebSocketRpc {
     */
     constructor(ws_server_url, update_rpc_connection_status_callback) {
         this.instance = ++instance
+        this.is_ws_local = /localhost/.test(ws_server_url)
+        this.is_ws_secure = /^wss:\/\//.test(ws_server_url)
         this.update_rpc_connection_status_callback = update_rpc_connection_status_callback;
         var WebSocketClient = typeof(WebSocket) !== "undefined" ? require("ReconnectingWebSocket") : require("ws");
         this.web_socket = new WebSocketClient(ws_server_url);
@@ -27,7 +29,7 @@ export default class WebSocketRpc {
             }
             // Warning, onerror callback is over-written on each request.  Be cautious to dulicate some logic here.
             this.web_socket.onerror = evt => {
-                console.error("ERROR\tWebSocketRpc\tconstructor\tweb_socket onerror", evt.data ? evt.data : "")
+                console.error("ERROR\tWebSocketRpc\tconstructor onerror\t", evt.toString())
                 if(this.update_rpc_connection_status_callback)
                     this.update_rpc_connection_status_callback("error");
                 

@@ -80,7 +80,7 @@ describe('Single Wallet', () => {
             let json = testStorage.getState().toJS()
             assert(json.remote_hash == null, 'remote_hash')
             assert(json.encrypted_wallet,'encrypted_wallet')
-            assert(json.encryption_pubkey,'encryption_pubkey')
+            assert(json.secret_encryption_pubkey,'secret_encryption_pubkey')
             wallet.keepLocalCopy(false)// clean-up (delete it from disk)
             
             // It is not on the server

@@ -1,16 +1,29 @@
 import assert from "assert"
 
-/** A protocol between the web browser and the server for storing and retrieving data.  Unless documented otherwise, all methods return a Promise (future) that will resolve on success or reject on error.
+/**
+    A protocol between the web browser and the server for storing and retrieving data.  Unless documented otherwise, all methods return a Promise (future) that will resolve on success or reject on error.
+    
+    
+    
+    Any call that returns encrypted data or includes encrypted data and a signature (most of them) can 
+    
 
     @see [Wallet Server Architecture]{@link https://github.com/cryptonomex/graphene/wiki/Wallet-Server-Architecture}
 */
 export default class WalletApi {
     
     /**
+        Use only a secure Web Socket (wss://).  Calls may include the secret_public_key or include encrypted_data, signature parameters that anyone could use to calculate the secret_public_key.
+        
         @arg {WebSocketRpc} ws_rpc
     */
     constructor(ws_rpc) {
-        if( ! ws_rpc["call"] ) throw Error("WebSocketRpc object required")
+        if( ! ws_rpc["call"] )
+            throw new Error("WebSocketRpc object required")
+        
+        if( ! (ws_rpc.is_ws_local || ws_rpc.is_ws_secure) )
+            throw new Error("Please use a secure WebSocketRpc url that contains 'localhost' or starts with wss://")
+        
         this.ws_rpc = ws_rpc
     }
 
@@ -23,7 +36,7 @@ export default class WalletApi {
         @return {Promise} object { status: 200, statusText: "OK", expire_min: 10 }
     */
     requestCode(email) {
-        if( invalidEmail(email) ) throw ["invalid email", email]
+        if( invalidEmail(email) ) throw new Error("invalid email " + email)
         let params = { email }
         return this.ws_rpc.call("requestCode", params) 
             .then( json => {
@@ -60,7 +73,7 @@ export default class WalletApi {
     }
 
     /**
-        @arg {string|PublicKey} public_key - derived from {@link createWallet.signature}
+        @arg {string|PublicKey} secret_public_key - derived from {@link createWallet.signature}.  This is considered private (it was created by hashing: email+username+password); this is not nearly random enough for this to be public.
         
         @arg {Buffer|string} [local_hash = null] - binary sha256 of {@link createWallet.encrypted_data} optional and used to determine if data should be returned or if the server's wallet is identical to the client's wallet.
         
@@ -75,21 +88,21 @@ export default class WalletApi {
         } || {status: 304, statusText: "Not Modified" }
         @return {Promise} object - { status: 200, statusText: "OK" }
     */
-    fetchWallet(public_key, local_hash, callback = null) {
-        public_key = toString(req(public_key, 'public_key'))
+    fetchWallet(secret_public_key, local_hash, callback = null) {
+        secret_public_key = toString(req(secret_public_key, 'secret_public_key'))
         local_hash = toBase64(local_hash)
-        let params = { public_key, local_hash }
+        let params = { public_key: secret_public_key, local_hash }
         
-        return this.ws_rpc.subscribe("fetchWallet", params, public_key, callback)
+        return this.ws_rpc.subscribe("fetchWallet", params, secret_public_key, callback)
     }
     
     /**
         Stop listening for wallet updates
-        @arg {string|PublicKey} public_key - derived from {@link createWallet.signature}
+        @arg {string|PublicKey} public_key - derived from {@link createWallet.signature}.  This is considered private (it was created by hashing: email+username+password); this is not nearly random enough for this to be public.
     */
-    fetchWalletUnsubscribe(public_key) {
-        public_key = toString(req(public_key, 'public_key'))
-        return this.ws_rpc.unsubscribe("fetchWallet", null, public_key)
+    fetchWalletUnsubscribe(secret_public_key) {
+        secret_public_key = toString(req(secret_public_key, 'secret_public_key'))
+        return this.ws_rpc.unsubscribe("fetchWallet", null, secret_public_key)
     }
 
     /** 

@@ -23,8 +23,8 @@ const inital_persistent_state = fromJS({
     // This is the last encrypted_wallet hash that was saved on the server (base64)
     remote_hash: null,
     
-    // This is the public key derived from the email+username+password 
-    encryption_pubkey: null,
+    // This is the public key derived from the email+username+password ... This is considered private (email+username+password) is not nearly random enough for this to be public.
+    secret_encryption_pubkey: null,
     
     // Wallet JSON string encrypted using the private key derived from email+username+password (base64)
     encrypted_wallet: null,
@@ -178,14 +178,14 @@ export default class Wallet {
         
         let public_key = private_key.toPublicKey()
         
-        if( this.storage.state.get("encryption_pubkey") ) {
+        if( this.storage.state.get("secret_encryption_pubkey") ) {
             // check login (email, username, and password)
-            if( this.storage.state.get("encryption_pubkey") !== public_key.toString())
+            if( this.storage.state.get("secret_encryption_pubkey") !== public_key.toString())
                 throw new Error( "invalid_password" )
         } else {
             // first login
             this.storage.setState({
-                encryption_pubkey: public_key.toString()
+                secret_encryption_pubkey: public_key.toString()
             })
             this.notify = true
         }
@@ -537,7 +537,7 @@ function updateWallet(wallet_object = this.wallet_object, state = this.storage.s
         if( ! this.private_key )
             throw new Error("login")
         
-        let pubkey = state.get("encryption_pubkey")
+        let pubkey = state.get("secret_encryption_pubkey")
         let remote_copy = state.get("remote_copy")
         
         let p1 = encrypt(wallet_object, pubkey).then( encrypted_data => {

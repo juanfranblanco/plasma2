@@ -1,8 +1,12 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
 import { brainKey, PrivateKey } from "@graphene/ecc"
+
+
 /**
-    Serilizable persisterent state (JSON serilizable types only)..
+    This is for documentation purposes..
+    
+    Serilizable persisterent state (JSON serilizable types only)..  
 */
 const empty_wallet = fromJS({
     
@@ -10,8 +14,21 @@ const empty_wallet = fromJS({
     labeled_keys: [],
     
     // [blind_receipt,...]
-    blind_receipts: []
-
+    blind_receipts: [],
+    
+    wallet: null, // graphene-ui uses a 1 element array
+    
+    private_keys: [
+        {
+            brainkey_sequence: null,
+            imported_account_names: [],
+            encrypted_key: null,
+            pubkey: null
+        }
+    ],
+    
+    
+    
 })
 
 const authority = fromJS({
@@ -67,30 +84,28 @@ export default class ConfidentialWallet {
 
         @arg {string|PublicKey} - public_key string (like: GPHXyz...)
         @arg {string} - label string (like: GPHXyz...)
-        @return {Promise} resolve if the label was set, otherwise reject
+        @return {Promise} resolve after a complete wallet sync
      */
     setKeyLabel( public_key, label ) {
         
         public_key = toString(req(public_key, "public_key"))
         req(label, 'label')
-        
-        let labelIndex = labeled_keys.findIndex( label_key => label_key[0] === label )
-        let keyIndex = labeled_keys.findIndex( label_key => label_key[1] === public_key )
-        
-        if( labelIndex > -1 && keyIndex === labelIndex) {
-            // already added
-console.log("labelIndex,keyIndex", labelIndex,keyIndex)
-            return Promise.resolve()
-            
-        }
 
+        
         return this.wallet.setState( this.wallet.wallet_object.updateIn(["labeled_keys"], List(),
             labeled_keys =>{
 
+                let labelIndex = labeled_keys.findIndex( label_key => label_key.get(0) === label )
+                let keyIndex = labeled_keys.findIndex( label_key => label_key.get(1) === public_key )
                 
+                if( labelIndex > -1 && keyIndex === labelIndex) {
+                    // already added
+                    return labeled_keys
+                }
+
                 // rename or prefix (-1)
                 let index = keyIndex === -1 ? keyIndex : labelIndex
-                return labeled_keys.set(index, [ label, public_key ])
+                return labeled_keys.set(index, List([ label, public_key ]))
             }
         ))
         
@@ -102,8 +117,8 @@ console.log("labelIndex,keyIndex", labelIndex,keyIndex)
     getKeyLabel( public_key ) {
         public_key = toString(req(public_key, "public_key"))
         let label_key = this.wallet.wallet_object.getIn(["labeled_keys"], List())
-            .find( label_key => label_key[1] === public_key )
-        return label_key ? label_key[0] : null
+            .find( label_key => label_key.get(1) === public_key )
+        return label_key ? label_key.get(0) : null
     }
     
     /**
@@ -124,14 +139,14 @@ console.log("labelIndex,keyIndex", labelIndex,keyIndex)
         if( ! this.wallet.private_key )
             throw new Error("locked")
         
-        if( this.wallet.wallet_object.getIn(["labeled_keys"], Map()).get( label ) )
-            throw new Error("label_exists")
-        
         brain_key = brainKey.normalize( brain_key )
         let private_key = PrivateKey.fromSeed( brain_key )
         let public_key = private_key.toPublicKey()
         
+        assert( this.getKeyLabel( public_key ) == null, "label_exists")
+        
         this.setKeyLabel( public_key, label )
+        
         this.keys = this.keys.set(toString(public_key), private_key.toWif())
         
         return public_key
@@ -147,10 +162,15 @@ console.log("labelIndex,keyIndex", labelIndex,keyIndex)
      
     /** @return {Map<label, pubkey>} all blind accounts */
     getBlindAccounts() {
+        return this.wallet.wallet_object.getIn(["labeled_keys"], List())
+            .reduce( (r, label_key) => r.set(label_key.get(0), label_key.get(1)), Map())
     }
     
     /** @return {Map<label, pubkey>} all blind accounts for which this wallet has the private key */
     getMyBlindAccounts() {
+        let hasPrivate = pubkey => this.keys.has( pubkey )
+        return this.wallet.wallet_object.getIn(["labeled_keys"], List())
+            .reduce( (r, label_key) => ! hasPrivate(label_key.get(1)) ? r : r.set(label_key.get(0), label_key.get(1)), Map())
     }
     
     /**
