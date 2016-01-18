@@ -24,6 +24,19 @@ const local_hash2 = hash.sha256(encrypted_data2)
 const signature2 = Signature.signBufferSha256(local_hash2, private_key2)
 const signature_key1_enc2 = Signature.signBufferSha256(local_hash2, private_key)
 
+
+// This may be commented out because it spams the inbox...
+
+// describe('Email API', () => {
+//     
+//     it('requestCode', function() {
+//         this.timeout(5000)
+//         let email = "alice@example.bitbucket"
+//         return api.requestCode(email)
+//     })
+//     
+// })
+
 /** These test may depend on each other.  For example: createWallet is the setup for fetchWallet, etc...  */
 describe('Wallet API client', () => {
 
