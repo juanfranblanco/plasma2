@@ -3,31 +3,41 @@ import { fromJS, Map, List } from "immutable"
 import { brainKey, PrivateKey } from "@graphene/ecc"
 
 
-/**
-    This is for documentation purposes..
-    
-    Serilizable persisterent state (JSON serilizable types only)..  
-*/
-const empty_wallet = fromJS({
-    
-    //  [ LABEL: KEY ] No two keys can have the same label, no two labels can have the same key
-    labeled_keys: [],
-    
-    // [blind_receipt,...]
-    blind_receipts: [],
-    
-    wallet: null, // graphene-ui uses a 1 element array
-    
-    private_keys: [
-        {
-            brainkey_sequence: null,
-            imported_account_names: [],
-            encrypted_key: null,
-            pubkey: null
-        }
-    ],
-    
-})
+// /**
+//     This is for documentation purposes..
+//     Serilizable persisterent state (JSON serilizable types only)..  
+// */
+// const empty_wallet = fromJS({
+//     
+//     wallet: {
+//         public_name: t.Str,
+//         created: t.Dat,
+//         last_modified: t.Dat,
+//         backup_date: t.maybe(t.Dat),
+//         brainkey: t.maybe(t.Str),
+//         brainkey_sequence: t.Num,
+//         brainkey_backup_date: t.maybe(t.Dat),
+//         deposit_keys: t.maybe(t.Obj),
+//         chain_id: t.Str
+//     },
+//     
+//     //  [ LABEL: KEY ] No two keys can have the same label, no two labels can have the same key
+//     labeled_keys: [],
+//     
+//     // [blind_receipt,...]
+//     blind_receipts: [],
+//     
+//     private_keys: [
+//         {
+//             pubkey: t.Str,
+//             label: t.maybe(t.Str),
+//             import_account_names: t.maybe(t.Arr),
+//             brainkey_sequence: t.maybe(t.Num),
+//             private_wif: t.Str // was: encrypted_key: t.Str
+//         }
+//     ]
+//     
+// })
 
 const authority = fromJS({
     "weight_threshold": 1,

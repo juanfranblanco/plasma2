@@ -11,9 +11,9 @@ For the unit tests, you will need to `npm start` a programs/wallet-server config
 @graphene/local-secret:secret = 'test'
 ```
 
-# API Usage
-* [Server API](./src/WalletApi.js)
-* [Usage (unit test)](./test)
+# Confidential Wallet Usage
+* [Usage (unit test)](./test/confidential_wallet.js)
+* [API](./src/ConfidentialWallet.js)
 
 # Commands
 Example: `npm run [test|test:watch]`

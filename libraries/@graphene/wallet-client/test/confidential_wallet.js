@@ -3,7 +3,7 @@ import {PublicKey, PrivateKey } from "@graphene/ecc"
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
 // import { is, fromJS } from "immutable"
 
-import Wallet from "../src/Wallet"
+import WalletStorage from "../src/WalletStorage"
 import ConfidentialWallet from "../src/ConfidentialWallet"
 
 const username = "username"
@@ -20,7 +20,7 @@ describe('Confidential Wallet', () => {
 
     function initWallet() {
         storage.clear()
-        wallet = new Wallet(storage)
+        wallet = new WalletStorage(storage)
         confidentialWallet = new ConfidentialWallet(wallet)
     }
     

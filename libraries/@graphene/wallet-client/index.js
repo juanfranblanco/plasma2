@@ -1,4 +1,4 @@
 module.exports = {
-    Wallet: require('./src/Wallet')
-    // ConfidentialWallet: require('./src/ConfidentialWallet')
+    WalletStorage: require('./src/WalletStorage'),
+    ConfidentialWallet: require('./src/ConfidentialWallet')
 }

@@ -4,7 +4,7 @@ import { encrypt, decrypt } from "../src/WalletActions"
 import {createToken} from '@graphene/time-token'
 import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
-import Wallet from "../src/Wallet"
+import WalletStorage from "../src/WalletStorage"
 import WebSocketRpc from "../src/WebSocketRpc"
 import WalletApi from "../src/WalletApi"
 
@@ -24,7 +24,7 @@ describe('Single Wallet', () => {
 
     function initWallet() {
         storage.clear()
-        wallet = new Wallet(storage)
+        wallet = new WalletStorage(storage)
     }
     
     // Ensure there is no wallet on the server
@@ -119,7 +119,7 @@ describe('Single Wallet', () => {
         
         let create = wallet
             .login(email, username, password)
-            .then(()=> wallet.setState({ test_wallet: 'secret'}) )// create
+            .then(()=> wallet.setState([]) )// create
         
         return create.then(()=> {
             
@@ -128,7 +128,7 @@ describe('Single Wallet', () => {
             // disconnect and modify locally only
             wallet.useBackupServer(null)
             
-            return wallet.setState({ test_wallet: 'secret2'}).then(()=>{
+            return wallet.setState([]).then(()=>{
                 
                 // make sure we can't change the password (remote_copy is still true)
                 assert.throws(()=> wallet.changePassword(email, username, password, "new_"+password), /wallet_modified/, "wallet_modified")
@@ -319,7 +319,7 @@ let assertSubscribe = (expected, label) => wallet =>{
 function newWallet() {
     let storage = new LocalStoragePersistence("wallet_spec")
     storage.clear() // Clearing memory (ignore disk contents)
-    return new Wallet(storage)
+    return new WalletStorage(storage)
 }
 
 /** @return {Promise} resolves after remote wallet login */
