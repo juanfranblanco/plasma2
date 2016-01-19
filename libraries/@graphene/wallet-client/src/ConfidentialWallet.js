@@ -27,8 +27,6 @@ const empty_wallet = fromJS({
         }
     ],
     
-    
-    
 })
 
 const authority = fromJS({
@@ -168,9 +166,11 @@ export default class ConfidentialWallet {
     
     /** @return {Map<label, pubkey>} all blind accounts for which this wallet has the private key */
     getMyBlindAccounts() {
-        let hasPrivate = pubkey => this.keys.has( pubkey )
+        let reduce = (r, label, pubkey) =>
+            ! this.keys.has(pubkey) ? r : r.set(label, pubkey)
+        
         return this.wallet.wallet_object.getIn(["labeled_keys"], List())
-            .reduce( (r, label_key) => ! hasPrivate(label_key.get(1)) ? r : r.set(label_key.get(0), label_key.get(1)), Map())
+            .reduce( (r, label_key) => reduce(r, label_key.get(0), label_key.get(1)), Map())
     }
     
     /**
