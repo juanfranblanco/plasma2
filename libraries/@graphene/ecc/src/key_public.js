@@ -63,7 +63,7 @@ class PublicKey {
       @arg {string} address_prefix - like GPH
       @return PublicKey
   */
-  static fromString(public_key, address_prefix) {
+  static fromString(public_key, address_prefix = config.address_prefix) {
       try {
         var prefix = public_key.slice(0, address_prefix.length);
         assert.equal(
@@ -79,7 +79,7 @@ class PublicKey {
         assert.deepEqual(checksum, new_checksum, 'Checksum did not match');
         return PublicKey.fromBuffer(public_key);
       } catch (e) {
-        console.error('fromPublicKeyString', e);
+        console.error("ERROR\tPublicKey\tfromString", e, "stack", e.stack);
         return null;
       }
   }

@@ -157,18 +157,18 @@ export default class Wallet {
         @arg {string} email 
         @arg {string} username
         @arg {string} password
-        @throws Error([email_required | username_required | password_required | invalid_password ])
-        @return {Promise} - can be ignored unless one is interested in the remote wallet syncing.
+        @throws {Error<string>} [email_required | username_required | password_required | invalid_password | logged_in ]
+        @return {Promise} - can be ignored unless one is interested in the remote wallet syncing
     */
     login( email, username, password ) {
 
         if( this.private_key ) {
-            return Promise.resolve()
+            throw new Error("logged_in")
         }
         
-        if( ! email ) throw new Error( "email_required" )
-        if( ! username ) throw new Error( "username_required" )
-        if( ! password ) throw new Error( "password_required" )
+        req(email, "email")
+        req(username, "username")
+        req(password, "password")
         
         let private_key = PrivateKey.fromSeed(
             email.trim().toLowerCase() + "\t" +
@@ -208,7 +208,7 @@ export default class Wallet {
         this.private_key = null // logout
         
         let unsub
-        if( public_key && this.api ) {
+        if( public_key && this.api && this.ws_rpc.getSubscriptionId("fetchWallet", public_key.toString()) ) {
             unsub = this.api.fetchWalletUnsubscribe(public_key)
         } else {
             unsub = Promise.resolve()
@@ -282,6 +282,124 @@ export default class Wallet {
         this.subscribers = this.subscribers.remove( callback )
     }
     
+    /**
+        @arg {string} email 
+        @arg {string} username
+        @arg {string} old_password
+        @arg {string} new_password
+        @throws {Error} [
+            email_required | username_required | old_password_required |
+            invalid_password | new_password_required | wallet_empty
+        ]
+        @return {Promise} - can be ignored unless one is interested in the remote wallet syncing.
+    */
+    changePassword( email, username, old_password, new_password ) {
+        
+        if( ! this.storage.state.get("secret_encryption_pubkey") )
+            throw new Error("wallet_empty")
+        
+        req(email, "email")
+        req(username, "username")
+        req(old_password, "old_password")
+        req(old_password, "new_password")
+        
+        let old_private_key = PrivateKey.fromSeed(
+            email.trim().toLowerCase() + "\t" +
+            username.trim().toLowerCase() + "\t" +
+            old_password
+        )
+        
+        let old_public_key = old_private_key.toPublicKey()
+        
+        // check login
+        if( this.storage.state.get("secret_encryption_pubkey") !== old_public_key.toString())
+            throw new Error( "invalid_password" )
+        
+        let original_local_hash = this.localHash()
+        let remote_copy = this.storage.state.get("remote_copy")
+        if( remote_copy === true ) {
+            
+            let remote_hash = this.storage.state.get("remote_hash")
+            if( toBase64(original_local_hash) !== remote_hash ) {
+                // Check this now before changing local encrypted data, better to not find out later that the server can't be updated
+                throw new Error("wallet_modified: Can't change password, this wallet has a remote copy that has not been updated")
+            }
+            
+        }
+        
+        let new_private_key = PrivateKey.fromSeed(
+            email.trim().toLowerCase() + "\t" +
+            username.trim().toLowerCase() + "\t" +
+            new_password
+        )
+        let new_public_key = new_private_key.toPublicKey()
+        
+        return new Promise( (resolve, reject) => {
+            encrypt(this.wallet_object, new_public_key).then( encrypted_data => {
+                
+                // Save locally first
+                this.storage.setState({
+                    encrypted_wallet: encrypted_data.toString('base64'),
+                    secret_encryption_pubkey: new_public_key.toString()
+                })
+                this.local_status = null
+                this.notify = true
+                
+                if( this.api == null || remote_copy !== true ) {
+                    resolve( this.notifyResolve() )
+                    return
+                }
+                
+                if( this.ws_rpc.getSubscriptionId("fetchWallet", old_public_key.toString()) )
+                    this.api.fetchWalletUnsubscribe(old_public_key).catch( error => reject(error))
+                
+                let original_signature = Signature.signBufferSha256(original_local_hash, old_private_key)
+                let new_local_hash = this.localHash()
+                let new_signature = Signature.signBufferSha256(new_local_hash, new_private_key)
+                
+                let changePromise = this.api.changePassword(
+                    original_local_hash, original_signature, encrypted_data, new_signature
+                )
+                    .then( json => {
+                    if( json.statusText !== "OK"){
+                        reject(json)
+                        return
+                    }
+                    assert(json.local_hash, "local_hash")
+                    assert(json.updated, 'updated')
+                    this.storage.setState({
+                        remote_hash: json.local_hash,
+                        remote_updated: json.updated
+                    })
+                    this.notify = true
+                })
+                resolve( this.notifyResolve( changePromise ))
+            }).catch( error => reject(error))
+        })
+
+    }
+    
+    
+}
+
+/**
+    Called once at the end of each API call OR once after a subscription update is received.  Calling this function only once per API call prevents duplicate notifications from going out which aids in efficiency and testing.
+
+    @private
+*/
+function notifyResolve(promise) {
+    let notify = notifySubscribers.bind(this)
+    if( ! promise ) {
+        notify()
+        return Promise.resolve()
+    }
+    return promise.then(ret =>{
+        notify()
+        return ret
+    }).catch( error => {
+        notify()
+        throw error
+    })
 }
 
 // Used by notifyResolve 
@@ -299,22 +417,6 @@ function notifySubscribers() {
             else
                 console.error("ERROR\tWallet:"+this.instance+"\tnotifySubscribers" , error, 'stack', error.stack)
         }
-    })
-}
-
-/**
-    Called once at the end of each API call OR once after a subscription update is received.  Calling this function only once per API call prevents duplicate notifications from going out which aids in efficiency and testing.
-
-    @private
-*/
-function notifyResolve(promise) {
-    let notify = notifySubscribers.bind(this)
-    return promise.then(ret =>{
-        notify()
-        return ret
-    }).catch( error => {
-        notify()
-        throw error
     })
 }
 
@@ -637,3 +739,9 @@ function localHash() {
 var toBase64 = data => data == null ? data :
     data["toBuffer"] ? data.toBuffer().toString('base64') :
     Buffer.isBuffer(data) ? data.toString('base64') : data
+
+// required
+function req(data, field_name) {
+    if( data == null ) throw new Error(field_name + "_required")
+    return data
+}

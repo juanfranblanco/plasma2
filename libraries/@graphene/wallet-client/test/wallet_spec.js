@@ -112,6 +112,49 @@ describe('Single Wallet', () => {
         })
     })
     
+    it('Password change', ()=> {
+        
+        wallet.useBackupServer(remote_url)
+        wallet.keepRemoteCopy(true, code)
+        
+        let create = wallet
+            .login(email, username, password)
+            .then(()=> wallet.setState({ test_wallet: 'secret'}) )// create
+        
+        return create.then(()=> {
+            
+            assert.throws(()=> wallet.changePassword(email, username, "invalid_"+password, "new_"+password), /invalid_password/, "invalid_password")
+            
+            // disconnect and modify locally only
+            wallet.useBackupServer(null)
+            
+            return wallet.setState({ test_wallet: 'secret2'}).then(()=>{
+                
+                // make sure we can't change the password (remote_copy is still true)
+                assert.throws(()=> wallet.changePassword(email, username, password, "new_"+password), /wallet_modified/, "wallet_modified")
+                
+                wallet.logout()
+                
+                // reset the wallet so it will download the wallet (original remote_hash must match)
+                initWallet()
+                wallet.useBackupServer(remote_url)
+                
+                return wallet.login(email, username, password).then(()=>
+                
+                    // now the wallet is not modified, the local copy matches the server
+                    wallet.changePassword(email, username, password, "new_"+password).then(()=> {
+                        
+                        // check the new login
+                        wallet.logout()
+                        return wallet.login(email, username, "new_"+password)
+                        
+                    })
+                    
+                )
+            })
+        })
+    })
+    
     it('Server offline updates', ()=> {
         
         wallet.useBackupServer(remote_url)
