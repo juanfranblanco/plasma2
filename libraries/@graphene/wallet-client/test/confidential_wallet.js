@@ -16,7 +16,9 @@ const storage = new LocalStoragePersistence("wallet_spec")
 
 describe('Confidential Wallet', () => {
     
-    var wallet, cw
+    let wallet, cw
+    let nathan = PrivateKey.fromSeed("nathan")
+    let create = (name = "a1", brainkey = "brainkey")=> cw.createBlindAccount(name, brainkey)
 
     function initWallet() {
         storage.clear()
@@ -30,7 +32,8 @@ describe('Confidential Wallet', () => {
     
     // afterEach(()=> wallet.logout())
 
-    it('Key labels', ()=> {
+    it('Keys', ()=> {
+        
         wallet.login(username, password, email)
         
         let public_key = PrivateKey.fromSeed("").toPublicKey().toString()
@@ -50,15 +53,16 @@ describe('Confidential Wallet', () => {
         assert( cw.getPublicKey("") === null, "fetch key should return null")
     })
     
-    it('Blind accounts', ()=> {
-        
-        let create = ()=> cw.createBlindAccount("a1", "brainkey")
+    it('Accounts', ()=> {
         
         assert.deepEqual( cw.getBlindAccounts().toJS(), {} )
+        
         assert.throws(create, /locked/, "This test should require an unlocked wallet" )
         
+        // unlock
         wallet.login(username, password, email)
-        assert(create().Q, 'Needs to return a PublicKey')
+        
+        assert(create().Q, "Should return a public key")
         
         assert.throws(create, /label_exists/, "Expecting a 'label_exists' exception" )
         
@@ -71,6 +75,27 @@ describe('Confidential Wallet', () => {
             cw.getMyBlindAccounts().toJS(),
             { "a1":  PrivateKey.fromSeed("brainkey").toPublicKey().toString() }
         )
+        
+        assert.equal(
+            create("alice", "alice-brain-key").toString(),
+            "GPH7vbxtK1WaZqXsiCHPcjVFBewVj8HFRd5Z5XZDpN6Pvb2dZcMqK",
+            "Match against a known public key (matching the graphene cli wallet)"
+        )
+                
     })
+    
+    it("Transfer", ()=> {
+        
+        wallet.login(username, password, email)
+        
+        create("alice", "alice-brain-key")
+        create("bob", "bob-brain-key")
+        
+        cw.transferToBlind( "nathan", "CORE", [["alice",1]["bob",1]]).then(tx =>{
+            console.log("tx", tx)
+        })
+        
+    })
+        
     
 })

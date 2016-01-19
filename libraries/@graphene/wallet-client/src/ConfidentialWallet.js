@@ -73,6 +73,18 @@ const blind_receipt = fromJS({
 /** This class is used for stealth transfers */
 export default class ConfidentialWallet {
     
+    /**
+        @arg {string} public key or label
+        @return {Set<asset>} the total balance of all blinded commitments that can be claimed by given account key or label
+    */
+    getBlindBalances(pubkey_or_label) {
+        let public_key
+        try {
+            public_key = PublicKey.fromString(pubkey_or_label)
+        } catch(e) { /* label */ }
+        
+    }
+    
     constructor(wallet) {
         
         this.wallet = req(wallet, "wallet")
@@ -180,17 +192,23 @@ export default class ConfidentialWallet {
         let reduce = (r, label, pubkey) => ! keys.has(pubkey) ? r : r.set(label, pubkey)
         return keys.reduce( (r, key, pubkey) => reduce(r, key.get("label"), pubkey), Map())
     }
-    
-    /**
-        @arg {string} public key or label
-        @return {Set<asset>} the total balance of all blinded commitments that can be claimed by given account key or label
-    */
-    getBlindBalances(pubkey_or_label) {
-        // let public_key = this.get
-    }
      
 
-    
+    /**
+        Transfers a public balance from @from to one or more blinded balances using a stealth transfer.
+        
+        @arg {string} from_account_id_or_name
+        @arg {string} asset_symbol
+        @arg {Map<string, string>} to_amounts - map from key or label to amount
+        @arg {boolean} [broadcast = false]
+        @return {blind_confirmation}
+     */
+     transferToBlind( from_account_id_or_name, asset_symbol, to_amounts, broadcast = false ) {
+         let from_id = "1.2.17"
+         let asset_id = "1.3.0"
+         
+     }
+     
     /**
         @return {List<blind_receipt>} all blind receipts to/form a particular account
     */
@@ -208,17 +226,7 @@ export default class ConfidentialWallet {
     receiveBlindTransfer( confirmation_receipt, opt_from, opt_memo ) {
     }
 
-    /**
-        Transfers a public balance from @from to one or more blinded balances using a stealth transfer.
-        
-        @arg {string} from_account_id_or_name
-        @arg {string} asset_symbol
-        @arg {Map<string, string>} to_amounts - map from key or label to amount
-        @arg {boolean} [broadcast = false]
-        @return {blind_confirmation}
-     */
-     transferToBlind( from_account_id_or_name, asset_symbol, to_amounts, broadcast = false ) {
-     }
+
 
     /**
         Transfers funds from a set of blinded balances to a public account balance.
