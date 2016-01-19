@@ -1,5 +1,5 @@
 import assert from "assert"
-import {PublicKey, PrivateKey } from "@graphene/ecc"
+import { PublicKey, PrivateKey } from "@graphene/ecc"
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
 // import { is, fromJS } from "immutable"
 
@@ -16,12 +16,12 @@ const storage = new LocalStoragePersistence("wallet_spec")
 
 describe('Confidential Wallet', () => {
     
-    var wallet, confidentialWallet
+    var wallet, cw
 
     function initWallet() {
         storage.clear()
         wallet = new WalletStorage(storage)
-        confidentialWallet = new ConfidentialWallet(wallet)
+        cw = new ConfidentialWallet(wallet)
     }
     
     beforeEach(()=>{
@@ -33,21 +33,29 @@ describe('Confidential Wallet', () => {
     it('Key labels', ()=> {
         wallet.login(username, password, email)
         
-        confidentialWallet.setKeyLabel( "public_key", "label")
-        assert.equal( confidentialWallet.getKeyLabel("public_key"), "label" )
+        let public_key = PrivateKey.fromSeed("").toPublicKey().toString()
         
-        //rename label
-        confidentialWallet.setKeyLabel( "public_key", "label2" )
-        assert.equal( confidentialWallet.getKeyLabel("public_key"), "label2" )
+        assert( cw.setKeyLabel( public_key, "label"), "add key and label")
+        assert.equal( cw.getKeyLabel(public_key), "label" )
         
+        assert( cw.setKeyLabel( public_key, "label2" ), "rename label")
+        assert.equal( cw.getKeyLabel(public_key), "label2" )
+        
+        assert( ! cw.setKeyLabel( "public_key2", "label2"), "label already assigned")
+        
+        assert.equal( cw.getKeyLabel(public_key), "label2", "fetch label")
+        assert.equal( cw.getPublicKey("label2"), public_key.toString(), "fetch key")
+        
+        assert( cw.getKeyLabel("") === null, "fetch label should return null")
+        assert( cw.getPublicKey("") === null, "fetch key should return null")
     })
     
     it('Blind accounts', ()=> {
         
-        let create = ()=> confidentialWallet.createBlindAccount("a1", "brainkey")
+        let create = ()=> cw.createBlindAccount("a1", "brainkey")
         
-        assert.deepEqual( confidentialWallet.getBlindAccounts().toJS(), {} )
-        assert.throws(create , /locked/, "This test should require an unlocked wallet" )
+        assert.deepEqual( cw.getBlindAccounts().toJS(), {} )
+        assert.throws(create, /locked/, "This test should require an unlocked wallet" )
         
         wallet.login(username, password, email)
         assert(create().Q, 'Needs to return a PublicKey')
@@ -55,12 +63,12 @@ describe('Confidential Wallet', () => {
         assert.throws(create, /label_exists/, "Expecting a 'label_exists' exception" )
         
         assert.deepEqual(
-            confidentialWallet.getBlindAccounts().toJS(),
+            cw.getBlindAccounts().toJS(),
             { "a1":  PrivateKey.fromSeed("brainkey").toPublicKey().toString() }
         )
         
         assert.deepEqual(
-            confidentialWallet.getMyBlindAccounts().toJS(),
+            cw.getMyBlindAccounts().toJS(),
             { "a1":  PrivateKey.fromSeed("brainkey").toPublicKey().toString() }
         )
     })

@@ -1,6 +1,6 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
-import { brainKey, PrivateKey } from "@graphene/ecc"
+import { brainKey, PrivateKey, PublicKey } from "@graphene/ecc"
 
 
 // /**
@@ -9,34 +9,28 @@ import { brainKey, PrivateKey } from "@graphene/ecc"
 // */
 // const empty_wallet = fromJS({
 //     
-//     wallet: {
-//         public_name: t.Str,
-//         created: t.Dat,
-//         last_modified: t.Dat,
-//         backup_date: t.maybe(t.Dat),
-//         brainkey: t.maybe(t.Str),
-//         brainkey_sequence: t.Num,
-//         brainkey_backup_date: t.maybe(t.Dat),
-//         deposit_keys: t.maybe(t.Obj),
-//         chain_id: t.Str
-//     },
-//     
-//     //  [ LABEL: KEY ] No two keys can have the same label, no two labels can have the same key
-//     labeled_keys: [],
+//     public_name: t.Str,
+//     created: t.Dat,
+//     last_modified: t.Dat,
+//     backup_date: t.maybe(t.Dat),
+//     brainkey: t.maybe(t.Str),
+//     brainkey_sequence: t.Num,
+//     brainkey_backup_date: t.maybe(t.Dat),
+//     deposit_keys: t.maybe(t.Obj),
+//     chain_id: t.Str,
 //     
 //     // [blind_receipt,...]
 //     blind_receipts: [],
 //     
-//     private_keys: [
-//         {
-//             pubkey: t.Str,
+//     keys:
+//         "pubkey": {
+//             //  No two keys can have the same label, no two labels can have the same key
 //             label: t.maybe(t.Str),
 //             import_account_names: t.maybe(t.Arr),
 //             brainkey_sequence: t.maybe(t.Num),
 //             private_wif: t.Str // was: encrypted_key: t.Str
 //         }
-//     ]
-//     
+//         
 // })
 
 const authority = fromJS({
@@ -80,9 +74,11 @@ const blind_receipt = fromJS({
 export default class ConfidentialWallet {
     
     constructor(wallet) {
-        req(wallet, "wallet")
-        this.wallet = wallet
-        this.keys = Map()
+        
+        this.wallet = req(wallet, "wallet")
+        
+        // semi-private methods (outside of this API)
+        this.update = update.bind(this)// update the wallet object
     }
     
     /**
@@ -92,41 +88,51 @@ export default class ConfidentialWallet {
 
         @arg {string|PublicKey} - public_key string (like: GPHXyz...)
         @arg {string} - label string (like: GPHXyz...)
-        @return {Promise} resolve after a complete wallet sync
+        @return {boolean} false if this label is already assigned
      */
     setKeyLabel( public_key, label ) {
         
         public_key = toString(req(public_key, "public_key"))
         req(label, 'label')
-
         
-        return this.wallet.setState( this.wallet.wallet_object.updateIn(["labeled_keys"], List(),
-            labeled_keys =>{
+        let keys = this.wallet.wallet_object.getIn(["keys"], Map())
+        let key = keys.find( key => key.get("label") === label )
+        if( key != null )
+            // this label is already assigned
+            return false
 
-                let labelIndex = labeled_keys.findIndex( label_key => label_key.get(0) === label )
-                let keyIndex = labeled_keys.findIndex( label_key => label_key.get(1) === public_key )
-                
-                if( labelIndex > -1 && keyIndex === labelIndex) {
-                    // already added
-                    return labeled_keys
-                }
-
-                // rename or prefix (-1)
-                let index = keyIndex === -1 ? keyIndex : labelIndex
-                return labeled_keys.set(index, List([ label, public_key ]))
-            }
-        ))
-        
+        this.update(wallet =>
+            wallet.updateIn(["keys", public_key], Map(),
+                key => key.set("label", label))
+        )
+        return true
     }
     
     /**
-        @return {string} label or undefined
+        @return {string} label or null
     */
     getKeyLabel( public_key ) {
+        
         public_key = toString(req(public_key, "public_key"))
-        let label_key = this.wallet.wallet_object.getIn(["labeled_keys"], List())
-            .find( label_key => label_key.get(1) === public_key )
-        return label_key ? label_key.get(0) : null
+        
+        let key = this.wallet.wallet_object.getIn(["keys", public_key])
+        return key ? key.get("label") : null
+    }
+    
+    /**
+        @arg {string} label
+        @return {PublicKey} or null
+    */
+    getPublicKey( label ) {
+        
+        req(label, "label")
+        
+        let keys = this.wallet.wallet_object.getIn(["keys"], Map())
+        let pubkey = keys.findKey( key => key.get("label") === label )
+        if( ! pubkey)
+            return null
+        
+        return PublicKey.fromString( pubkey )
     }
     
     /**
@@ -151,13 +157,28 @@ export default class ConfidentialWallet {
         let private_key = PrivateKey.fromSeed( brain_key )
         let public_key = private_key.toPublicKey()
         
-        assert( this.getKeyLabel( public_key ) == null, "label_exists")
+        if( ! this.setKeyLabel( public_key, label ))
+            throw new Error("label_exists")
         
-        this.setKeyLabel( public_key, label )
-        
-        this.keys = this.keys.set(toString(public_key), private_key.toWif())
+        this.update(wallet =>
+            wallet.updateIn(["keys", toString(public_key)], Map(),
+                key => key.set("private_wif", private_key.toWif))
+        )
         
         return public_key
+    }
+    
+    /** @return {Map<label, pubkey>} all blind accounts */
+    getBlindAccounts() {
+        let keys = this.wallet.wallet_object.getIn(["keys"], Map())
+        return keys.reduce( (r, key, pubkey) => r.set(key.get("label"), pubkey), Map())
+    }
+    
+    /** @return {Map<label, pubkey>} all blind accounts for which this wallet has the private key */
+    getMyBlindAccounts() {
+        let keys = this.wallet.wallet_object.getIn(["keys"], Map())
+        let reduce = (r, label, pubkey) => ! keys.has(pubkey) ? r : r.set(label, pubkey)
+        return keys.reduce( (r, key, pubkey) => reduce(r, key.get("label"), pubkey), Map())
     }
     
     /**
@@ -168,28 +189,7 @@ export default class ConfidentialWallet {
         // let public_key = this.get
     }
      
-    /** @return {Map<label, pubkey>} all blind accounts */
-    getBlindAccounts() {
-        return this.wallet.wallet_object.getIn(["labeled_keys"], List())
-            .reduce( (r, label_key) => r.set(label_key.get(0), label_key.get(1)), Map())
-    }
-    
-    /** @return {Map<label, pubkey>} all blind accounts for which this wallet has the private key */
-    getMyBlindAccounts() {
-        let reduce = (r, label, pubkey) =>
-            ! this.keys.has(pubkey) ? r : r.set(label, pubkey)
-        
-        return this.wallet.wallet_object.getIn(["labeled_keys"], List())
-            .reduce( (r, label_key) => reduce(r, label_key.get(0), label_key.get(1)), Map())
-    }
-    
-    /**
-        @arg {string} label
-        @return the public key associated with the given label
-    */
-    getPublicKey( label ) {
-    }
-    
+
     
     /**
         @return {List<blind_receipt>} all blind receipts to/form a particular account
@@ -204,7 +204,7 @@ export default class ConfidentialWallet {
         @arg {string} opt_from - if not empty and the sender is a unknown public key, then the unknown public key will be given the label opt_from
         @arg {string} opt_memo
         @return blind_receipt
-     */
+    */
     receiveBlindTransfer( confirmation_receipt, opt_from, opt_memo ) {
     }
 
@@ -230,8 +230,8 @@ export default class ConfidentialWallet {
         @arg {boolean} [broadcast = false]
         @return blind_confirmation
     */
-    transfer_from_blind( from_blind_account_key_or_label, to_account_id_or_name, amount, asset_symbol, broadcast = false ){
-   }
+    transferFromBlind( from_blind_account_key_or_label, to_account_id_or_name, amount, asset_symbol, broadcast = false ){
+    }
 
     /**
         Used to transfer from one set of blinded balances to another.
@@ -243,9 +243,9 @@ export default class ConfidentialWallet {
         @arg {boolean} [broadcast = false]
         @return blind_confirmation
     */
-    blind_transfer( from_key_or_label, to_key_or_label, amount, symbol, broadcast = false ){
+    blindTransfer( from_key_or_label, to_key_or_label, amount, symbol, broadcast = false ){
     }
-    
+
 }
 
 var toString = data => data == null ? data :
@@ -257,8 +257,7 @@ function req(data, field_name) {
     return data
 }
 
-
-
-
-
-
+function update(callback) {
+    let wallet = callback(this.wallet.wallet_object)
+    this.wallet.setState(wallet)
+}
