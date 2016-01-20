@@ -1,7 +1,7 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
 import { brainKey, PrivateKey, PublicKey } from "@graphene/ecc"
-import { fetchChain } from "@graphene/chain"
+import { fetchChain, config } from "@graphene/chain"
 
 // /**
 //     This is for documentation purposes..
@@ -73,24 +73,13 @@ const blind_receipt = fromJS({
 /** This class is used for stealth transfers */
 export default class ConfidentialWallet {
     
-    /**
-        @arg {string} public key or label
-        @return {Set<asset>} the total balance of all blinded commitments that can be claimed by given account key or label
-    */
-    getBlindBalances(pubkey_or_label) {
-        let public_key
-        try {
-            public_key = PublicKey.fromString(pubkey_or_label)
-        } catch(e) { /* label */ }
+    constructor( walletStorage ) {
         
-    }
-    
-    constructor(wallet) {
-        
-        this.wallet = req(wallet, "wallet")
+        this.wallet = req(walletStorage, "walletStorage")
         
         // semi-private methods (outside of this API)
         this.update = update.bind(this)// update the wallet object
+        this.assertLogin = assertLogin.bind(this)
     }
     
     /**
@@ -104,6 +93,7 @@ export default class ConfidentialWallet {
      */
     setKeyLabel( public_key, label ) {
         
+        this.assertLogin()
         public_key = toString(req(public_key, "public_key"))
         req(label, 'label')
         
@@ -125,6 +115,7 @@ export default class ConfidentialWallet {
     */
     getKeyLabel( public_key ) {
         
+        this.assertLogin()
         public_key = toString(req(public_key, "public_key"))
         
         let key = this.wallet.wallet_object.getIn(["keys", public_key])
@@ -137,6 +128,7 @@ export default class ConfidentialWallet {
     */
     getPublicKey( label ) {
         
+        this.assertLogin()
         req(label, "label")
         
         let keys = this.wallet.wallet_object.getIn(["keys"], Map())
@@ -158,12 +150,10 @@ export default class ConfidentialWallet {
         @return {PublicKey}
     */
     createBlindAccount( label, brain_key  ) {
-        
+
+        this.assertLogin()
         req(label, "label")
         req(brain_key, "brain_key")
-        
-        if( ! this.wallet.private_key )
-            throw new Error("locked")
         
         brain_key = brainKey.normalize( brain_key )
         let private_key = PrivateKey.fromSeed( brain_key )
@@ -182,38 +172,65 @@ export default class ConfidentialWallet {
     
     /** @return {Map<label, pubkey>} all blind accounts */
     getBlindAccounts() {
+        
+        this.assertLogin()
+        
         let keys = this.wallet.wallet_object.getIn(["keys"], Map())
         return keys.reduce( (r, key, pubkey) => r.set(key.get("label"), pubkey), Map())
     }
     
     /** @return {Map<label, pubkey>} all blind accounts for which this wallet has the private key */
     getMyBlindAccounts() {
+        
+        this.assertLogin()
+        
         let keys = this.wallet.wallet_object.getIn(["keys"], Map())
         let reduce = (r, label, pubkey) => ! keys.has(pubkey) ? r : r.set(label, pubkey)
         return keys.reduce( (r, key, pubkey) => reduce(r, key.get("label"), pubkey), Map())
     }
-     
+    
+    /**
+        @arg {string} public key or label
+        @return {Set<asset>} the total balance of all blinded commitments that can be claimed by given account key or label
+    */
+    getBlindBalances(pubkey_or_label) {
+        
+        this.assertLogin()
+        
+        let public_key
+        try {
+            public_key = PublicKey.fromString(pubkey_or_label)
+        } catch(e) { /* label */ }
+        
+    }
 
     /**
         Transfers a public balance from @from to one or more blinded balances using a stealth transfer.
         
         @arg {string} from_account_id_or_name
         @arg {string} asset_symbol
-        @arg {Map<string, string>} to_amounts - map from key or label to amount
+        @arg {array<string, number>} <from_account_id_or_name, amount> - map from key or label to amount
         @arg {boolean} [broadcast = false]
         @return {Promise<>} blind_confirmation
      */
      transferToBlind( from_account_id_or_name, asset_symbol, to_amounts, broadcast = false ) {
-         let from_id = "1.2.17"
-         let asset_id = "1.3.0"
-        
-         return fetchChain("getAsset", asset_symbol).then( asset => asset )
+         
+         this.assertLogin()
+         
+         let promises = []
+         promises.push(fetchChain("getAccount", from_account_id_or_name))
+         promises.push(fetchChain("getAsset", asset_symbol))
+         
+         return Promise.all(promises)
      }
      
     /**
         @return {List<blind_receipt>} all blind receipts to/form a particular account
     */
     blindHistory( pubkey_or_account ) {
+        
+        this.assertLogin()
+        
     }
     
     /**
@@ -225,6 +242,8 @@ export default class ConfidentialWallet {
         @return blind_receipt
     */
     receiveBlindTransfer( confirmation_receipt, opt_from, opt_memo ) {
+        
+        this.assertLogin()
     }
 
 
@@ -240,6 +259,8 @@ export default class ConfidentialWallet {
         @return blind_confirmation
     */
     transferFromBlind( from_blind_account_key_or_label, to_account_id_or_name, amount, asset_symbol, broadcast = false ){
+        this.assertLogin()
+        
     }
 
     /**
@@ -253,6 +274,7 @@ export default class ConfidentialWallet {
         @return blind_confirmation
     */
     blindTransfer( from_key_or_label, to_key_or_label, amount, symbol, broadcast = false ){
+        this.assertLogin()
     }
 
 }
@@ -269,4 +291,9 @@ function req(data, field_name) {
 function update(callback) {
     let wallet = callback(this.wallet.wallet_object)
     this.wallet.setState(wallet)
+}
+
+function assertLogin() {
+    if( ! this.wallet.private_key )
+        throw new Error("login")
 }

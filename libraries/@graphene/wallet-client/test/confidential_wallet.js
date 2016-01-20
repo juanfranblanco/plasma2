@@ -57,12 +57,12 @@ describe('Confidential Wallet', () => {
     
     it('Accounts', ()=> {
         
-        assert.deepEqual( cw.getBlindAccounts().toJS(), {} )
-        
-        assert.throws(create, /locked/, "This test should require an unlocked wallet" )
+        assert.throws(create, /login/, "This test should require an unlocked wallet" )
         
         // unlock
         wallet.login(username, password, email)
+        
+        assert.deepEqual( cw.getBlindAccounts().toJS(), {} )
         
         assert(create().Q, "Should return a public key")
         

@@ -42,7 +42,7 @@ const inital_persistent_state = fromJS({
     
     @see [Plasma Wallet API]{@link https://github.com/cryptonomex/graphene/wiki/Plasma---Wallet-API}
 */
-export default class Wallet {
+export default class WalletStorage {
     
     /**
         Variables:
