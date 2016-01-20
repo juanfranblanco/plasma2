@@ -1,7 +1,29 @@
-var WebSocketRpc = require("./WebSocketRpc");
+var ChainWebSocket = require("./ChainWebSocket");
 var GrapheneApi = require("./GrapheneApi");
-import SettingsStore from "../stores/SettingsStore";
-import chain_config from "chain/config"
+import chain_config from "./config"
+
+var apis_instance;
+
+export default {
+    
+    setRpcConnectionStatusCallback: function(callback) {
+        this.update_rpc_connection_status_callback = callback;
+        if(apis_instance) apis_instance.setRpcConnectionStatusCallback(callback);
+    },
+    
+    /**
+        @arg {string} connection_string is only provided in the first call
+        @return {Apis} singleton .. Check Apis.instance().init_promise to know when the connection is established
+    */
+    instance: function ( connection_string = "ws://localhost:8090" ) {
+        if ( !apis_instance ) {
+            apis_instance = new Apis( connection_string );
+            apis_instance.setRpcConnectionStatusCallback(this.update_rpc_connection_status_callback);
+            apis_instance.connect();
+        }
+        return apis_instance;
+    }
+};
 
 class Apis {
 
@@ -9,6 +31,7 @@ class Apis {
     connect( connection_string ) {
         
         // Graphene-ui code, move this to the app's init routine:
+        
         // if (this.ws_rpc) return; // already connected
         // let rpc_user, rpc_password;
         // try { // For command-line support, all references to "window" go in the try catch
@@ -31,7 +54,7 @@ class Apis {
         //connection_string = "ws://localhost:8090";
         
         console.log(`connecting to ${connection_string}`);
-        this.ws_rpc = new WebSocketRpc(connection_string, this.update_rpc_connection_status_callback);
+        this.ws_rpc = new ChainWebSocket(connection_string, this.update_rpc_connection_status_callback);
         this.init_promise = this.ws_rpc.login(rpc_user, rpc_password).then(() => {
             this._db_api = new GrapheneApi(this.ws_rpc, "database");
             if (window) window.$db_api = this._db_api;
@@ -84,23 +107,4 @@ class Apis {
     
 }
 
-var apis_instance;
 
-export default {
-    setRpcConnectionStatusCallback: function(callback) {
-        this.update_rpc_connection_status_callback = callback;
-        if(apis_instance) apis_instance.setRpcConnectionStatusCallback(callback);
-    },
-    /**
-        @arg {string} connection_string is only provided in the first call
-        @return {Apis} singleton .. Check Apis.instance().init_promise to know when the connection is established
-    */
-    instance: function ( connection_string ) {
-        if ( !apis_instance ) {
-            apis_instance = new Apis( connection_string );
-            apis_instance.setRpcConnectionStatusCallback(this.update_rpc_connection_status_callback);
-            apis_instance.connect();
-        }
-        return apis_instance;
-    }
-};

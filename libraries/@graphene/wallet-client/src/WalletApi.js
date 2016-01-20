@@ -15,14 +15,14 @@ export default class WalletApi {
     /**
         Use only a secure Web Socket (wss://).  Calls may include the secret_public_key or include encrypted_data, signature parameters that anyone could use to calculate the secret_public_key.
         
-        @arg {WebSocketRpc} ws_rpc
+        @arg {WalletWebSocket} ws_rpc
     */
     constructor(ws_rpc) {
         if( ! ws_rpc["call"] )
-            throw new Error("WebSocketRpc object required")
+            throw new Error("WalletWebSocket object required")
         
         if( ! (ws_rpc.is_ws_local || ws_rpc.is_ws_secure) )
-            throw new Error("Please use a secure WebSocketRpc url that contains 'localhost' or starts with wss://")
+            throw new Error("Please use a secure WalletWebSocket url that contains 'localhost' or starts with wss://")
         
         this.ws_rpc = ws_rpc
     }

@@ -2,7 +2,7 @@
 import { fromJS, Map } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
 import { PrivateKey, Signature, hash } from "@graphene/ecc"
-import WebSocketRpc from "./WebSocketRpc"
+import WalletWebSocket from "./WalletWebSocket"
 import WalletApi from "./WalletApi"
 import assert from "assert"
 
@@ -70,7 +70,7 @@ export default class Wallet {
         // enable the backup server if one is configured (see useBackupServer)
         let remote_url = this.storage.state.get("remote_url")
         if( remote_url ) {
-            this.ws_rpc = new WebSocketRpc(remote_url)
+            this.ws_rpc = new WalletWebSocket(remote_url)
             this.api = new WalletApi(this.ws_rpc)
             this.instance = this.ws_rpc.instance
         }
@@ -97,7 +97,7 @@ export default class Wallet {
         // close (if applicable)
         let close = this.ws_rpc ? this.ws_rpc.close() : null
         if(remote_url !== null) {
-            this.ws_rpc = new WebSocketRpc(remote_url)
+            this.ws_rpc = new WalletWebSocket(remote_url)
             this.api = new WalletApi(this.ws_rpc)
             this.instance = this.ws_rpc.instance
         } else {

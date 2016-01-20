@@ -1,12 +1,12 @@
 import assert from "assert"
 import {createToken} from '@graphene/time-token'
 import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
-import WebSocketRpc from "../src/WebSocketRpc"
+import WalletWebSocket from "../src/WalletWebSocket"
 import WalletApi from "../src/WalletApi"
 
 const remote_url = process.env.npm_package_config_remote_url
 
-const ws_rpc = new WebSocketRpc(remote_url)
+const ws_rpc = new WalletWebSocket(remote_url)
 const api = new WalletApi(ws_rpc)
 
 // Run expensive calculations here so the benchmarks in the unit tests will be accurate

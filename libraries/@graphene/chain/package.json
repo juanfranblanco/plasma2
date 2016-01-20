@@ -1,0 +1,16 @@
+{
+  "name": "@graphene/chain",
+  "version": "1.0.0",
+  "description": "Interface and data layer for the Graphene blockchain witness node",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "BSD-2-Clause-FreeBSD",
+  "dependencies": {
+      "bigi": "^1.4.1",
+      "immutable": "^3.7.6",
+      "event-emitter": "^0.3.4",
+  }
+}

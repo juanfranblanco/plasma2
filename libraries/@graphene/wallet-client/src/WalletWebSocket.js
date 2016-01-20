@@ -3,7 +3,7 @@ var Immutable = require("immutable")
 const SOCKET_DEBUG = JSON.parse( process.env.npm_config__graphene_wallet_client_socket_debug || false )
 let instance = 0
 
-export default class WebSocketRpc {
+export default class WalletWebSocket {
 
     /**
         @arg {string} ws_server_url - WebSocket URL
@@ -29,7 +29,7 @@ export default class WebSocketRpc {
             }
             // Warning, onerror callback is over-written on each request.  Be cautious to dulicate some logic here.
             this.web_socket.onerror = evt => {
-                console.error("ERROR\tWebSocketRpc\tconstructor onerror\t", evt.toString())
+                console.error("ERROR\tWalletWebSocket\tconstructor onerror\t", evt.toString())
                 if(this.update_rpc_connection_status_callback)
                     this.update_rpc_connection_status_callback("error");
                 
@@ -56,15 +56,15 @@ export default class WebSocketRpc {
                 let { method, params, key } = this.subscriptions[id]
                 unsubs.push(this.unsubscribe(method, params, key))
             } catch( error ) {
-                console.error("WARN\tWebSocketRpc\tclose\t",this.instance,"unsubscribe",error, "stack", error.stack)
+                console.error("WARN\tWalletWebSocket\tclose\t",this.instance,"unsubscribe",error, "stack", error.stack)
             }
         }
         let unsub = Promise.all(unsubs)
         return unsub.then(()=> new Promise( resolve => {
             this.web_socket.onclose = closeEvent => {
-                // if(global.INFO) console.log("INFO\tWebSocketRpc\tclose") // closeEvent.reason === connection failed
+                // if(global.INFO) console.log("INFO\tWalletWebSocket\tclose") // closeEvent.reason === connection failed
                 if( Object.keys(this.subscriptions).length !== 0 )
-                    console.error("WARN\tWebSocketRpc\tclose\t",this.instance,"active subscriptions",
+                    console.error("WARN\tWalletWebSocket\tclose\t",this.instance,"active subscriptions",
                         Object.keys(this.subscriptions).length)
                 
                 if(this.update_rpc_connection_status_callback)
@@ -142,7 +142,7 @@ export default class WebSocketRpc {
     */
     request(id, method, params) {
         if(SOCKET_DEBUG)
-            console.log("[WebSocketRpc:"+this.instance+"] ----- call ---- >", id, method, params);
+            console.log("[WalletWebSocket:"+this.instance+"] ----- call ---- >", id, method, params);
         
         return this.connect_promise.then(()=> {
             return new Promise( (resolve, reject) => {
@@ -154,7 +154,7 @@ export default class WebSocketRpc {
                     if(this.update_rpc_connection_status_callback)
                         this.update_rpc_connection_status_callback("error")
                     
-                    console.log("ERROR\tWebSocketRpc\trequest",this.instance, evt.data ? evt.data : "")
+                    console.log("ERROR\tWalletWebSocket\trequest",this.instance, evt.data ? evt.data : "")
                     reject(evt);
                 };
                 
@@ -166,7 +166,7 @@ export default class WebSocketRpc {
     /** @private */
     listener(response) {
         if(SOCKET_DEBUG)
-            console.log("[WebSocketRpc:"+this.instance+"] <--- reply ---- <", response.id, response);
+            console.log("[WalletWebSocket:"+this.instance+"] <--- reply ---- <", response.id, response);
         
         let sub = false,
             callback = null;
@@ -179,14 +179,14 @@ export default class WebSocketRpc {
         if ( sub ) {
             let subscription = this.subscriptions[response.id]
             if( ! subscription) {
-                console.log("ERROR\tWebSocketRpc:"+this.instance+"\tlistener\tUnknown subscription", response.id)
+                console.log("ERROR\tWalletWebSocket:"+this.instance+"\tlistener\tUnknown subscription", response.id)
                 return
             }
             callback = subscription.callback;
         } else {
             callback = this.callbacks[response.id];
             if( ! callback) {
-                console.log("ERROR\tWebSocketRpc:"+this.instance+"\tlistener\tUnknown callback", response.id, response)
+                console.log("ERROR\tWalletWebSocket:"+this.instance+"\tlistener\tUnknown callback", response.id, response)
                 return
             }
         }

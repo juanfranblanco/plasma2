@@ -133,6 +133,7 @@ describe("Crypto", function() {
     });
 
     // convert to mnemonic encoding (perhaps put this as a separate library)
+    // graphene-ui has a full dictionary
     // it("suggest_brain_key", function() {
     //     this.timeout(1500);
     //     var entropy = secureRandom.randomBuffer(32);

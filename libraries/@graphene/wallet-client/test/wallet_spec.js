@@ -5,7 +5,7 @@ import {createToken} from '@graphene/time-token'
 import {Signature, PrivateKey, Aes, hash} from "@graphene/ecc"
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
 import WalletStorage from "../src/WalletStorage"
-import WebSocketRpc from "../src/WebSocketRpc"
+import WalletWebSocket from "../src/WalletWebSocket"
 import WalletApi from "../src/WalletApi"
 
 const username = "username"
@@ -333,7 +333,7 @@ function remoteWallet(emailParam = email) {
 
 function assertNoServerWallet(walletParam) {
     if( ! walletParam.private_key ) throw new Error("wallet locked")
-    let ws_rpc = new WebSocketRpc(remote_url)
+    let ws_rpc = new WalletWebSocket(remote_url)
     let api = new WalletApi(ws_rpc)
     let p1 = new Promise( (resolve, reject) => {
         let public_key = walletParam.private_key.toPublicKey()
@@ -351,7 +351,7 @@ function assertNoServerWallet(walletParam) {
 
 function assertServerWallet(expectedWallet, walletParam) {
     if( ! walletParam.private_key ) throw new Error("wallet locked")
-    let ws_rpc = new WebSocketRpc(remote_url)
+    let ws_rpc = new WalletWebSocket(remote_url)
     let api = new WalletApi(ws_rpc)
     let p1 = new Promise( (resolve, reject) => {
         let public_key = walletParam.private_key.toPublicKey()

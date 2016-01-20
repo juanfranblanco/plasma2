@@ -107,6 +107,7 @@ module.exports = key = {
     //     let private_key = PrivateKey.fromBuffer(randomBuffer)
     //     
     //     // todo: convert to mnemonic encoding (perhaps put this as a separate library)
+    //     // until then, graphene-ui does this using a full dictionary
     //     
     // },
     
@@ -173,4 +174,4 @@ module.exports = key = {
         ];
         return address_string;
     }
-    };
+};
