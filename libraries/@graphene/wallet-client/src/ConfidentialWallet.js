@@ -1,7 +1,7 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
 import { brainKey, PrivateKey, PublicKey } from "@graphene/ecc"
-
+import { fetchChain } from "@graphene/chain"
 
 // /**
 //     This is for documentation purposes..
@@ -206,8 +206,8 @@ export default class ConfidentialWallet {
      transferToBlind( from_account_id_or_name, asset_symbol, to_amounts, broadcast = false ) {
          let from_id = "1.2.17"
          let asset_id = "1.3.0"
-         
-         return Promise.resolve()
+        
+         return fetchChain("getAsset", asset_symbol).then( asset => asset )
      }
      
     /**

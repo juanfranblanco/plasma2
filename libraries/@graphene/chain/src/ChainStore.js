@@ -1,7 +1,7 @@
 import Immutable from "immutable";
 import Apis from "./ApiInstances.js"
 import {object_type,impl_object_type} from "./ChainTypes";
-import validation from "./validation"
+import * as validation from "./validation"
 import BigInteger from "bigi"
 import ee from "./emitter-instance";
 

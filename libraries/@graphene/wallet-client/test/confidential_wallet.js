@@ -94,7 +94,7 @@ describe('Confidential Wallet', () => {
             create("alice", "alice-brain-key")
             create("bob", "bob-brain-key")
             
-            cw.transferToBlind( "nathan", "CORE", [["alice",1]["bob",1]]).then(tx =>{
+            return cw.transferToBlind( "nathan", "CORE", [["alice",1]["bob",1]]).then(tx =>{
                 console.log("tx", tx)
             })
             
