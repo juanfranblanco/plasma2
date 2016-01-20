@@ -1,6 +1,6 @@
 var ChainWebSocket = require("./ChainWebSocket");
 var GrapheneApi = require("./GrapheneApi");
-import chain_config from "./config"
+var chain_config = require("./config")
 
 var apis_instance;
 
@@ -16,10 +16,10 @@ export default {
         @return {Apis} singleton .. Check Apis.instance().init_promise to know when the connection is established
     */
     instance: function ( connection_string = "ws://localhost:8090" ) {
-        if ( !apis_instance ) {
-            apis_instance = new Apis( connection_string );
+        if ( ! apis_instance ) {
+            apis_instance = new Apis();
             apis_instance.setRpcConnectionStatusCallback(this.update_rpc_connection_status_callback);
-            apis_instance.connect();
+            apis_instance.connect( connection_string );
         }
         return apis_instance;
     }
@@ -53,11 +53,14 @@ class Apis {
         // if (!connection_string) connection_string = SettingsStore.getSetting("connection");
         //connection_string = "ws://localhost:8090";
         
-        console.log(`connecting to ${connection_string}`);
+        console.log("INFO\tApiInstances\tconnect\t", connection_string);
+        
+        let rpc_user = "", rpc_password = ""
+        
         this.ws_rpc = new ChainWebSocket(connection_string, this.update_rpc_connection_status_callback);
         this.init_promise = this.ws_rpc.login(rpc_user, rpc_password).then(() => {
             this._db_api = new GrapheneApi(this.ws_rpc, "database");
-            if (window) window.$db_api = this._db_api;
+            try { window.$db_api = this._db_api; } catch(e) { /* nodejs */ }
             this._network_api = new GrapheneApi(this.ws_rpc, "network_broadcast");
             this._history_api = new GrapheneApi(this.ws_rpc, "history");
             var db_promise = this._db_api.init().then( ()=> {

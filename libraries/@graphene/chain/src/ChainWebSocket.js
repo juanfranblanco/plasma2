@@ -1,13 +1,16 @@
 var Immutable = require("immutable");
 
-var NODE_DEBUG = process.env.NODE_DEBUG
+const SOCKET_DEBUG = JSON.parse(process.env.npm_config__graphene_chain_socket_debug || false)
 
 class ChainWebSocket {
 
     constructor(ws_server, update_rpc_connection_status_callback) {
-        if (window && window.location && window.location.protocol === "https:") {
+        
+        // What is this for?
+        try { if ( window.location.protocol === "https:") {
             ws_server = ws_server.replace("ws://", "wss://");
-        }
+        } }catch(e) { /* nodejs */ }
+        
         this.update_rpc_connection_status_callback = update_rpc_connection_status_callback;
         var WebSocketClient = typeof(WebSocket) !== "undefined" ? require("ReconnectingWebSocket") : require("websocket").w3cwebsocket;
         this.web_socket = new WebSocketClient(ws_server);
@@ -38,7 +41,10 @@ class ChainWebSocket {
     }
 
     call(params) {
-        //console.log("[websocketrpc] ----- call -----> id:",this.current_callback_id+1, params);
+        
+        if(SOCKET_DEBUG)
+            console.log("[ChainWebSocket] >>--- call -----> id:",this.current_callback_id+1, params);
+        
         this.current_callback_id += 1;
         var self = this;
 
@@ -87,8 +93,8 @@ class ChainWebSocket {
     }
 
     listener(response) {
-        if(NODE_DEBUG)
-            console.log("[websocketrpc] <--- reply ----", response);
+        if(SOCKET_DEBUG)
+            console.log("[ChainWebSocket] <---- reply ---<<", response);
         
         let sub = false,
             callback = null;

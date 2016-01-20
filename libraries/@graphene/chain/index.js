@@ -1,6 +1,6 @@
 
 module.exports = {
-    config: require("./src/Config"),
-    Apis: require("./src/ApiInstances"),
+    config: require("./src/config"),
+    Apis: require("./src/ApiInstances").default,
     ChainStore: require("./src/ChainStore")
 }

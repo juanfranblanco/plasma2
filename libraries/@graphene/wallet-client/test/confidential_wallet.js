@@ -1,5 +1,7 @@
 import assert from "assert"
 import { PublicKey, PrivateKey } from "@graphene/ecc"
+import { Apis } from "@graphene/chain"
+
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
 // import { is, fromJS } from "immutable"
 
@@ -86,13 +88,16 @@ describe('Confidential Wallet', () => {
     
     it("Transfer", ()=> {
         
-        wallet.login(username, password, email)
-        
-        create("alice", "alice-brain-key")
-        create("bob", "bob-brain-key")
-        
-        cw.transferToBlind( "nathan", "CORE", [["alice",1]["bob",1]]).then(tx =>{
-            console.log("tx", tx)
+        return Apis.instance("ws://localhost:8090").init_promise.then(()=> {
+            
+            wallet.login(username, password, email)
+            create("alice", "alice-brain-key")
+            create("bob", "bob-brain-key")
+            
+            cw.transferToBlind( "nathan", "CORE", [["alice",1]["bob",1]]).then(tx =>{
+                console.log("tx", tx)
+            })
+            
         })
         
     })

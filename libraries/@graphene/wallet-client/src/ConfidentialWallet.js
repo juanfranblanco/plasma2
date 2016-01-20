@@ -201,12 +201,13 @@ export default class ConfidentialWallet {
         @arg {string} asset_symbol
         @arg {Map<string, string>} to_amounts - map from key or label to amount
         @arg {boolean} [broadcast = false]
-        @return {blind_confirmation}
+        @return {Promise<>} blind_confirmation
      */
      transferToBlind( from_account_id_or_name, asset_symbol, to_amounts, broadcast = false ) {
          let from_id = "1.2.17"
          let asset_id = "1.3.0"
          
+         return Promise.resolve()
      }
      
     /**
