@@ -4,7 +4,16 @@ var chain_config = require("./config")
 
 var apis_instance;
 
-export default {
+/**
+    Configure: configure as follows `Apis.instance("ws://localhost:8090").init_promise`.  This returns a promise, once resolved the connection is ready.
+    
+    Import: import { Apis } from "@graphene/chain"
+    
+    Short-hand: Apis.db("method", "parm1", 2, 3, ...).  Returns a promise with results.
+    
+    Additonal usage: Apis.instance().db_api().exec("method", ["method", "parm1", 2, 3, ...]).  Returns a promise with results.
+*/
+var ApisPublic = {
     
     setRpcConnectionStatusCallback: function(callback) {
         this.update_rpc_connection_status_callback = callback;
@@ -22,8 +31,14 @@ export default {
             apis_instance.connect( connection_string );
         }
         return apis_instance;
-    }
+    },
+    db: (method, ...args) => ApisPublic.instance().db_api().exec(method, args),
+    network: (method, ...args) => ApisPublic.instance().network_api().exec(method, args),
+    history: (method, ...args) => ApisPublic.instance().history_api().exec(method, args),
+    crypto: (method, ...args) => ApisPublic.instance().crypto_api().exec(method, args)
 };
+
+export default ApisPublic;
 
 class Apis {
 

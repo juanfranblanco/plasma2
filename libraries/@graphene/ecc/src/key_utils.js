@@ -69,8 +69,13 @@ module.exports = key = {
         return Aes.fromSeed(secret);
     },
     
-    /** @param1 string entropy of at least 32 bytes */
+    /**
+        A week random number generator can run out of entropy.  This should ensure even the worst random number implementation will be reasonably safe.
+        
+        @param1 string entropy of at least 32 bytes
+    */
     random32ByteBuffer(entropy = this.browserEntropy()) {
+        
         if (!(typeof entropy === 'string')) {
             throw new Error("string required for entropy");
         }
@@ -134,30 +139,23 @@ module.exports = key = {
     },
     
     browserEntropy() {
-        var req = function(variable, name){ return (() => {
-            if (!variable) {
-                throw new Error("missing "+ name);
+
+        var entropyStr = ""
+        try {
+            entropyStr = (new Date()).toString() + " "+ window.screen.height + " " + window.screen.width + " " + window.screen.colorDepth + " " + " " + window.screen.availHeight + " " + window.screen.availWidth + " " + window.screen.pixelDepth+ navigator.language + " " + window.location + " " + window.history.length;
+        
+            for (var i = 0, mimeType; i < navigator.mimeTypes.length; i++) {
+                mimeType = navigator.mimeTypes[i];
+                entropyStr += mimeType.description + " " + mimeType.type + " " + mimeType.suffixes + " ";
             }
-        })();
-        };
-        req(window, "window");
-        req(navigator, "navigator");
-        req(window.screen, "window.screen");
-        req(window.location, "window.location");
-        req(window.history, "window.history");
-        req(navigator.language, "navigator.language");
-        req(navigator.mimeTypes, "navigator.mimeTypes");
-        
-        var entropyStr = (new Date()).toString() + " "+ window.screen.height + " " + window.screen.width + " " + window.screen.colorDepth + " " + " " + window.screen.availHeight + " " + window.screen.availWidth + " " + window.screen.pixelDepth+ navigator.language + " " + window.location + " " + window.history.length;
-        
-        for (var i = 0, mimeType; i < navigator.mimeTypes.length; i++) {
-            mimeType = navigator.mimeTypes[i];
-            entropyStr += mimeType.description + " " + mimeType.type + " " + mimeType.suffixes + " ";
+            console.log("INFO\tbrowserEntropy\tsuccessful")
+        } catch(error) {
+            //nodejs:ReferenceError: window is not defined 
+            entropyStr = hash.sha256((new Date()).toString())
         }
         
         var b = new Buffer(entropyStr);
         entropyStr += b.toString('binary') + " " + (new Date()).toString();
-        // DEBUG console.log('... entropyStr',entropyStr)
         return entropyStr;
     },
 

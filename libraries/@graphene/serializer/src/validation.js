@@ -16,7 +16,7 @@ var get_implementation_instance;
 var Long = require('bytebuffer').Long;
 // var BigInteger = require('bigi');
 
-// var chain_types = require('./chain_types');
+var chain_types = require('./ChainTypes');
 
 var MAX_SAFE_INT = 9007199254740991;
 var MIN_SAFE_INT =-9007199254740991;
@@ -155,73 +155,73 @@ module.exports = _my = {
         return value;
     },
     
-    // require_object_type: require_object_type=function(
-    //     reserved_spaces = 1, type, value
-    //     field_name=""
-    // ){
-    //     if (is_empty(value) ){ return value; }
-    //     var object_type = chain_types.object_type[type];
-    //     if (!object_type) {
-    //         throw new Error(`Unknown object type ${type} ${field_name} ${value}`);
-    //     }
-    //     var re = new RegExp(`${reserved_spaces}\.${object_type}\.[0-9]+$`);
-    //     if (!re.test(value)) {
-    //         throw new Error(`Expecting ${type} in format `+ `${reserved_spaces}.${object_type}.[0-9]+ `+ `instead of ${value} ${field_name} ${value}`);
-    //     }
-    //     return value;
-    // },
-    // 
-    // get_instance: get_instance=function(reserve_spaces, type, value, field_name){
-    //     if (is_empty(value) ){ return value; }
-    //     require_object_type(reserve_spaces, type, value, field_name);
-    //     return to_number(value.split('.')[2]);
-    // },
-    // 
-    // require_relative_type: require_relative_type=function(type, value, field_name){
-    //     require_object_type(0, type, value, field_name);
-    //     return value;
-    // },
-    // 
-    // get_relative_instance: get_relative_instance=function(type, value, field_name){
-    //     if (is_empty(value) ){ return value; }
-    //     require_object_type(0, type, value, field_name);
-    //     return to_number(value.split('.')[2]);
-    // },
-    // 
-    // require_protocol_type: require_protocol_type=function(type, value, field_name){
-    //     require_object_type(1, type, value, field_name);
-    //     return value;
-    // },
-    // 
-    // get_protocol_instance: get_protocol_instance=function(type, value, field_name){
-    //     if (is_empty(value) ){ return value; }
-    //     require_object_type(1, type, value, field_name);
-    //     return to_number(value.split('.')[2]);
-    // },
-    // 
-    // get_protocol_type: get_protocol_type=function(value, field_name){
-    //     if (is_empty(value) ){ return value; }
-    //     require_object_id(value, field_name);
-    //     var values = value.split('.');
-    //     return to_number(values[1]);
-    // },
-    //     
-    // get_protocol_type_name(value, field_name){
-    //     if (is_empty(value) ){ return value; }
-    //     var type_id = get_protocol_type(value, field_name);
-    //     return (Object.keys(chain_types.object_type))[type_id];
-    // },
-    // 
-    // require_implementation_type: require_implementation_type=function(type, value, field_name){
-    //     require_object_type(2, type, value, field_name);
-    //     return value;
-    // },
-    // 
-    // get_implementation_instance: get_implementation_instance=function(type, value, field_name){
-    //     if (is_empty(value) ){ return value; }
-    //     require_object_type(2, type, value, field_name);
-    //     return to_number(value.split('.')[2]);
-    // },
+    require_object_type: require_object_type=function(
+        reserved_spaces = 1, type, value,
+        field_name=""
+    ){
+        if (is_empty(value) ){ return value; }
+        var object_type = chain_types.object_type[type];
+        if (!object_type) {
+            throw new Error(`Unknown object type ${type} ${field_name} ${value}`);
+        }
+        var re = new RegExp(`${reserved_spaces}\.${object_type}\.[0-9]+$`);
+        if (!re.test(value)) {
+            throw new Error(`Expecting ${type} in format `+ `${reserved_spaces}.${object_type}.[0-9]+ `+ `instead of ${value} ${field_name} ${value}`);
+        }
+        return value;
+    },
+    
+    get_instance: get_instance=function(reserve_spaces, type, value, field_name){
+        if (is_empty(value) ){ return value; }
+        require_object_type(reserve_spaces, type, value, field_name);
+        return to_number(value.split('.')[2]);
+    },
+    
+    require_relative_type: require_relative_type=function(type, value, field_name){
+        require_object_type(0, type, value, field_name);
+        return value;
+    },
+    
+    get_relative_instance: get_relative_instance=function(type, value, field_name){
+        if (is_empty(value) ){ return value; }
+        require_object_type(0, type, value, field_name);
+        return to_number(value.split('.')[2]);
+    },
+    
+    require_protocol_type: require_protocol_type=function(type, value, field_name){
+        require_object_type(1, type, value, field_name);
+        return value;
+    },
+    
+    get_protocol_instance: get_protocol_instance=function(type, value, field_name){
+        if (is_empty(value) ){ return value; }
+        require_object_type(1, type, value, field_name);
+        return to_number(value.split('.')[2]);
+    },
+    
+    get_protocol_type: get_protocol_type=function(value, field_name){
+        if (is_empty(value) ){ return value; }
+        require_object_id(value, field_name);
+        var values = value.split('.');
+        return to_number(values[1]);
+    },
+        
+    get_protocol_type_name(value, field_name){
+        if (is_empty(value) ){ return value; }
+        var type_id = get_protocol_type(value, field_name);
+        return (Object.keys(chain_types.object_type))[type_id];
+    },
+    
+    require_implementation_type: require_implementation_type=function(type, value, field_name){
+        require_object_type(2, type, value, field_name);
+        return value;
+    },
+    
+    get_implementation_instance: get_implementation_instance=function(type, value, field_name){
+        if (is_empty(value) ){ return value; }
+        require_object_type(2, type, value, field_name);
+        return to_number(value.split('.')[2]);
+    },
 
     // signed / unsigned decimal
     no_overflow53(value, field_name=""){

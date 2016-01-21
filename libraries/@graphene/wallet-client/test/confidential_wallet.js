@@ -1,4 +1,5 @@
 import assert from "assert"
+import { Map, List } from "immutable"
 import { PublicKey, PrivateKey, hash } from "@graphene/ecc"
 import { Apis } from "@graphene/chain"
 
@@ -116,8 +117,10 @@ describe('Confidential Wallet', () => {
         
         // let blind_factor = hash.sha256( child )
         
-        let auth_public = to_public.child( child )
-        assert.equal(auth_public.toString(), "GPH6XA72XARQCain961PCJnXiKYdEMrndNGago2PV5bcUiVyzJ6iL")
+        
+        
+        // let auth_public = to_public.child( child )
+        // assert.equal(auth_public.toString(), "GPH6XA72XARQCain961PCJnXiKYdEMrndNGago2PV5bcUiVyzJ6iL")
     })
         
     

@@ -31,6 +31,11 @@ class Aes {
         return new Aes(iv, key);
     };
     
+    static fromBuffer(buf) {
+        assert(Buffer.isBuffer(buf), "Expecting Buffer")
+        assert.equal(buf.length, 64, `A Sha512 Buffer should be 64 characters long, instead got ${buf.length}`);
+        return Aes.fromSha512( buf.toString("hex") )
+    }
     /** 
         @throws {Error} - "Invalid Key, ..."
         @arg {PrivateKey} private_key - required and used for decryption

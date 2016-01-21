@@ -1,7 +1,11 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
-import { brainKey, PrivateKey, PublicKey, hash } from "@graphene/ecc"
-import { fetchChain, config } from "@graphene/chain"
+import { PrivateKey, PublicKey, Aes, brainKey, hash, key } from "@graphene/ecc"
+import { fetchChain, config, Apis } from "@graphene/chain"
+import { ops } from "@graphene/serializer"
+import ByteBuffer from "bytebuffer"
+
+let { stealth_memo_data } = ops
 
 // /**
 //     This is for documentation purposes..
@@ -33,12 +37,6 @@ import { fetchChain, config } from "@graphene/chain"
 //         
 // })
 
-const authority = fromJS({
-    "weight_threshold": 1,
-    "account_auths": [ /* [ "1.2.0", 0 ], [account_id, weight], ... */ ],
-    "key_auths": [ /* [ "GPHXyz...public_key", 0 ], [public_key, weight], ... */ ],
-    "address_auths": [ /* [ "GPHXyz...address", 0 ], [public_key, weight], ... */ ]
-})
 
 const blind_receipt = fromJS({
     
@@ -226,35 +224,77 @@ export default class ConfidentialWallet {
                 catch(error) { public_key = this.getPublicKey(to_amount[0]) }
             
              assert(public_key, "Unknown to_amounts[" + (idx++) + "][0] (from_key_or_label): " + to_amount[0])
-             to_amount[0] = public_key
+             to_amount[3] = public_key
         }
          
         let promises = []
         promises.push(fetchChain("getAccount", from_account_id_or_name))
         promises.push(fetchChain("getAsset", asset_symbol))
-         
+
+        
         return Promise.all(promises).then( res =>{
             let [ account, asset ] = res
             if( ! account ) return Promise.reject("unknown_from_account")
             if( ! asset ) return Promise.reject("unknown_asset")
 
+            let promises = []
             let total_amount = 0
             let blinding_factors = []
             for( let to_amount of to_amounts) {
                 
-                let one_time_private = PrivateKey.fromHex("46a72d6dbb8907118ae63c6f90c2b330066e84c2031446d28be79f2c7e9a77ee")
-                let to_public = PublicKey.fromStringOrThrow("GPH7vbxtK1WaZqXsiCHPcjVFBewVj8HFRd5Z5XZDpN6Pvb2dZcMqK")
+                let label = to_amount[0]
+                let amount = to_amount[1]
+                let to_public = to_amount[3]
+                
+                let one_time_private = key.get_random_key()
                 let secret = one_time_private.get_shared_secret( to_public )
                 let child = hash.sha256( secret )
                 let nonce = hash.sha256( one_time_private.toBuffer() )
                 let blind_factor = hash.sha256( child )
                 
                 blinding_factors.push( blind_factor )
-                total_amount += to_amount[1]
+                total_amount += amount
                 
+                let out = {}, conf_output
+                out.owner = { weight_threshold: 1, key_auths: [[ toString(to_public.child( child )), 1 ]] }
                 
+                promises.push(
+                    Apis.crypto("blind", blind_factor.toString('hex'), amount)
+                    .then( ret =>{ out.commitment = ret })
+                    .then( ()=>
+                        to_amounts.length > 1 ?
+                            out.range_proof = Apis.crypto(
+                                "range_proof_sign", 0, out.commitment,
+                                blind_factor.toString('hex'), nonce.toString("hex"),
+                                0, 0, amount
+                            )
+                        : null
+                    )
+                    .then(()=> {
+                        conf_output = {
+                            label,
+                            pub_key: to_public.toString(),
+                            decrypted_memo: {
+                                amount: { amount, asset_id: asset.get("id") },
+                                blinding_factor: blind_factor,
+                                commitment: out.commitment,
+                                check: bufferToNumber(secret.slice(0, 4)),
+                            },
+                            confirmation: {
+                                one_time_key: one_time_private.toPublicKey().toString(),
+                                to: to_public.toString(),
+                            }
+                        }
+                        let memo = stealth_memo_data.toBuffer( conf_output.decrypted_memo )
+                        conf_output.confirmation.encrypted_memo = Aes.fromBuffer(secret).encrypt( memo )
+                        conf_output.confirmation_receipt = conf_output.confirmation
+                        console.log("conf_output", conf_output)
+                    })
+                )
             }
-                 
+            
+            return Promise.all(promises)
+            
         })
     }
      
@@ -313,9 +353,6 @@ export default class ConfidentialWallet {
 
 }
 
-var toString = data => data == null ? data :
-    data["toString"] ? data.toString() : data // PublicKey.toString()
-
 // required
 function req(data, field_name) {
     if( data == null ) throw "Missing required field: " + field_name
@@ -331,3 +368,9 @@ function assertLogin() {
     if( ! this.wallet.private_key )
         throw new Error("login")
 }
+
+var toString = data => data == null ? data :
+    data["toString"] ? data.toString() : data // Case for PublicKey.toString()
+
+let bufferToNumber = (buf, type = "Uint32") => 
+    new ByteBuffer.fromBinary(buf.toString("binary"))["read" + type]()
