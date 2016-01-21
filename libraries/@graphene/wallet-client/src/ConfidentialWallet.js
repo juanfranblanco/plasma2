@@ -172,18 +172,14 @@ export default class ConfidentialWallet {
     
     /** @return {Map<label, pubkey>} all blind accounts */
     getBlindAccounts() {
-        
         this.assertLogin()
-        
         let keys = this.wallet.wallet_object.getIn(["keys"], Map())
         return keys.reduce( (r, key, pubkey) => r.set(key.get("label"), pubkey), Map())
     }
     
     /** @return {Map<label, pubkey>} all blind accounts for which this wallet has the private key */
     getMyBlindAccounts() {
-        
         this.assertLogin()
-        
         let keys = this.wallet.wallet_object.getIn(["keys"], Map())
         let reduce = (r, label, pubkey) => ! keys.has(pubkey) ? r : r.set(label, pubkey)
         return keys.reduce( (r, key, pubkey) => reduce(r, key.get("label"), pubkey), Map())
@@ -194,9 +190,7 @@ export default class ConfidentialWallet {
         @return {Set<asset>} the total balance of all blinded commitments that can be claimed by given account key or label
     */
     getBlindBalances(pubkey_or_label) {
-        
         this.assertLogin()
-        
         let public_key
         try {
             public_key = PublicKey.fromString(pubkey_or_label)
@@ -211,17 +205,20 @@ export default class ConfidentialWallet {
         @arg {string} asset_symbol
         @arg {array<string, number>} <from_account_id_or_name, amount> - map from key or label to amount
         @arg {boolean} [broadcast = false]
-        @return {Promise<>} blind_confirmation
+        @return {Promise} reject ["unknown_from_account"|"unknown_asset"] resolve<object> blind_confirmation
      */
      transferToBlind( from_account_id_or_name, asset_symbol, to_amounts, broadcast = false ) {
-         
          this.assertLogin()
-         
          let promises = []
          promises.push(fetchChain("getAccount", from_account_id_or_name))
          promises.push(fetchChain("getAsset", asset_symbol))
          
-         return Promise.all(promises)
+         return Promise.all(promises).then( res =>{
+             let [ account, asset ] = res
+             if( ! account ) return Promise.reject("unknown_from_account")
+             if( ! asset ) return Promise.reject("unknown_asset")
+             
+         })
      }
      
     /**

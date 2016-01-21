@@ -28,9 +28,7 @@ describe('Confidential Wallet', () => {
         cw = new ConfidentialWallet(wallet)
     }
     
-    beforeEach(()=>{
-        initWallet()
-    })
+    beforeEach(()=> initWallet())
     
     // afterEach(()=> wallet.logout())
 
@@ -45,7 +43,6 @@ describe('Confidential Wallet', () => {
         
         assert( cw.setKeyLabel( public_key, "label2" ), "rename label")
         assert.equal( cw.getKeyLabel(public_key), "label2" )
-        
         assert( ! cw.setKeyLabel( "public_key2", "label2"), "label already assigned")
         
         assert.equal( cw.getKeyLabel(public_key), "label2", "fetch label")
@@ -63,9 +60,7 @@ describe('Confidential Wallet', () => {
         wallet.login(username, password, email)
         
         assert.deepEqual( cw.getBlindAccounts().toJS(), {} )
-        
         assert(create().Q, "Should return a public key")
-        
         assert.throws(create, /label_exists/, "Expecting a 'label_exists' exception" )
         
         assert.deepEqual(

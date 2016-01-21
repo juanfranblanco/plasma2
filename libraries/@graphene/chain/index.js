@@ -3,11 +3,11 @@ import { List } from "immutable"
 module.exports = {
     config: require("./src/config"),
     Apis: require("./src/ApiInstances").default,
-    ChainStore: require("./src/ChainStore"),
+    ChainStore: require("./src/ChainStore").default,
     
     /** 
     */
-    fetchChain: (methodName, objectIds, timeout) => {
+    fetchChain: (methodName, objectIds, timeout = 1900) => {
         
         let chainStore = require("./src/ChainStore")
         let ChainStore = chainStore.default
