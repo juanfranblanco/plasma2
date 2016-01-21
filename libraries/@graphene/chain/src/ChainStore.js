@@ -31,7 +31,8 @@ let committee_prefix = "1." + committee_member_object_type + "."
 let asset_prefix = "1." + asset_object_type + "."
 let account_prefix = "1." + account_object_type + "."
 
-const DEBUG = false
+const DEBUG = JSON.parse(process.env.npm_config__graphene_chain_chain_debug || false)
+
 /**
  *  @brief maintains a local cache of blockchain state
  *
@@ -191,11 +192,12 @@ class ChainStore
 
    notifySubscribers()
    {
-      if( !this.dispatched ) {
+      // Dispatch at most only once every 20 milliseconds
+      if( ! this.dispatched ) {
          this.dispatched = true;
          setTimeout( ()=>{
-          this.dispatched = false;
-          this.subscribers.forEach( (callback) => { callback() } )
+            this.dispatched = false;
+            this.subscribers.forEach( (callback) => { callback() } )
          }, 20 );
       }
    }
@@ -260,7 +262,7 @@ class ChainStore
 
       if ( validation.is_object_id( id_or_symbol ) ) {
         let asset = this.getObject( id_or_symbol );
-
+      
         if (asset && (asset.get("bitasset") && !asset.getIn(["bitasset", "current_feed"]))) {
           return undefined;
         }
@@ -291,8 +293,10 @@ class ChainStore
               // console.log( "lookup symbol ", id_or_symbol )
               if( asset_objects.length && asset_objects[0] )
                  this._updateObject( asset_objects[0], true )
-              else
+              else {
                  this.assets_by_symbol = this.assets_by_symbol.set( id_or_symbol, null )
+                 this.notifySubscribers()
+              }
       }).catch( error => {
          console.log( "Error: ", error )
          this.assets_by_symbol = this.assets_by_symbol.delete( id_or_symbol )
@@ -394,7 +398,7 @@ class ChainStore
          return result
       }
 
-      //console.log( "fetchObject: ", id, this.subscribed )
+      console.log( "!!! fetchObject: ", id, this.subscribed, !this.subscribed && !force )
       if( !this.subscribed && !force ) return undefined
 
       if(DEBUG) console.log( "maybe fetch object: ", id )
@@ -414,8 +418,10 @@ class ChainStore
                        let optional_object = optional_objects[i]
                        if( optional_object )
                           this._updateObject( optional_object, true )
-                       else
+                       else {
                           this.objects_by_id = this.objects_by_id.set( id, null )
+                          this.notifySubscribers()
+                      }
                    }
                }).catch( error => { // in the event of an error clear the pending state for id
                    console.log('!!! Chain API error',error)
@@ -678,8 +684,10 @@ class ChainStore
           Apis.instance().db_api().exec("get_full_accounts", [[name_or_id],true])
               .then( results => {
                  if(results.length === 0 ) {
-                    if( validation.is_object_id(name_or_id) )
+                    if( validation.is_object_id(name_or_id) ) {
                         this.objects_by_id = this.objects_by_id.set( name_or_id, null );
+                        this.notifySubscribers()
+                    }
                     return;
                  }
                  let full_account = results[0][1]
@@ -1117,7 +1125,6 @@ class ChainStore
           }
         }
       }
-
 
 
       if( notify_subscribers )
