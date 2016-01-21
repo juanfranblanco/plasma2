@@ -74,4 +74,4 @@ export function decrypt(backup_buffer, private_key) {
 }
 
 let toPublic = data => data == null ? data :
-    data.Q ? data : PublicKey.fromString(data)
+    data.Q ? data : PublicKey.fromStringOrThrow(data)

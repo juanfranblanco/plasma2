@@ -78,7 +78,12 @@ describe('Confidential Wallet', () => {
             "GPH7vbxtK1WaZqXsiCHPcjVFBewVj8HFRd5Z5XZDpN6Pvb2dZcMqK",
             "Match against a known public key (matching the graphene cli wallet)"
         )
-                
+        assert.equal(
+            create("bob", "bob-brain-key").toString(),
+            "GPH8HosMbp7tL614bFgqtXXownHykqASxwmnH9NrhAnvtTuVWRf1X",
+            "Match against a known public key (matching the graphene cli wallet)"
+        )
+        
     })
     
     it("Transfer", ()=> {
@@ -89,7 +94,7 @@ describe('Confidential Wallet', () => {
             create("alice", "alice-brain-key")
             create("bob", "bob-brain-key")
             
-            return cw.transferToBlind( "nathan", "CORE", [["alice",1]["bob",1]]).then(tx =>{
+            return cw.transferToBlind( "nathan", "CORE", [["alice",1],["bob",1]] ).then(tx =>{
                 console.log("tx", tx)
             })
             

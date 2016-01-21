@@ -398,7 +398,7 @@ class ChainStore
          return result
       }
 
-      console.log( "!!! fetchObject: ", id, this.subscribed, !this.subscribed && !force )
+      if(DEBUG) console.log( "!!! fetchObject: ", id, this.subscribed, !this.subscribed && !force )
       if( !this.subscribed && !force ) return undefined
 
       if(DEBUG) console.log( "maybe fetch object: ", id )

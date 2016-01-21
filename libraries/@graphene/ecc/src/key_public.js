@@ -61,37 +61,37 @@ class PublicKey {
   /**
       @arg {string} public_key - like GPHXyz...
       @arg {string} address_prefix - like GPH
+      @throws {Error} if public key is invalid
       @return PublicKey
   */
-  static fromString(public_key, address_prefix = config.address_prefix) {
-      try {
-        var prefix = public_key.slice(0, address_prefix.length);
-        assert.equal(
-            address_prefix, prefix,
-            `Expecting key to begin with ${address_prefix}, instead got ${prefix}`);
-        public_key = public_key.slice(address_prefix.length);
+  static fromStringOrThrow(public_key, address_prefix = config.address_prefix) {
+    var prefix = public_key.slice(0, address_prefix.length);
+    assert.equal(
+        address_prefix, prefix,
+        `Expecting key to begin with ${address_prefix}, instead got ${prefix}`);
+    public_key = public_key.slice(address_prefix.length);
 
-        public_key = new Buffer(base58.decode(public_key), 'binary');
-        var checksum = public_key.slice(-4);
-        public_key = public_key.slice(0, -4);
-        var new_checksum = hash.ripemd160(public_key);
-        new_checksum = new_checksum.slice(0, 4);
-        assert.deepEqual(checksum, new_checksum, 'Checksum did not match');
-        return PublicKey.fromBuffer(public_key);
-      } catch (e) {
-        console.error("ERROR\tPublicKey\tfromString", e, "stack", e.stack);
-        return null;
-      }
+    public_key = new Buffer(base58.decode(public_key), 'binary');
+    var checksum = public_key.slice(-4);
+    public_key = public_key.slice(0, -4);
+    var new_checksum = hash.ripemd160(public_key);
+    new_checksum = new_checksum.slice(0, 4);
+    assert.deepEqual(checksum, new_checksum, 'Checksum did not match');
+    return PublicKey.fromBuffer(public_key);
   }
   
   /**
-      Alias for {@link fromString}
       @arg {string} public_key - like GPHXyz...
       @arg {string} address_prefix - like GPH
-      @return PublicKey
+      @return PublicKey or `null` (if the public_key string is invalid)
   */
   static fromPublicKeyString(public_key, address_prefix = config.address_prefix) {
-    return PublicKey.fromString(public_key, address_prefix)
+    try {
+        return PublicKey.fromStringOrThrow(public_key, address_prefix)
+    } catch (e) {
+        console.error("ERROR\tPublicKey\tfromString", e, "stack", e.stack);
+        return null;
+    }
   };
 
   toAddressString(address_prefix = config.address_prefix) {

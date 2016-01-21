@@ -136,7 +136,7 @@ export default class ConfidentialWallet {
         if( ! pubkey)
             return null
         
-        return PublicKey.fromString( pubkey )
+        return PublicKey.fromStringOrThrow( pubkey )
     }
     
     /**
@@ -193,7 +193,7 @@ export default class ConfidentialWallet {
         this.assertLogin()
         let public_key
         try {
-            public_key = PublicKey.fromString(pubkey_or_label)
+            public_key = PublicKey.fromStringOrThrow(pubkey_or_label)
         } catch(e) { /* label */ }
         
     }
@@ -203,23 +203,46 @@ export default class ConfidentialWallet {
         
         @arg {string} from_account_id_or_name
         @arg {string} asset_symbol
-        @arg {array<string, number>} <from_account_id_or_name, amount> - map from key or label to amount
+        @arg {array<string, number>} <from_key_or_label, amount> - from key_or_label to amount
         @arg {boolean} [broadcast = false]
         @return {Promise} reject ["unknown_from_account"|"unknown_asset"] resolve<object> blind_confirmation
-     */
-     transferToBlind( from_account_id_or_name, asset_symbol, to_amounts, broadcast = false ) {
-         this.assertLogin()
-         let promises = []
-         promises.push(fetchChain("getAccount", from_account_id_or_name))
-         promises.push(fetchChain("getAsset", asset_symbol))
+    */
+    transferToBlind( from_account_id_or_name, asset_symbol, to_amounts, broadcast = false ) {
          
-         return Promise.all(promises).then( res =>{
-             let [ account, asset ] = res
-             if( ! account ) return Promise.reject("unknown_from_account")
-             if( ! asset ) return Promise.reject("unknown_asset")
+        this.assertLogin()
+        assert.equal(typeof from_account_id_or_name, "string", "from_account_id_or_name")
+        assert.equal(typeof asset_symbol, "string", "asset_symbol")
+        assert(Array.isArray( to_amounts ), "to_amounts should be an array")
+
+        // Validate to_amounts, lookup or parse destination public key objects
+        for( let to_amount of to_amounts) {
+             assert(Array.isArray( to_amount ), 'to_amounts parameter should look like: [["alice",1]["bob",1]]')
+             assert.equal(typeof to_amount[0], "string", 'to_amounts parameter should look like: [["alice",1]["bob",1]]')
+             assert.equal(typeof to_amount[1], "number", 'to_amounts parameter should look like: [["alice",1]["bob",1]]')
              
-         })
-     }
+             let public_key
+             try { public_key = PublicKey.fromStringOrThrow(to_amount[0]) }
+                catch(error) { public_key = this.getPublicKey(to_amount[0]) }
+            
+             assert(public_key, "Missing public key for " + to_amount[0])
+             to_amount[0] = public_key
+        }
+         
+        let promises = []
+        promises.push(fetchChain("getAccount", from_account_id_or_name))
+        promises.push(fetchChain("getAsset", asset_symbol))
+         
+        return Promise.all(promises).then( res =>{
+            let [ account, asset ] = res
+            if( ! account ) return Promise.reject("unknown_from_account")
+            if( ! asset ) return Promise.reject("unknown_asset")
+
+            for( let to_amount of to_amounts) {
+                
+            }
+                 
+        })
+    }
      
     /**
         @return {List<blind_receipt>} all blind receipts to/form a particular account
