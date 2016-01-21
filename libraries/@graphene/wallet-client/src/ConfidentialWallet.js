@@ -1,6 +1,6 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
-import { brainKey, PrivateKey, PublicKey } from "@graphene/ecc"
+import { brainKey, PrivateKey, PublicKey, hash } from "@graphene/ecc"
 import { fetchChain, config } from "@graphene/chain"
 
 // /**
@@ -203,7 +203,7 @@ export default class ConfidentialWallet {
         
         @arg {string} from_account_id_or_name
         @arg {string} asset_symbol
-        @arg {array<string, number>} <from_key_or_label, amount> - from key_or_label to amount
+        @arg {array<string, number>} <from_key_or_label, amount> - from key_or_label to amount (destination public_key or key label)
         @arg {boolean} [broadcast = false]
         @return {Promise} reject ["unknown_from_account"|"unknown_asset"] resolve<object> blind_confirmation
     */
@@ -214,17 +214,18 @@ export default class ConfidentialWallet {
         assert.equal(typeof asset_symbol, "string", "asset_symbol")
         assert(Array.isArray( to_amounts ), "to_amounts should be an array")
 
-        // Validate to_amounts, lookup or parse destination public key objects
+        let idx = 0
+        // Validate to_amounts, lookup or parse destination public_key or key label (from_key_or_label)
         for( let to_amount of to_amounts) {
-             assert(Array.isArray( to_amount ), 'to_amounts parameter should look like: [["alice",1]["bob",1]]')
-             assert.equal(typeof to_amount[0], "string", 'to_amounts parameter should look like: [["alice",1]["bob",1]]')
-             assert.equal(typeof to_amount[1], "number", 'to_amounts parameter should look like: [["alice",1]["bob",1]]')
+             assert(Array.isArray( to_amount ), 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
+             assert.equal(typeof to_amount[0], "string", 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
+             assert.equal(typeof to_amount[1], "number", 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
              
              let public_key
              try { public_key = PublicKey.fromStringOrThrow(to_amount[0]) }
                 catch(error) { public_key = this.getPublicKey(to_amount[0]) }
             
-             assert(public_key, "Missing public key for " + to_amount[0])
+             assert(public_key, "Unknown to_amounts[" + (idx++) + "][0] (from_key_or_label): " + to_amount[0])
              to_amount[0] = public_key
         }
          
@@ -237,7 +238,20 @@ export default class ConfidentialWallet {
             if( ! account ) return Promise.reject("unknown_from_account")
             if( ! asset ) return Promise.reject("unknown_asset")
 
+            let total_amount = 0
+            let blinding_factors = []
             for( let to_amount of to_amounts) {
+                
+                let one_time_private = PrivateKey.fromHex("46a72d6dbb8907118ae63c6f90c2b330066e84c2031446d28be79f2c7e9a77ee")
+                let to_public = PublicKey.fromStringOrThrow("GPH7vbxtK1WaZqXsiCHPcjVFBewVj8HFRd5Z5XZDpN6Pvb2dZcMqK")
+                let secret = one_time_private.get_shared_secret( to_public )
+                let child = hash.sha256( secret )
+                let nonce = hash.sha256( one_time_private.toBuffer() )
+                let blind_factor = hash.sha256( child )
+                
+                blinding_factors.push( blind_factor )
+                total_amount += to_amount[1]
+                
                 
             }
                  

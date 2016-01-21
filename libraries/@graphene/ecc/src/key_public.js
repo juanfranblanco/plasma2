@@ -115,6 +115,29 @@ class PublicKey {
     addy = Buffer.concat([ addy, checksum.slice(0, 4) ]);
     return base58.encode(addy);
   }
+  
+  /**
+      @arg {Buffer} 32 bytes (sha256 hash)
+      @return {PublicKey} computed from sha256 hash ( this.toBuffer() + offset )
+  */
+  child( offset ) {
+      assert(Buffer.isBuffer(offset), "Buffer required: offset")
+      assert.equal(offset.length, 32, "offset length")
+      
+      let concat = Buffer.concat([this.toBuffer(), offset])
+      let digest = hash.sha256( concat )
+      
+    //   this.Q
+      
+      
+    //   let d = BigInteger.fromBuffer( hash.sha256(concat) ) // private key
+    //   let Q = secp256k1.G.multiply(d) // convert to public key
+    //   return PublicKey.fromPoint(Q)
+    //   
+    //   
+    //   let d = BigInteger.fromBuffer( hash.sha256(concat) ) // private key
+      
+  }
 
   // <HEX> */
 

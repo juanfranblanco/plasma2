@@ -1,5 +1,5 @@
 import assert from "assert"
-import { PublicKey, PrivateKey } from "@graphene/ecc"
+import { PublicKey, PrivateKey, hash } from "@graphene/ecc"
 import { Apis } from "@graphene/chain"
 
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
@@ -95,11 +95,29 @@ describe('Confidential Wallet', () => {
             create("bob", "bob-brain-key")
             
             return cw.transferToBlind( "nathan", "CORE", [["alice",1],["bob",1]] ).then(tx =>{
-                console.log("tx", tx)
+                if( tx ) console.log("tx", tx)
             })
             
         })
         
+    })
+    
+    it("Crypto matches witness_node", ()=> {
+        let one_time_private = PrivateKey.fromHex("8fdfdde486f696fd7c6313325e14d3ff0c34b6e2c390d1944cbfe150f4457168")
+        let to_public = PublicKey.fromStringOrThrow("GPH7vbxtK1WaZqXsiCHPcjVFBewVj8HFRd5Z5XZDpN6Pvb2dZcMqK")
+        let secret = one_time_private.get_shared_secret( to_public )
+        let child = hash.sha256( secret )
+        
+        // Check everything above with `wdump((child));` from the witness_node:
+        assert.equal(child.toString('hex'), "1f296fa48172d9af63ef3fb6da8e369e6cc33c1fb7c164207a3549b39e8ef698")
+        
+        let nonce = hash.sha256( one_time_private.toBuffer() )
+        assert.equal(nonce.toString('hex'), "462f6c19ece033b5a3dba09f1e1d7935a5302e4d1eac0a84489cdc8339233fbf")
+        
+        // let blind_factor = hash.sha256( child )
+        
+        let auth_public = to_public.child( child )
+        assert.equal(auth_public.toString(), "GPH6XA72XARQCain961PCJnXiKYdEMrndNGago2PV5bcUiVyzJ6iL")
     })
         
     

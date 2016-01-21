@@ -63,6 +63,7 @@ class Apis {
             try { window.$db_api = this._db_api; } catch(e) { /* nodejs */ }
             this._network_api = new GrapheneApi(this.ws_rpc, "network_broadcast");
             this._history_api = new GrapheneApi(this.ws_rpc, "history");
+            this._crypto_api = new GrapheneApi(this.ws_rpc, "crypto");
             var db_promise = this._db_api.init().then( ()=> {
                 //https://github.com/cryptonomex/graphene/wiki/chain-locked-tx
                 return this._db_api.exec("get_chain_id",[]).then( _chain_id => {
@@ -79,11 +80,13 @@ class Apis {
                     });
                     this._network_api.init();
                     this._history_api.init();
+                    this._crypto_api.init();
                 });
             }
             return Promise.all([db_promise,
                 this._network_api.init(),
-                this._history_api.init()]);
+                this._history_api.init(),
+                this._crypto_api.init()]);
         });
     }
     
@@ -102,6 +105,10 @@ class Apis {
     
     history_api () {
         return this._history_api;
+    }
+    
+    crypto_api () {
+        return this._crypto_api;
     }
 
     setRpcConnectionStatusCallback(callback) {
