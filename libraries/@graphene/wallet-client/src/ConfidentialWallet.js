@@ -7,67 +7,6 @@ import ByteBuffer from "bytebuffer"
 
 let { stealth_memo_data } = ops
 
-// /**
-//     This is for documentation purposes..
-//     Serilizable persisterent state (JSON serilizable types only)..  
-// */
-// const empty_wallet = fromJS({
-//     
-//     public_name: t.Str,
-//     created: t.Dat,
-//     last_modified: t.Dat,
-//     backup_date: t.maybe(t.Dat),
-//     brainkey: t.maybe(t.Str),
-//     brainkey_sequence: t.Num,
-//     brainkey_backup_date: t.maybe(t.Dat),
-//     deposit_keys: t.maybe(t.Obj),
-//     chain_id: t.Str,
-//     
-//     // [blind_receipt,...]
-//     blind_receipts: [],
-//     
-//     keys:
-//         "pubkey": {
-//             //  No two keys can have the same label, no two labels can have the same key
-//             label: t.maybe(t.Str),
-//             import_account_names: t.maybe(t.Arr),
-//             brainkey_sequence: t.maybe(t.Num),
-//             private_wif: t.Str // was: encrypted_key: t.Str
-//         }
-//         
-// })
-
-
-const blind_receipt = fromJS({
-    
-    date: null,
-    
-    from_key: null,
-    
-    from_label: null,
-    
-    to_key: null,
-    
-    to_label: null,
-    
-    // serializer_operations::asset
-    amount: null,
-    
-    // String
-    memo: null,
-    
-    // 
-    authority: null,
-    
-    stealth_memo_data: null,
-    
-    used: false,
-    
-    // serializer_operations::stealth_confirmation
-    stealth_confirmation: null
-    
-})
-
 /** This class is used for stealth transfers */
 export default class ConfidentialWallet {
     
@@ -240,6 +179,16 @@ export default class ConfidentialWallet {
             let promises = []
             let total_amount = 0
             let blinding_factors = []
+            let bop = {
+                outputs: []
+            }
+            let confirm = {
+                outputs: [],
+                trx: {
+                    operations: []
+                }
+            }
+            
             for( let to_amount of to_amounts) {
                 
                 let label = to_amount[0]
@@ -252,10 +201,11 @@ export default class ConfidentialWallet {
                 let nonce = hash.sha256( one_time_private.toBuffer() )
                 let blind_factor = hash.sha256( child )
                 
-                blinding_factors.push( blind_factor )
+                blinding_factors.push( blind_factor.toString("hex") )
                 total_amount += amount
                 
                 let out = {}, conf_output
+
                 out.owner = { weight_threshold: 1, key_auths: [[ toString(to_public.child( child )), 1 ]] }
                 
                 promises.push(
@@ -288,12 +238,39 @@ export default class ConfidentialWallet {
                         let memo = stealth_memo_data.toBuffer( conf_output.decrypted_memo )
                         conf_output.confirmation.encrypted_memo = Aes.fromBuffer(secret).encrypt( memo )
                         conf_output.confirmation_receipt = conf_output.confirmation
-                        console.log("conf_output", conf_output)
+                        
+                        bop.outputs.push( out )
+                        confirm.outputs.push( conf_output )
                     })
+                    
                 )
             }
             
-            return Promise.all(promises)
+            
+            return Promise.all(promises).then(()=>{
+                bop.amount = { amount: total_amount, asset_id: asset.get("id") }
+                return Apis.crypto("blind_sum", blinding_factors, blinding_factors.length)
+                    .then( res => bop.blinding_factor = res )
+                    .then( ()=>{
+                        bop.outputs = bop.outputs.sort((a, b)=> a.commitment < b.commitment)
+                        confirm.trx.operations.push( bop )
+                        
+                        // Apis.db("get_required_fees", confirm.trx.operations, asset.get("id")).then( fees =>{
+// my->set_operation_fees( confirm.trx, my->_remote_db->get_global_properties().parameters.current_fees);
+// confirm.trx.validate();
+// confirm.trx = sign_transaction(confirm.trx, broadcast);
+// 
+// if( broadcast )
+// {
+// for( const auto& out : confirm.outputs )
+// {
+// try { receive_blind_transfer( out.confirmation_receipt, "@"+from_account.name, "from @"+from_account.name ); } catch ( ... ){}
+// }
+// }
+                            return confirm
+                        // })
+                    })
+            })
             
         })
     }
@@ -374,3 +351,46 @@ var toString = data => data == null ? data :
 
 let bufferToNumber = (buf, type = "Uint32") => 
     new ByteBuffer.fromBinary(buf.toString("binary"))["read" + type]()
+
+// /**
+//     This is for documentation purposes..
+//     Serilizable persisterent state (JSON serilizable types only)..  
+// */
+// const empty_wallet = fromJS({
+//     public_name: t.Str,
+//     created: t.Dat,
+//     last_modified: t.Dat,
+//     backup_date: t.maybe(t.Dat),
+//     brainkey: t.maybe(t.Str),
+//     brainkey_sequence: t.Num,
+//     brainkey_backup_date: t.maybe(t.Dat),
+//     deposit_keys: t.maybe(t.Obj),
+//     chain_id: t.Str,
+//     
+//     // [blind_receipt,...]
+//     blind_receipts: [],
+//     
+//     keys:
+//         "pubkey": {
+//             //  No two keys can have the same label, no two labels can have the same key
+//             label: t.maybe(t.Str),
+//             import_account_names: t.maybe(t.Arr),
+//             brainkey_sequence: t.maybe(t.Num),
+//             private_wif: t.Str // was: encrypted_key: t.Str
+//         }
+//         
+// })
+
+// const blind_receipt = fromJS({
+//     date: null,
+//     from_key: null,
+//     from_label: null,
+//     to_key: null,
+//     to_label: null,
+//     amount: null,// serializer_operations::asset
+//     memo: null,// String
+//     authority: null,
+//     stealth_memo_data: null,
+//     used: false,
+//     stealth_confirmation: null // serializer_operations::stealth_confirmation
+// })
