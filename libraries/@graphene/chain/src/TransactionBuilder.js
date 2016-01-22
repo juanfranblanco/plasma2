@@ -1,6 +1,5 @@
 import assert from "assert"
 import { Signature, PublicKey, Aes, hash } from "@graphene/ecc"
-
 import { ops } from "@graphene/serializer"
 
 var ObjectId = require('./object_id');
@@ -25,14 +24,125 @@ export default class TransactionBuilder {
         this.signatures = []
         this.signer_private_keys = []
         
+        // semi-private method bindings
         this._broadcast = _broadcast.bind(this)
     }
     
+    /**
+        @arg {string} name - like "transfer"
+        @arg {object} operation - JSON matchching the operation's format
+    */
     add_type_operation(name, operation) {
         this.add_operation(this.get_type_operation(name, operation));
         return;
     }
 
+    /**
+        This does it all: set fees, finalize, sign, and broadcase (if wanted).
+        
+        @arg {ConfidentialWallet} cwallet - must be unlocked, used to gather signing keys
+        
+        @arg {array<string>} [signer_pubkeys = null] - Optional ["GPHAbc9Def0...", ...].  These are additional signing keys.  Some balance claims require propritary address formats, the witness node can't tell us which ones are needed so they must be passed in.  If the witness node can figure out a signing key (mostly all other transactions), it should not be passed in here.
+        
+        @arg {boolean} [broadcast = false]
+    */
+    process_transaction(cwallet, signer_pubkeys = null, broadcast = false) {
+        if(Apis.instance().chain_id !== wallet_object.get("chain_id"))
+            return Promise.reject("Mismatched chain_id; expecting " +
+                wallet_object.get("chain_id") + ", but got " +
+                Apis.instance().chain_id)
+        
+        // return WalletUnlockActions.unlock().then( () => {
+        return this.set_required_fees().then(()=> {
+            var signer_pubkeys_added = {}
+            if(signer_pubkeys) {
+                // Balance claims are by address, only the private
+                // key holder can know about these additional
+                // potential keys.
+                var pubkeys = cwallet.getPubkeys_having_PrivateKey(signer_pubkeys)
+                if( ! pubkeys.length)
+                    throw new Error("Missing signing key")
+
+                for(let pubkey_string of pubkeys) {
+                    var private_key = this.getPrivateKey(pubkey_string)
+                    this.add_signer(private_key, pubkey_string)
+                    signer_pubkeys_added[pubkey_string] = true
+                }
+            }
+
+            return this.get_potential_signatures().then( ({pubkeys, addys})=> {
+                var my_pubkeys = cwallet.getPubkeys_having_PrivateKey(pubkeys, addys)
+
+                //{//Testing only, don't send All public keys!
+                //    var pubkeys_all = PrivateKeyStore.getPubkeys() // All public keys
+                //    this.get_required_signatures(pubkeys_all).then( required_pubkey_strings =>
+                //        console.log('get_required_signatures all\t',required_pubkey_strings.sort(), pubkeys_all))
+                //    this.get_required_signatures(my_pubkeys).then( required_pubkey_strings =>
+                //        console.log('get_required_signatures normal\t',required_pubkey_strings.sort(), pubkeys))
+                //}
+
+                return this.get_required_signatures(my_pubkeys).then( required_pubkeys => {
+                    for(let pubkey_string of required_pubkeys) {
+                        if(signer_pubkeys_added[pubkey_string]) continue
+                        var private_key = this.getPrivateKey(pubkey_string)
+                        if( ! private_key)
+                            // This should not happen, get_required_signatures will only
+                            // returned keys from my_pubkeys
+                            throw new Error("Missing signing key for " + pubkey_string)
+                        this.add_signer(private_key, pubkey_string)
+                    }
+                })
+            }).then(()=> {
+                if(broadcast) {
+                    if(this.confirm_transactions) {
+                        TransactionConfirmActions.confirm(tr)
+                        return Promise.resolve();
+                    }
+                    else
+                        return this.broadcast()
+                    
+                } else
+                    return this.serialize()
+            })
+        })
+        // })
+    }
+    
+    /** Typically this is called automatically just prior to signing.  Once finalized this transaction can not be changed. */
+    finalize(){
+        return new Promise((resolve, reject)=> {
+            if (this.tr_buffer) { throw new Error("already finalized"); }
+            //@expiration ||= base_expiration_sec() + chain_config.expire_in_secs
+            resolve(Apis.instance().db_api().exec("get_objects", [["2.1.0"]]).then((r) => {
+                this.ref_block_num = r[0].head_block_number & 0xFFFF;
+                this.ref_block_prefix =  new Buffer(r[0].head_block_id, 'hex').readUInt32LE(4);
+                //DEBUG console.log("ref_block",@ref_block_num,@ref_block_prefix,r)
+                return lookup.resolve().then(()=> {
+                    var iterable = this.operations;
+                    for (var i = 0, op; i < iterable.length; i++) {
+                        op = iterable[i];
+                        if (op[1]["finalize"]) {
+                            op[1].finalize();
+                        }
+                    }
+                    this.tr_buffer = ops.transaction.toBuffer(this);
+                    return;
+                });
+            }));
+            return;
+        });
+    }
+    
+    /** @return {string} hex transaction ID */
+    id() {
+        if (!this.tr_buffer) { throw new Error("not finalized"); }
+        return hash.sha256(this.tr_buffer).toString( 'hex' ).substring(0,40);
+    }
+
+    /** 
+        Typically one will use {@link this.add_type_operation} instead.
+        @arg {array} operation - [operation_id, operation]
+    */
     add_operation(operation) {
         if (this.tr_buffer) { throw new Error("already finalized"); }
         assert(operation, "operation");
@@ -63,11 +173,13 @@ export default class TransactionBuilder {
         return [operation_id, operation_instance];
     }
 
+    /** optional: there is a deafult expiration */
     set_expire_seconds(sec){
         if (this.tr_buffer) { throw new Error("already finalized"); }
         return this.expiration = base_expiration_sec() + sec;
     }
 
+    /** optional: the fees can be obtained from the witness node */
     set_required_fees(asset_id){
         if (this.tr_buffer) { throw new Error("already finalized"); }
         if (!this.operations.length) { throw new Error("add operations first"); }
@@ -155,109 +267,6 @@ export default class TransactionBuilder {
         }
         );
     }
-    
-    /**
-        This does it all: set fees, finalize, sign, and broadcase (if wanted).
-        
-        @arg {WalletDb} wallet_db - must be unlocked, used to gather signing Keys
-        @arg {signed_transaction} tr
-        @arg {
-    */
-    process_transaction(wallet_object, signer_pubkeys = null, broadcast = false) {
-        if(Apis.instance().chain_id !== wallet_object.get("chain_id"))
-            return Promise.reject("Mismatched chain_id; expecting " +
-                wallet_object.get("chain_id") + ", but got " +
-                Apis.instance().chain_id)
-        
-        // return WalletUnlockActions.unlock().then( () => {
-        return this.set_required_fees().then(()=> {
-            var signer_pubkeys_added = {}
-            if(signer_pubkeys) {
-                // Balance claims are by address, only the private
-                // key holder can know about these additional
-                // potential keys.
-                var pubkeys = PrivateKeyStore.getPubkeys_having_PrivateKey(signer_pubkeys)
-                if( ! pubkeys.length)
-                    throw new Error("Missing signing key")
-
-                for(let pubkey_string of pubkeys) {
-                    var private_key = this.getPrivateKey(pubkey_string)
-                    this.add_signer(private_key, pubkey_string)
-                    signer_pubkeys_added[pubkey_string] = true
-                }
-            }
-
-            return this.get_potential_signatures().then( ({pubkeys, addys})=> {
-                var my_pubkeys = PrivateKeyStore.getPubkeys_having_PrivateKey(pubkeys, addys)
-
-                //{//Testing only, don't send All public keys!
-                //    var pubkeys_all = PrivateKeyStore.getPubkeys() // All public keys
-                //    this.get_required_signatures(pubkeys_all).then( required_pubkey_strings =>
-                //        console.log('get_required_signatures all\t',required_pubkey_strings.sort(), pubkeys_all))
-                //    this.get_required_signatures(my_pubkeys).then( required_pubkey_strings =>
-                //        console.log('get_required_signatures normal\t',required_pubkey_strings.sort(), pubkeys))
-                //}
-
-                return this.get_required_signatures(my_pubkeys).then( required_pubkeys => {
-                    for(let pubkey_string of required_pubkeys) {
-                        if(signer_pubkeys_added[pubkey_string]) continue
-                        var private_key = this.getPrivateKey(pubkey_string)
-                        if( ! private_key)
-                            // This should not happen, get_required_signatures will only
-                            // returned keys from my_pubkeys
-                            throw new Error("Missing signing key for " + pubkey_string)
-                        this.add_signer(private_key, pubkey_string)
-                    }
-                })
-            }).then(()=> {
-                if(broadcast) {
-                    if(this.confirm_transactions) {
-                        TransactionConfirmActions.confirm(tr)
-                        return Promise.resolve();
-                    }
-                    else
-                        return this.broadcast()
-                    
-                } else
-                    return this.serialize()
-            })
-        })
-        // })
-    }
-    
-    finalize(){
-        return new Promise((resolve, reject)=> {
-            if (this.tr_buffer) { throw new Error("already finalized"); }
-            //@expiration ||= base_expiration_sec() + chain_config.expire_in_secs
-            resolve(Apis.instance().db_api().exec("get_objects", [["2.1.0"]]).then((r) => {
-                this.ref_block_num = r[0].head_block_number & 0xFFFF;
-                this.ref_block_prefix =  new Buffer(r[0].head_block_id, 'hex').readUInt32LE(4);
-                //DEBUG console.log("ref_block",@ref_block_num,@ref_block_prefix,r)
-                return lookup.resolve().then(()=> {
-                    var iterable = this.operations;
-                    for (var i = 0, op; i < iterable.length; i++) {
-                        op = iterable[i];
-                        if (op[1]["finalize"]) {
-                            op[1].finalize();
-                        }
-                    }
-                    this.tr_buffer = ops.transaction.toBuffer(this);
-                    return;
-                });
-            }));
-            return;
-        });
-    }
-    
-    id(){
-        if (!this.tr_buffer) { throw new Error("not finalized"); }
-        return hash.sha256(this.tr_buffer).toString( 'hex' ).substring(0,40);
-    }
-
-    
-    
-    
-    
 
     get_potential_signatures(){
         var tr_object = ops.signed_transaction.toObject(this);

@@ -1,5 +1,5 @@
 
-import { Map } from "immutable"
+import { fromJS, Map } from "immutable"
 
 /**
     By default, this will use the W3C `localStorage` global object to persist all state updates.
@@ -7,17 +7,20 @@ import { Map } from "immutable"
 export default class LocalStoragePersistence {
     
     /**
-        Create and load any saved information from disk.
+        Create and load any saved information from disk. 
+        
         @arg {string} namespace unique to each object store.  Must contain only letters numbers a understore or dash.
+        
+        @arg {boolean} [saveToDisk = false] - Should operations also update the disk?  Calls to this.clear() or this.setState() (for example) will operate on RAM (false) or RAM and disk (true).
     */
-    constructor(namespace) {
+    constructor(namespace, saveToDisk = false) {
         if( ! /[a-z0-9_-]+/i.test( namespace )) throw new TypeError(
             "@arg {string} namespace unique to each wallet.  Must match /[a-z0-9_-]+/i.")
         const key = "LocalStoragePersistence::" + this.namespace
         this.STATE = key + "::state"
-        this.saveToDisk = undefined
+        this.saveToDisk = saveToDisk
         let stateStr = localStorage.getItem(this.STATE)
-        this.state = stateStr ? Map(JSON.parse(stateStr)) : Map()
+        this.state = stateStr ? fromJS(JSON.parse(stateStr)) : Map()
     }
     
     /**
@@ -33,13 +36,13 @@ export default class LocalStoragePersistence {
     }
     
     /**
-        @return {function} state - Accepts Immutable object state updates, merges with existing state, stores this new state and returns a new complete state object.
+        @arg {Immutable|object} newState gets merged with this.state.  If configured, save to disk.
     */
     setState(newState) {
-        if( newState === undefined )
+        if( newState === undefined || this.state === newState )
             return
         
-        this.state = this.state.merge(newState)
+        this.state = this.state.isEmpty() ? fromJS(newState) : this.state.merge(newState)
         if( this.saveToDisk )
             localStorage.setItem(this.STATE, JSON.stringify(this.state.toJS(),null,0))
     }

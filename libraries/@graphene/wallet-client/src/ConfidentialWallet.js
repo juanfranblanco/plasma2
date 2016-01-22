@@ -3,9 +3,50 @@ import { fromJS, Map, List } from "immutable"
 import { PrivateKey, PublicKey, Aes, brainKey, hash, key } from "@graphene/ecc"
 import { fetchChain, config, Apis, TransactionBuilder } from "@graphene/chain"
 import { ops } from "@graphene/serializer"
+import AddressIndex from "./AddressIndex"
+
 import ByteBuffer from "bytebuffer"
 
+
 let { stealth_memo_data } = ops
+
+// /**
+//     This is for documentation purposes..
+//     Serilizable persisterent state (JSON serilizable types only)..  
+// */
+// const empty_wallet = fromJS({
+//     public_name: t.Str,
+//     created: t.Dat,
+//     last_modified: t.Dat,
+//     backup_date: t.maybe(t.Dat),
+//     brainkey: t.maybe(t.Str),
+//     brainkey_sequence: t.Num,
+//     brainkey_backup_date: t.maybe(t.Dat),
+//     deposit_keys: t.maybe(t.Obj),
+//     chain_id: t.Str,
+//     
+//     // [blind_receipt,...]
+//     blind_receipts: [],
+//     
+//     keys:
+//         "pubkey": {
+//             //  No two keys can have the same label, no two labels can have the same key
+//             label: t.maybe(t.Str),
+//             import_account_names: t.maybe(t.Arr),
+//             brainkey_sequence: t.maybe(t.Num),
+//             private_wif: t.Str, // was: encrypted_key: t.Str
+//             index_address: false // Mark legacy keys for address indexing (addresses are calculated outside of this wallet backup)  
+//         }
+//         
+// })
+
+/**
+    Filter `keys` returning a list of public key addresses for only those that have a index_address true property.
+    @arg {Map} keys - { "pubkey" : { index_address: boolean } }
+    @return {List<string>} - pubkey ( like GPHAbc9Def0... )
+*/
+let indexableKeys = keys => keys
+    .reduce( (r, key, pubkey) => key.get("index_address") ? r.push(pubkey) : r, List())
 
 /** This class is used for stealth transfers */
 export default class ConfidentialWallet {
@@ -14,9 +55,17 @@ export default class ConfidentialWallet {
         
         this.wallet = req(walletStorage, "walletStorage")
         
+        // Convenience function to access this object (ensures an empty Map)
+        this.keys = () => this.wallet.wallet_object.getIn(["keys"], Map())
+        
+        // BTS 1.0 addresses for shorts and balance claims
+        this.addressIndex = new AddressIndex()
+        this.addressIndex.add( indexableKeys( this.keys() ))
+        
         // semi-private methods (outside of this API)
         this.update = update.bind(this)// update the wallet object
         this.assertLogin = assertLogin.bind(this)
+        this.getPubkeys_having_PrivateKey = getPubkeys_having_PrivateKey.bind(this)
     }
     
     /**
@@ -34,7 +83,7 @@ export default class ConfidentialWallet {
         public_key = toString(req(public_key, "public_key"))
         req(label, 'label')
         
-        let keys = this.wallet.wallet_object.getIn(["keys"], Map())
+        let keys = this.keys()
         let key = keys.find( key => key.get("label") === label )
         if( key != null )
             // this label is already assigned
@@ -68,13 +117,14 @@ export default class ConfidentialWallet {
         this.assertLogin()
         req(label, "label")
         
-        let keys = this.wallet.wallet_object.getIn(["keys"], Map())
+        let keys = this.keys()
         let pubkey = keys.findKey( key => key.get("label") === label )
         if( ! pubkey)
             return null
         
         return PublicKey.fromStringOrThrow( pubkey )
     }
+    
     
     /**
         Generates a new blind account for the given brain key and assigns it the given label. 
@@ -110,14 +160,14 @@ export default class ConfidentialWallet {
     /** @return {Map<label, pubkey>} all blind accounts */
     getBlindAccounts() {
         this.assertLogin()
-        let keys = this.wallet.wallet_object.getIn(["keys"], Map())
+        let keys = this.keys()
         return keys.reduce( (r, key, pubkey) => r.set(key.get("label"), pubkey), Map())
     }
     
     /** @return {Map<label, pubkey>} all blind accounts for which this wallet has the private key */
     getMyBlindAccounts() {
         this.assertLogin()
-        let keys = this.wallet.wallet_object.getIn(["keys"], Map())
+        let keys = this.keys()
         let reduce = (r, label, pubkey) => ! keys.has(pubkey) ? r : r.set(label, pubkey)
         return keys.reduce( (r, key, pubkey) => reduce(r, key.get("label"), pubkey), Map())
     }
@@ -359,35 +409,6 @@ var toString = data => data == null ? data :
 let bufferToNumber = (buf, type = "Uint32") => 
     new ByteBuffer.fromBinary(buf.toString("binary"))["read" + type]()
 
-// /**
-//     This is for documentation purposes..
-//     Serilizable persisterent state (JSON serilizable types only)..  
-// */
-// const empty_wallet = fromJS({
-//     public_name: t.Str,
-//     created: t.Dat,
-//     last_modified: t.Dat,
-//     backup_date: t.maybe(t.Dat),
-//     brainkey: t.maybe(t.Str),
-//     brainkey_sequence: t.Num,
-//     brainkey_backup_date: t.maybe(t.Dat),
-//     deposit_keys: t.maybe(t.Obj),
-//     chain_id: t.Str,
-//     
-//     // [blind_receipt,...]
-//     blind_receipts: [],
-//     
-//     keys:
-//         "pubkey": {
-//             //  No two keys can have the same label, no two labels can have the same key
-//             label: t.maybe(t.Str),
-//             import_account_names: t.maybe(t.Arr),
-//             brainkey_sequence: t.maybe(t.Num),
-//             private_wif: t.Str // was: encrypted_key: t.Str
-//         }
-//         
-// })
-
 // const blind_receipt = fromJS({
 //     date: null,
 //     from_key: null,
@@ -401,3 +422,23 @@ let bufferToNumber = (buf, type = "Uint32") =>
 //     used: false,
 //     stealth_confirmation: null // serializer_operations::stealth_confirmation
 // })
+
+function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
+    var return_pubkeys = []
+    let keys = this.keys()
+    if(pubkeys) {
+        for(let pubkey of pubkeys) {
+            let key = keys.get(pubkey)
+            if(key && key.has("private_wif")) {
+                return_pubkeys.push(pubkey)
+            }
+        }
+    }
+    if(addys) {
+        for (let addy of addys) {
+            var pubkey = this.addressIndex.getPublicKey(addy)
+            return_pubkeys.push(pubkey)
+        }
+    }
+    return return_pubkeys
+}
