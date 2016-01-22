@@ -2,7 +2,7 @@ var ChainWebSocket = require("./ChainWebSocket");
 var GrapheneApi = require("./GrapheneApi");
 var chain_config = require("./config")
 
-var apis_instance;
+var Apis, apis_instance;
 
 /**
     Configure: configure as follows `Apis.instance("ws://localhost:8090").init_promise`.  This returns a promise, once resolved the connection is ready.
@@ -11,9 +11,9 @@ var apis_instance;
     
     Short-hand: Apis.db("method", "parm1", 2, 3, ...).  Returns a promise with results.
     
-    Additonal usage: Apis.instance().db_api().exec("method", ["method", "parm1", 2, 3, ...]).  Returns a promise with results.
+    Additional usage: Apis.instance().db_api().exec("method", ["method", "parm1", 2, 3, ...]).  Returns a promise with results.
 */
-var ApisPublic = {
+export default Apis = {
     
     setRpcConnectionStatusCallback: function(callback) {
         this.update_rpc_connection_status_callback = callback;
@@ -26,21 +26,20 @@ var ApisPublic = {
     */
     instance: function ( connection_string = "ws://localhost:8090" ) {
         if ( ! apis_instance ) {
-            apis_instance = new Apis();
+            apis_instance = new ApisInstance();
             apis_instance.setRpcConnectionStatusCallback(this.update_rpc_connection_status_callback);
             apis_instance.connect( connection_string );
         }
         return apis_instance;
     },
-    db: (method, ...args) => ApisPublic.instance().db_api().exec(method, args),
-    network: (method, ...args) => ApisPublic.instance().network_api().exec(method, args),
-    history: (method, ...args) => ApisPublic.instance().history_api().exec(method, args),
-    crypto: (method, ...args) => ApisPublic.instance().crypto_api().exec(method, args)
+    chainId: ()=> Apis.instance().chain_id,
+    db: (method, ...args) => Apis.instance().db_api().exec(method, args),
+    network: (method, ...args) => Apis.instance().network_api().exec(method, args),
+    history: (method, ...args) => Apis.instance().history_api().exec(method, args),
+    crypto: (method, ...args) => Apis.instance().crypto_api().exec(method, args)
 };
 
-export default ApisPublic;
-
-class Apis {
+class ApisInstance {
 
     /** @arg {string} connection .. */
     connect( connection_string ) {

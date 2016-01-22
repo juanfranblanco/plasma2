@@ -35,7 +35,7 @@ describe('Confidential Wallet', () => {
 
     it('Keys', ()=> {
         
-        wallet.login(username, password, email)
+        wallet.login(username, password, email,  Apis.chainId())
         
         let public_key = PrivateKey.fromSeed("").toPublicKey().toString()
         
@@ -58,7 +58,7 @@ describe('Confidential Wallet', () => {
         assert.throws(create, /login/, "This test should require an unlocked wallet" )
         
         // unlock
-        wallet.login(username, password, email)
+        wallet.login(username, password, email, Apis.chainId())
         
         assert.deepEqual( cw.getBlindAccounts().toJS(), {} )
         assert(create().Q, "Should return a public key")
@@ -91,7 +91,7 @@ describe('Confidential Wallet', () => {
         
         return Apis.instance("ws://localhost:8090").init_promise.then(()=> {
             
-            wallet.login(username, password, email)
+            wallet.login(username, password, email, Apis.chainId())
             create("alice", "alice-brain-key")
             create("bob", "bob-brain-key")
             

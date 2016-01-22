@@ -1,4 +1,3 @@
-
 import { fromJS, Map } from "immutable"
 import { encrypt, decrypt } from "./WalletActions"
 import { PrivateKey, Signature, hash } from "@graphene/ecc"
@@ -157,10 +156,12 @@ export default class WalletStorage {
         @arg {string} email 
         @arg {string} username
         @arg {string} password
+        @arg {string} chain_id - required on first login.  The transaction layer checks this value to ensure wallet's can not cross-chains
+        
         @throws {Error<string>} [email_required | username_required | password_required | invalid_password | logged_in ]
         @return {Promise} - can be ignored unless one is interested in the remote wallet syncing
     */
-    login( email, username, password ) {
+    login( email, username, password, chain_id = null ) {
 
         if( this.private_key ) {
             throw new Error("logged_in")
@@ -183,9 +184,11 @@ export default class WalletStorage {
             if( this.storage.state.get("secret_encryption_pubkey") !== public_key.toString())
                 throw new Error( "invalid_password" )
         } else {
+            assert(chain_id, "provide the chainId on first login")
             // first login
             this.storage.setState({
-                secret_encryption_pubkey: public_key.toString()
+                secret_encryption_pubkey: public_key.toString(),
+                chain_id
             })
             this.notify = true
         }

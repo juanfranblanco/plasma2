@@ -1,7 +1,7 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
 import { PrivateKey, PublicKey, Aes, brainKey, hash, key } from "@graphene/ecc"
-import { fetchChain, config, Apis } from "@graphene/chain"
+import { fetchChain, config, Apis, TransactionBuilder } from "@graphene/chain"
 import { ops } from "@graphene/serializer"
 import ByteBuffer from "bytebuffer"
 
@@ -169,7 +169,6 @@ export default class ConfidentialWallet {
         let promises = []
         promises.push(fetchChain("getAccount", from_account_id_or_name))
         promises.push(fetchChain("getAsset", asset_symbol))
-
         
         return Promise.all(promises).then( res =>{
             let [ account, asset ] = res
@@ -180,6 +179,7 @@ export default class ConfidentialWallet {
             let total_amount = 0
             let blinding_factors = []
             let bop = {
+                from: account.get("id"),
                 outputs: []
             }
             let confirm = {
@@ -245,16 +245,23 @@ export default class ConfidentialWallet {
                     
                 )
             }
-            
+            // transfer_to_blind
+            // fee: asset,
+            // amount: asset,
+            // from: protocol_id_type("account"),
+            // blinding_factor: bytes(32),
+            // outputs: array(blind_output)
             
             return Promise.all(promises).then(()=>{
                 bop.amount = { amount: total_amount, asset_id: asset.get("id") }
                 return Apis.crypto("blind_sum", blinding_factors, blinding_factors.length)
                     .then( res => bop.blinding_factor = res )
                     .then( ()=>{
+                        // confirm.trx.operations.push( bop )
+                        let tr = new TransactionBuilder()
                         bop.outputs = bop.outputs.sort((a, b)=> a.commitment < b.commitment)
-                        confirm.trx.operations.push( bop )
-                        
+                        tr.add_type_operation("transfer_to_blind", bop)
+                        tr.processed_transaction(this.wallet.wallet_object, null, broadcast)
                         // Apis.db("get_required_fees", confirm.trx.operations, asset.get("id")).then( fees =>{
 // my->set_operation_fees( confirm.trx, my->_remote_db->get_global_properties().parameters.current_fees);
 // confirm.trx.validate();

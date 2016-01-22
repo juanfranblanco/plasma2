@@ -1054,12 +1054,12 @@ var signed_transaction = new Serializer(
 
 
 // var { bytes, optional, int64, uint32, protocol_id_type } = ser.types
-// export var asset = new Serializer( "asset", {
+// var asset = new Serializer( "asset", {
 //     amount: int64,
 //     asset_id: protocol_id_type("asset")
 // })
 // 
-// export var authority = new Serializer( "authority", {
+// var authority = new Serializer( "authority", {
 //     weight_threshold: uint32,
 //     account_auths: map (protocol_id_type( "account"), uint16),
 //     key_auths: map (public_key, uint16),
@@ -1067,16 +1067,16 @@ var signed_transaction = new Serializer(
 // })
 // 
 // 
-// export var stealth_memo_data = new Serializer(
-//     "stealth_memo_data", {
-//     from: optional( public_key ),
-//     amount: asset,
-//     blinding_factor: bytes(32),
-//     commitment: bytes(33),
-//     check: uint32
-// })
+var stealth_memo_data = new Serializer(
+    "stealth_memo_data", {
+    from: optional( public_key ),
+    amount: asset,
+    blinding_factor: bytes(32),
+    commitment: bytes(33),
+    check: uint32
+})
 // 
-// export var stealth_confirmation = new Serializer(
+// var stealth_confirmation = new Serializer(
 //     "stealth_confirmation", {
 //     one_time_key: public_key,
 //     to: optional( public_key ),
