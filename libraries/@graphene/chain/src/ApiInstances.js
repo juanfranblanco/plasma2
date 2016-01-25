@@ -33,10 +33,10 @@ export default Apis = {
         return apis_instance;
     },
     chainId: ()=> Apis.instance().chain_id,
-    db: (method, ...args) => Apis.instance().db_api().exec(method, args),
-    network: (method, ...args) => Apis.instance().network_api().exec(method, args),
-    history: (method, ...args) => Apis.instance().history_api().exec(method, args),
-    crypto: (method, ...args) => Apis.instance().crypto_api().exec(method, args)
+    db: (method, ...args) => Apis.instance().db_api().exec(method, arrayToHex(args)),
+    network: (method, ...args) => Apis.instance().network_api().exec(method, arrayToHex(args)),
+    history: (method, ...args) => Apis.instance().history_api().exec(method, arrayToHex(args)),
+    crypto: (method, ...args) => Apis.instance().crypto_api().exec(method, arrayToHex(args))
 };
 
 class ApisInstance {
@@ -132,3 +132,11 @@ class ApisInstance {
 }
 
 
+let arrayToHex = array => {
+    if( array )
+        for(let i = 0; i < array.length; i++)
+            if( Buffer.isBuffer(array[i]) )
+                array[i] = array[i].toString("hex")
+    
+    return array
+}

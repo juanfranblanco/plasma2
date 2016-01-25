@@ -331,13 +331,13 @@ export default class ConfidentialWallet {
                     account_auths: [], address_auths: []}
                 
                 promises.push(
-                    Apis.crypto("blind", blind_factor.toString('hex'), amount)
+                    Apis.crypto("blind", blind_factor, amount)
                     .then( ret =>{ out.commitment = ret })
                     .then( ()=>
                         to_amounts.length > 1 ?
                             out.range_proof = Apis.crypto(
                                 "range_proof_sign", 0, out.commitment,
-                                blind_factor.toString('hex'), nonce.toString("hex"),
+                                blind_factor, nonce,
                                 0, 0, amount
                             )
                         : null
