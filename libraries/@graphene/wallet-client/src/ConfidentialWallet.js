@@ -118,7 +118,7 @@ export default class ConfidentialWallet {
                 // this label is already assigned
                 return false
         }
-        console.log("public_key,toString(private_key)", public_key,toString(private_key))
+
         this.update(wallet =>
             wallet.updateIn(["keys", public_key], Map(),
                 key => key.withMutations( key =>{
@@ -381,7 +381,7 @@ export default class ConfidentialWallet {
                     .then( ()=>{
                         // confirm.trx.operations.push( bop )
                         let tr = new TransactionBuilder()
-                        bop.outputs = bop.outputs.sort((a, b)=> a.commitment < b.commitment)
+                        bop.outputs = bop.outputs.sort((a, b)=> a.commitment > b.commitment)
                         tr.add_type_operation("transfer_to_blind", bop)
                         return tr.process_transaction(this, null, broadcast).then(()=> {
                             confirm.trx = tr.serialize()
