@@ -33,7 +33,7 @@ describe('Confidential Wallet', () => {
     // Establish connection fully, obtain Chain ID
     before(()=> Apis.instance("ws://localhost:8090").init_promise)
     
-    // afterEach(()=> wallet.logout())
+    afterEach(()=> wallet.logout())
 
     it('Keys', ()=> {
         
@@ -59,7 +59,6 @@ describe('Confidential Wallet', () => {
                 .get("private_wif"), key.toWif())
             assert( cw.getPrivateKey( key.toPublicKey() ))
             assert( cw.getPrivateKey( key.toPublicKey().toString() ))
-            // assert( cw.getPrivateKey( "seed label" ))
         }
         {
             let key = PrivateKey.fromSeed("seed2")

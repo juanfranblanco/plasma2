@@ -382,11 +382,19 @@ export default class ConfidentialWallet {
                         return tr.process_transaction(this, null, broadcast).then(()=> {
                             confirm.trx = tr.serialize()
                             if( broadcast ) {
-                                for(let out in bop.outputs) {
-                                    // receive_blind_transfer( out.confirmation_receipt, "@"+from_account.name, "from @"+from_account.name)
+                                for(let out of confirm.outputs) {
+                                    let name = account.get("name")
+                                    this.receiveBlindTransfer( out.confirmation_receipt, "@"+name, "from @"+name )
                                 }
                             }
                             return confirm
+                        }).catch( e => { // TODO <= remove
+                            //fake it for testing
+                            for(let out of confirm.outputs) {
+                                let name = account.get("name")
+                                this.receiveBlindTransfer( out.confirmation_receipt, "@"+name, "from @"+name )
+                            }
+                            throw e
                         })
                     })
             })
@@ -412,8 +420,108 @@ export default class ConfidentialWallet {
         @return blind_receipt
     */
     receiveBlindTransfer( confirmation_receipt, opt_from, opt_memo ) {
-        
+
+        console.log("confirmation_receipt", confirmation_receipt)
+        //    FC_ASSERT( !is_locked() );
         this.assertLogin()
+        //    stealth_confirmation conf(confirmation_receipt);
+        let conf = confirmation_receipt
+        //    FC_ASSERT( conf.to );
+        assert( conf.to, "to is required")
+        // 
+        //    blind_receipt result;
+        // const blind_receipt = fromJS({
+        //     date: null,
+        //     from_key: null,
+        //     from_label: null,
+        //     to_key: null,
+        //     to_label: null,
+        //     amount: null,// serializer_operations::asset
+        //     memo: null,// String
+        //     authority: null,
+        //     stealth_memo_data: null,
+        //     used: false,
+        //     stealth_confirmation: null // serializer_operations::stealth_confirmation
+        // })
+        let result = { conf }
+        //    result.conf = conf;
+        // 
+        //    auto to_priv_key_itr = my->_keys.find( *conf.to );
+        let to_private = this.getPrivateKey( conf.to )
+        assert( to_private, "No private key for receiver: " + JSON.stringify( conf ))
+        //    FC_ASSERT( to_priv_key_itr != my->_keys.end(), "No private key for receiver", ("conf",conf) );
+        // 
+        // 
+        //    auto to_priv_key = wif_to_key( to_priv_key_itr->second );
+        //    FC_ASSERT( to_priv_key );
+        // 
+        //    auto secret       = to_priv_key->get_shared_secret( conf.one_time_key );
+        let secret = to_private.get_shared_secret( conf.one_time_key )
+        //    auto child        = fc::sha256::hash( secret );
+        // 
+        //    auto child_priv_key = to_priv_key->child( child );
+        //    //auto blind_factor = fc::sha256::hash( child );
+        // 
+        //    auto plain_memo = fc::aes_decrypt( secret, conf.encrypted_memo );
+        //    auto memo = fc::raw::unpack<stealth_confirmation::memo_data>( plain_memo );
+        // 
+        // 
+        //    result.to_key   = *conf.to;
+        //    result.to_label = get_key_label( result.to_key );
+        //    if( memo.from ) 
+        //    {
+        //       result.from_key = *memo.from;
+        //       result.from_label = get_key_label( result.from_key );
+        //       if( result.from_label == string() )
+        //       {
+        //          result.from_label = opt_from;
+        //          set_key_label( result.from_key, result.from_label );
+        //       }
+        //    }
+        //    else
+        //    {
+        //       result.from_label = opt_from;
+        //    }
+        //    result.amount = memo.amount;
+        //    result.memo = opt_memo;
+        // 
+        //    // confirm the amount matches the commitment (verify the blinding factor)
+        //    auto commtiment_test = fc::ecc::blind( memo.blinding_factor, memo.amount.amount.value );
+        //    FC_ASSERT( fc::ecc::verify_sum( {commtiment_test}, {memo.commitment}, 0 ) );
+        //    
+        //    auto bbal = my->_remote_db->get_blinded_balances( {memo.commitment} );
+        //    FC_ASSERT( bbal.size(), "commitment not found in blockchain", ("memo",memo) );
+        // 
+        //    blind_balance bal;
+        //    bal.amount = memo.amount;
+        //    bal.to     = *conf.to;
+        //    if( memo.from ) bal.from   = *memo.from;
+        //    bal.one_time_key = conf.one_time_key;
+        //    bal.blinding_factor = memo.blinding_factor;
+        //    bal.commitment = memo.commitment;
+        //    bal.used = false;
+        // 
+        //    result.control_authority = bbal.front().owner;
+        //    result.data = memo;
+        // 
+        // 
+        //    auto child_key_itr = bbal.front().owner.key_auths.find( child_priv_key.get_public_key() );
+        // 
+        //    if( child_key_itr != bbal.front().owner.key_auths.end() )
+        //       my->_keys[child_key_itr->first] = key_to_wif( child_priv_key );
+        // 
+        // 
+        //    // my->_wallet.blinded_balances[memo.amount.asset_id][bal.to].push_back( bal );
+        // 
+        //    result.date = fc::time_point::now();
+        //    my->_wallet.blind_receipts.insert( result );
+        //    my->_keys[child_priv_key.get_public_key()] = key_to_wif( child_priv_key );
+        // 
+        //    save_wallet_file();
+        // 
+        //    return result;
+        // }
+        
     }
 
 
@@ -449,88 +557,6 @@ export default class ConfidentialWallet {
 
 }
 
-// receive_blind_transfer( string confirmation_receipt, string opt_from, string opt_memo )
-// {
-//    FC_ASSERT( !is_locked() );
-//    stealth_confirmation conf(confirmation_receipt);
-//    FC_ASSERT( conf.to );
-// 
-//    blind_receipt result;
-//    result.conf = conf;
-// 
-//    auto to_priv_key_itr = my->_keys.find( *conf.to );
-//    FC_ASSERT( to_priv_key_itr != my->_keys.end(), "No private key for receiver", ("conf",conf) );
-// 
-// 
-//    auto to_priv_key = wif_to_key( to_priv_key_itr->second );
-//    FC_ASSERT( to_priv_key );
-// 
-//    auto secret       = to_priv_key->get_shared_secret( conf.one_time_key );
-//    auto child        = fc::sha256::hash( secret );
-// 
-//    auto child_priv_key = to_priv_key->child( child );
-//    //auto blind_factor = fc::sha256::hash( child );
-// 
-//    auto plain_memo = fc::aes_decrypt( secret, conf.encrypted_memo );
-//    auto memo = fc::raw::unpack<stealth_confirmation::memo_data>( plain_memo );
-// 
-// 
-//    result.to_key   = *conf.to;
-//    result.to_label = get_key_label( result.to_key );
-//    if( memo.from ) 
-//    {
-//       result.from_key = *memo.from;
-//       result.from_label = get_key_label( result.from_key );
-//       if( result.from_label == string() )
-//       {
-//          result.from_label = opt_from;
-//          set_key_label( result.from_key, result.from_label );
-//       }
-//    }
-//    else
-//    {
-//       result.from_label = opt_from;
-//    }
-//    result.amount = memo.amount;
-//    result.memo = opt_memo;
-// 
-//    // confirm the amount matches the commitment (verify the blinding factor)
-//    auto commtiment_test = fc::ecc::blind( memo.blinding_factor, memo.amount.amount.value );
-//    FC_ASSERT( fc::ecc::verify_sum( {commtiment_test}, {memo.commitment}, 0 ) );
-//    
-//    auto bbal = my->_remote_db->get_blinded_balances( {memo.commitment} );
-//    FC_ASSERT( bbal.size(), "commitment not found in blockchain", ("memo",memo) );
-// 
-//    blind_balance bal;
-//    bal.amount = memo.amount;
-//    bal.to     = *conf.to;
-//    if( memo.from ) bal.from   = *memo.from;
-//    bal.one_time_key = conf.one_time_key;
-//    bal.blinding_factor = memo.blinding_factor;
-//    bal.commitment = memo.commitment;
-//    bal.used = false;
-// 
-//    result.control_authority = bbal.front().owner;
-//    result.data = memo;
-// 
-// 
-//    auto child_key_itr = bbal.front().owner.key_auths.find( child_priv_key.get_public_key() );
-// 
-//    if( child_key_itr != bbal.front().owner.key_auths.end() )
-//       my->_keys[child_key_itr->first] = key_to_wif( child_priv_key );
-// 
-// 
-//    // my->_wallet.blinded_balances[memo.amount.asset_id][bal.to].push_back( bal );
-// 
-//    result.date = fc::time_point::now();
-//    my->_wallet.blind_receipts.insert( result );
-//    my->_keys[child_priv_key.get_public_key()] = key_to_wif( child_priv_key );
-// 
-//    save_wallet_file();
-// 
-//    return result;
-// }
-
 // required
 function req(data, field_name) {
     if( data == null ) throw "Missing required field: " + field_name
@@ -557,20 +583,6 @@ let bufferToNumber = (buf, type = "Uint32") =>
 
 // let indexableKeys = keys => keys
 //     .reduce( (r, key, pubkey) => key.get("index_address") ? r.push(pubkey) : r, List())
-
-// const blind_receipt = fromJS({
-//     date: null,
-//     from_key: null,
-//     from_label: null,
-//     to_key: null,
-//     to_label: null,
-//     amount: null,// serializer_operations::asset
-//     memo: null,// String
-//     authority: null,
-//     stealth_memo_data: null,
-//     used: false,
-//     stealth_confirmation: null // serializer_operations::stealth_confirmation
-// })
 
 function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
     var return_pubkeys = []
