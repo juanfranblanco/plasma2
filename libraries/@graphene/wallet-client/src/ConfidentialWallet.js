@@ -40,14 +40,6 @@ let { stealth_memo_data } = ops
 //         
 // })
 
-/**
-    Filter `keys` returning a list of public key addresses for only those that have a index_address true property.
-    @arg {Map} keys - { "pubkey" : { index_address: boolean } }
-    @return {List<string>} - pubkey ( like GPHAbc9Def0... )
-*/
-let indexableKeys = keys => keys
-    .reduce( (r, key, pubkey) => key.get("index_address") ? r.push(pubkey) : r, List())
-
 /** This class is used for stealth transfers */
 export default class ConfidentialWallet {
     
@@ -60,7 +52,7 @@ export default class ConfidentialWallet {
         
         // BTS 1.0 addresses for shorts and balance claims
         this.addressIndex = new AddressIndex()
-        this.addressIndex.add( indexableKeys( this.keys() ))
+        // this.addressIndex.add( indexableKeys( this.keys() ))
         
         // semi-private methods (outside of this API)
         this.update = update.bind(this)// update the wallet object
@@ -118,7 +110,7 @@ export default class ConfidentialWallet {
                 // this label is already assigned
                 return false
         }
-
+        let indexables = List().asMutable()
         this.update(wallet =>
             wallet.updateIn(["keys", public_key], Map(),
                 key => key.withMutations( key =>{
@@ -127,12 +119,16 @@ export default class ConfidentialWallet {
                         key.set("index_address", true)
                     
                     if( private_key )
-                        key.set("private_wif", toString(private_key))
+                        key.set("private_wif", private_key)
+                    
+                    if( index_address )
+                        indexables.push(public_key)
                     
                     return key
                 })
             )
         )
+        this.addressIndex.add( indexables )
         return true
     }
     
@@ -559,6 +555,9 @@ var toString = data => data == null ? data :
 let bufferToNumber = (buf, type = "Uint32") => 
     new ByteBuffer.fromBinary(buf.toString("binary"))["read" + type]()
 
+// let indexableKeys = keys => keys
+//     .reduce( (r, key, pubkey) => key.get("index_address") ? r.push(pubkey) : r, List())
+
 // const blind_receipt = fromJS({
 //     date: null,
 //     from_key: null,
@@ -592,3 +591,4 @@ function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
     }
     return return_pubkeys
 }
+

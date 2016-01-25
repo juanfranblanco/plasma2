@@ -53,13 +53,23 @@ describe('Confidential Wallet', () => {
         
         {
             let key = PrivateKey.fromSeed("seed")
-            assert( cw.setKeyLabel( key, "seed label" ), "add unlabeled private key")
+            assert( cw.setKeyLabel( key ), "add unlabeled private key")
             assert.equal(wallet.wallet_object
                 .getIn( ["keys", key.toPublicKey().toString()] )
                 .get("private_wif"), key.toWif())
             assert( cw.getPrivateKey( key.toPublicKey() ))
             assert( cw.getPrivateKey( key.toPublicKey().toString() ))
-            assert( cw.getPrivateKey( "seed label" ))
+            // assert( cw.getPrivateKey( "seed label" ))
+        }
+        {
+            let key = PrivateKey.fromSeed("seed2")
+            let index_address = true
+            assert( cw.setKeyLabel( key, "seed2 label", index_address, key.toPublicKey() ), "add labeled private key")
+            assert.equal( cw.addressIndex.storage.state.size, 1, "expecting addresses");
+            assert( cw.getPrivateKey( key.toPublicKey() ))
+            assert( cw.getPrivateKey( key.toPublicKey().toString() ))
+            assert( cw.getPrivateKey( "seed2 label" ))
+            
         }
         
         assert( cw.getKeyLabel("") === null, "fetch label should return null")

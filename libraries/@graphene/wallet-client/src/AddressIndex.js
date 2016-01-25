@@ -19,13 +19,14 @@ export default class AddressIndex {
         @return {Promise}
     */
     add( pubkeys ) {
-        return new Promise( (resolve, reject) =>{
-            let addresses = this.storage.getState()
-            pubkeys = List(pubkeys).filterNot( pubkey => addresses.has(pubkey))
-            this.indexing = true
-            try {
+        
+        let addresses = this.storage.getState()
+        pubkeys = List(pubkeys).filterNot( pubkey => addresses.has(pubkey))
+        this.indexing = true
+        try {
+            var AddressIndexWorker = require("worker!./AddressIndexWorker")
+            return new Promise( (resolve, reject) =>{
                 // much faster
-                var AddressIndexWorker = require("worker!./AddressIndexWorker")
                 var worker = new AddressIndexWorker
                 // browser
                 worker.postMessage({ pubkeys: pubkeys.toJS(), address_prefix: chain_config.address_prefix })
@@ -48,18 +49,18 @@ export default class AddressIndex {
                         reject(e)
                     }
                 }
-            } catch( error ) {
-                // nodejs
-                pubkeys.forEach( pubkey => {
-                    var address_array = key.addresses(pubkey)// S L O W
-                    addresses = addresses.set(pubkey, List(address_array))
-                })
-                pubkeys = pubkeys.mutateIn
-                this.storage.setState( addresses )
-                this.indexing = false
-                resolve()
-            }
-        })
+            })
+        } catch( error ) {
+            // nodejs
+            pubkeys.forEach( pubkey => {
+                var address_array = key.addresses(pubkey)// S L O W
+                addresses = addresses.set(pubkey, List(address_array))
+            })
+            this.storage.setState( addresses )
+            this.indexing = false
+            return Promise.resolve()
+        }
+        
     }
     
     getPublicKey( address ) {
