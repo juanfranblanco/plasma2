@@ -151,7 +151,7 @@ export default class ConfidentialWallet {
         
         this.update(wallet =>
             wallet.updateIn(["keys", toString(public_key)], Map(),
-                key => key.set("private_wif", private_key.toWif))
+                key => key.set("private_wif", private_key.toWif()))
         )
         
         return public_key
@@ -233,10 +233,7 @@ export default class ConfidentialWallet {
                 outputs: []
             }
             let confirm = {
-                outputs: [],
-                trx: {
-                    operations: []
-                }
+                outputs: []
             }
             
             for( let to_amount of to_amounts) {
@@ -255,8 +252,10 @@ export default class ConfidentialWallet {
                 total_amount += amount
                 
                 let out = {}, conf_output
-
-                out.owner = { weight_threshold: 1, key_auths: [[ toString(to_public.child( child )), 1 ]] }
+                
+                let derived_child = to_public // to_public.child( child ) // TODO 
+                out.owner = { weight_threshold: 1, key_auths: [[ derived_child, 1 ]],
+                    account_auths: [], address_auths: []}
                 
                 promises.push(
                     Apis.crypto("blind", blind_factor.toString('hex'), amount)
@@ -311,21 +310,15 @@ export default class ConfidentialWallet {
                         let tr = new TransactionBuilder()
                         bop.outputs = bop.outputs.sort((a, b)=> a.commitment < b.commitment)
                         tr.add_type_operation("transfer_to_blind", bop)
-                        tr.processed_transaction(this.wallet.wallet_object, null, broadcast)
-                        // Apis.db("get_required_fees", confirm.trx.operations, asset.get("id")).then( fees =>{
-// my->set_operation_fees( confirm.trx, my->_remote_db->get_global_properties().parameters.current_fees);
-// confirm.trx.validate();
-// confirm.trx = sign_transaction(confirm.trx, broadcast);
-// 
-// if( broadcast )
-// {
-// for( const auto& out : confirm.outputs )
-// {
-// try { receive_blind_transfer( out.confirmation_receipt, "@"+from_account.name, "from @"+from_account.name ); } catch ( ... ){}
-// }
-// }
+                        return tr.process_transaction(this, null, broadcast).then(()=> {
+                            confirm.trx = tr.serialize()
+                            if( broadcast ) {
+                                for(let out in bop.outputs) {
+                                    // receive_blind_transfer( out.confirmation_receipt, "@"+from_account.name, "from @"+from_account.name)
+                                }
+                            }
                             return confirm
-                        // })
+                        })
                     })
             })
             
@@ -442,3 +435,87 @@ function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
     }
     return return_pubkeys
 }
+
+
+
+// receive_blind_transfer( string confirmation_receipt, string opt_from, string opt_memo )
+// {
+//    FC_ASSERT( !is_locked() );
+//    stealth_confirmation conf(confirmation_receipt);
+//    FC_ASSERT( conf.to );
+// 
+//    blind_receipt result;
+//    result.conf = conf;
+// 
+//    auto to_priv_key_itr = my->_keys.find( *conf.to );
+//    FC_ASSERT( to_priv_key_itr != my->_keys.end(), "No private key for receiver", ("conf",conf) );
+// 
+// 
+//    auto to_priv_key = wif_to_key( to_priv_key_itr->second );
+//    FC_ASSERT( to_priv_key );
+// 
+//    auto secret       = to_priv_key->get_shared_secret( conf.one_time_key );
+//    auto child        = fc::sha256::hash( secret );
+// 
+//    auto child_priv_key = to_priv_key->child( child );
+//    //auto blind_factor = fc::sha256::hash( child );
+// 
+//    auto plain_memo = fc::aes_decrypt( secret, conf.encrypted_memo );
+//    auto memo = fc::raw::unpack<stealth_confirmation::memo_data>( plain_memo );
+// 
+// 
+//    result.to_key   = *conf.to;
+//    result.to_label = get_key_label( result.to_key );
+//    if( memo.from ) 
+//    {
+//       result.from_key = *memo.from;
+//       result.from_label = get_key_label( result.from_key );
+//       if( result.from_label == string() )
+//       {
+//          result.from_label = opt_from;
+//          set_key_label( result.from_key, result.from_label );
+//       }
+//    }
+//    else
+//    {
+//       result.from_label = opt_from;
+//    }
+//    result.amount = memo.amount;
+//    result.memo = opt_memo;
+// 
+//    // confirm the amount matches the commitment (verify the blinding factor)
+//    auto commtiment_test = fc::ecc::blind( memo.blinding_factor, memo.amount.amount.value );
+//    FC_ASSERT( fc::ecc::verify_sum( {commtiment_test}, {memo.commitment}, 0 ) );
+//    
+//    auto bbal = my->_remote_db->get_blinded_balances( {memo.commitment} );
+//    FC_ASSERT( bbal.size(), "commitment not found in blockchain", ("memo",memo) );
+// 
+//    blind_balance bal;
+//    bal.amount = memo.amount;
+//    bal.to     = *conf.to;
+//    if( memo.from ) bal.from   = *memo.from;
+//    bal.one_time_key = conf.one_time_key;
+//    bal.blinding_factor = memo.blinding_factor;
+//    bal.commitment = memo.commitment;
+//    bal.used = false;
+// 
+//    result.control_authority = bbal.front().owner;
+//    result.data = memo;
+// 
+// 
+//    auto child_key_itr = bbal.front().owner.key_auths.find( child_priv_key.get_public_key() );
+// 
+//    if( child_key_itr != bbal.front().owner.key_auths.end() )
+//       my->_keys[child_key_itr->first] = key_to_wif( child_priv_key );
+// 
+// 
+//    // my->_wallet.blinded_balances[memo.amount.asset_id][bal.to].push_back( bal );
+// 
+//    result.date = fc::time_point::now();
+//    my->_wallet.blind_receipts.insert( result );
+//    my->_keys[child_priv_key.get_public_key()] = key_to_wif( child_priv_key );
+// 
+//    save_wallet_file();
+// 
+//    return result;
+// }

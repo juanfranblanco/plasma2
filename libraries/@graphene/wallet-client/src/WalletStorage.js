@@ -190,6 +190,8 @@ export default class WalletStorage {
                 secret_encryption_pubkey: public_key.toString(),
                 chain_id
             })
+            // Temporily stuff the chain_id into the wallet_object, this helps the caller in they may not want to wait for this.sync to resolve
+            this.wallet_object = this.wallet_object.set("chain_id", chain_id)
             this.notify = true
         }
         

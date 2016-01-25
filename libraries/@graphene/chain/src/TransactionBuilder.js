@@ -1,6 +1,7 @@
 import assert from "assert"
 import { Signature, PublicKey, Aes, hash } from "@graphene/ecc"
 import { ops } from "@graphene/serializer"
+import Apis from './ApiInstances'
 
 var ObjectId = require('./object_id');
 var ByteBuffer = require('bytebuffer');
@@ -11,7 +12,6 @@ var chain_config = require('./config');
 var lookup = require('./lookup');
 var helper = require('./transaction_helper');
 var ChainStore = (require('./ChainStore')).default;
-var Apis = require('./ApiInstances');
 
 
 export default class TransactionBuilder {
@@ -47,6 +47,8 @@ export default class TransactionBuilder {
         @arg {boolean} [broadcast = false]
     */
     process_transaction(cwallet, signer_pubkeys = null, broadcast = false) {
+        let wallet_object = cwallet.wallet.wallet_object
+        console.log("wallet_object", wallet_object)
         if(Apis.instance().chain_id !== wallet_object.get("chain_id"))
             return Promise.reject("Mismatched chain_id; expecting " +
                 wallet_object.get("chain_id") + ", but got " +

@@ -1,6 +1,7 @@
 import { PublicKey } from "@graphene/ecc"
+import Apis from "./ApiInstances"
 
-var v = require('./serializer_validation');
+var v = require('./validation');
 var chain_config = require('./config');
 var chain_types = require('./ChainTypes');
 
@@ -175,7 +176,7 @@ class Private {
     }
     
     resolve(){
-        var db = require('../rpc_api/ApiInstances').instance().db_api();
+        var db = Apis.instance().db_api();
         var lookup_map = null;
         var promises = null;
         var query=function(index_name, api_call, unique_key){

@@ -17,25 +17,27 @@ const email = "alice_spec@example.bitbucket"
 global.localStorage = require('localStorage')
 const storage = new LocalStoragePersistence("wallet_spec")
 
+let wallet, cw
+let create = (name = "a1", brainkey = "brainkey")=> cw.createBlindAccount(name, brainkey)
+
+function initWallet() {
+    storage.clear()
+    wallet = new WalletStorage(storage)
+    cw = new ConfidentialWallet(wallet)
+}
+
 describe('Confidential Wallet', () => {
     
-    let wallet, cw
-    let nathan = PrivateKey.fromSeed("nathan")
-    let create = (name = "a1", brainkey = "brainkey")=> cw.createBlindAccount(name, brainkey)
-
-    function initWallet() {
-        storage.clear()
-        wallet = new WalletStorage(storage)
-        cw = new ConfidentialWallet(wallet)
-    }
-    
     beforeEach(()=> initWallet())
+    
+    // Establish connection fully, obtain Chain ID
+    before(()=> Apis.instance("ws://localhost:8090").init_promise)
     
     // afterEach(()=> wallet.logout())
 
     it('Keys', ()=> {
         
-        wallet.login(username, password, email,  Apis.chainId())
+        wallet.login(username, password, email, Apis.chainId())
         
         let public_key = PrivateKey.fromSeed("").toPublicKey().toString()
         
@@ -47,7 +49,7 @@ describe('Confidential Wallet', () => {
         assert( ! cw.setKeyLabel( "public_key2", "label2"), "label already assigned")
         
         assert.equal( cw.getKeyLabel(public_key), "label2", "fetch label")
-        assert.equal( cw.getPublicKey("label2"), public_key.toString(), "fetch key")
+        assert.equal( cw.getPublicKey("label2"), public_key, "fetch key")
         
         assert( cw.getKeyLabel("") === null, "fetch label should return null")
         assert( cw.getPublicKey("") === null, "fetch key should return null")
@@ -89,16 +91,13 @@ describe('Confidential Wallet', () => {
     
     it("Transfer", ()=> {
         
-        return Apis.instance("ws://localhost:8090").init_promise.then(()=> {
-            
-            wallet.login(username, password, email, Apis.chainId())
-            create("alice", "alice-brain-key")
-            create("bob", "bob-brain-key")
-            
-            return cw.transferToBlind( "nathan", "CORE", [["alice",1],["bob",1]] ).then(tx =>{
-                if( tx ) console.log("tx", tx)
-            })
-            
+        wallet.login(username, password, email, Apis.chainId())
+        
+        create("alice", "alice-brain-key")
+        create("bob", "bob-brain-key")
+        
+        return cw.transferToBlind( "nathan", "CORE", [["alice",1],["bob",1]], true ).then( tx =>{
+            if( tx ) console.log("tx", JSON.stringify(tx))
         })
         
     })
