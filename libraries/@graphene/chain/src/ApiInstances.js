@@ -1,3 +1,4 @@
+import { List } from "immutable"
 var ChainWebSocket = require("./ChainWebSocket");
 var GrapheneApi = require("./GrapheneApi");
 var chain_config = require("./config")
@@ -131,12 +132,6 @@ class ApisInstance {
     
 }
 
-
-let arrayToHex = array => {
-    if( array )
-        for(let i = 0; i < array.length; i++)
-            if( Buffer.isBuffer(array[i]) )
-                array[i] = array[i].toString("hex")
-    
-    return array
-}
+let arrayToHex = array => List(array)
+    .reduce( (r, p) => r.push(Buffer.isBuffer(p) ? p.toString("hex") : p), List())
+    .toJS()
