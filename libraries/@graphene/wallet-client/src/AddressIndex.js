@@ -1,9 +1,13 @@
 import { List } from "immutable"
 import { key } from "@graphene/ecc"
+import { chain_config } from "@graphene/chain"
 import LocalStoragePersistence from "./LocalStoragePersistence"
+var AddressIndexWorker = require("worker!./AddressIndexWorker")
 
 /**
-    Cache (for performance) for legacy addresses used for BTS 1.0 shorts and balance claims
+    Cache (for performance) for legacy addresses used for BTS 1.0 shorts and balance claims.
+    
+    Map<string, string> - { "address": "public_key" } 
 */
 export default class AddressIndex {
     
@@ -13,19 +17,45 @@ export default class AddressIndex {
     
     /**
         @arg {List<string>} ["pubkey1", ...]
-        @return {Map<string, string>} - { "address": "public_key" } 
+        @return {Promise}
     */
     add( pubkeys ) {
-        let addresses = this.storage.getState()
-        List(pubkeys).forEach( pubkey => {
-            if( addresses.has(pubkey))
-                return
-            
-            var address_array = key.addresses(pubkey)// S L O W
-            addresses = addresses.set(pubkey, List(address_array))
+        return new Promise( (resolve, reject) =>{
+            let addresses = this.storage.getState()
+            pubkeys = List(pubkeys).filterNot( pubkey => addresses.has(pubkey))
+            var worker = new AddressIndexWorker
+            if( worker.postMessage ) {
+                // browser
+                worker.postMessage({ pubkeys: pubkeys.toJS(), address_prefix: chain_config.address_prefix })
+                worker.onmessage = event => {
+                    try {
+                        var key_addresses = event.data
+                        addresses = addresses.withMutations( addresses => {
+                            for(let i = 0; i < pubkeys.size; i++) {
+                                var address_array = key_addresses[i]
+                                addresses.set(pubkeys.get(i), List(address_array))
+                            }
+                            // console.log("AddressIndex loaded", addresses.size)
+                            
+                        })
+                        this.storage.setState( addresses )
+                        resolve()
+                    } catch( e ) {
+                        console.error('AddressIndex.add', e)
+                        reject(e)
+                    }
+                }
+            } else {
+                // nodejs
+                pubkeys.forEach( pubkey => {
+                    var address_array = key.addresses(pubkey)// S L O W
+                    addresses = addresses.set(pubkey, List(address_array))
+                })
+                pubkeys = pubkeys.mutateIn
+                this.storage.setState( addresses )
+                resolve()
+            }
         })
-        // console.log("AddressIndex loaded", addresses.size)
-        this.storage.setState( addresses )
     }
     
     getPublicKey( address ) {
