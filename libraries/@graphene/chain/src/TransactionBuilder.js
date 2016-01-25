@@ -74,7 +74,7 @@ export default class TransactionBuilder {
 
             return this.get_potential_signatures().then( ({pubkeys, addys})=> {
                 var my_pubkeys = cwallet.getPubkeys_having_PrivateKey(pubkeys, addys)
-
+                console.log("my_pubkeys", my_pubkeys, pubkeys)
                 //{//Testing only, don't send All public keys!
                 //    var pubkeys_all = PrivateKeyStore.getPubkeys() // All public keys
                 //    this.get_required_signatures(pubkeys_all).then( required_pubkey_strings =>
@@ -86,7 +86,7 @@ export default class TransactionBuilder {
                 return this.get_required_signatures(my_pubkeys).then( required_pubkeys => {
                     for(let pubkey_string of required_pubkeys) {
                         if(signer_pubkeys_added[pubkey_string]) continue
-                        var private_key = this.getPrivateKey(pubkey_string)
+                        var private_key = cwallet.getPrivateKey(pubkey_string)
                         if( ! private_key)
                             // This should not happen, get_required_signatures will only
                             // returned keys from my_pubkeys

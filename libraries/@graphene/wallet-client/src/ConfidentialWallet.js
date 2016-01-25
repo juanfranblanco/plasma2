@@ -71,27 +71,67 @@ export default class ConfidentialWallet {
     /**
         This method can be used to set or change the label for a public_key.
 
-        This is a one-to-one: one key per label, one label per key.  If there is a conflict, the label is renamed. 
+        This is a one-to-one: one key per label, one label per key.  If there is a conflict, the label is renamed.  A label is optional so their may be any number of unlabeled keys. 
 
-        @arg {string|PublicKey} - public_key string (like: GPHXyz...)
-        @arg {string} - label string (like: GPHXyz...)
-        @return {boolean} false if this label is already assigned
+        @arg {PrivateKey|PublicKey|string} key - Key object or public_key string (like: GPHXyz...)
+        
+        @arg {string} [label = null] - string (like: GPHXyz...).  Required if a private key is not provided.  If provided, must be unique or this method will return false.
+        
+        @arg {boolean} [index_address = false] - set truthy only if this could be a BTS 1.0 key having a legacy address format (Protoshares, etc.).  Unless true, the user may not see some shorts or balance claims.  A private key object is requred if this is used.
+        
+        @arg {PublicKey|string} public_key - this is provided for performanc gains where it is already known.  A private key object is requred if this is used.
+        
+        @return {boolean} false if this label is already assigned, otherwise a wallet update is sent over to the WalletStorage object.
      */
-    setKeyLabel( public_key, label ) {
+    setKeyLabel( key, label = null, index_address = false, public_key = null ) {
         
         this.assertLogin()
-        public_key = toString(req(public_key, "public_key"))
-        req(label, 'label')
+        assert( key, "key is required (a public or private key)" )
+        
+        let private_key
+        if(key.d) {
+            private_key = key
+        } else {
+            if( ! public_key )
+                public_key = key
+        }
+        
+        if( ! public_key ) {
+            assert( private_key.d, "PrivateKey object is required since public key was not provided")
+            public_key = private_key.toPublicKey()
+        }
+        private_key = toString(private_key)
+        public_key = toString(public_key)
+
+        // req(label, 'label')
+        if( index_address ) {
+            req(private_key, "private_key required to derive addresses")
+        }
+        
+        if( ! label )
+            req(private_key, "Label is required unless a private key is provided")
         
         let keys = this.keys()
-        let key = keys.find( key => key.get("label") === label )
-        if( key != null )
-            // this label is already assigned
-            return false
-
+        if( label ) {
+            let key = keys.find( key => key.get("label") === label )
+            if( key != null )
+                // this label is already assigned
+                return false
+        }
+        console.log("public_key,toString(private_key)", public_key,toString(private_key))
         this.update(wallet =>
             wallet.updateIn(["keys", public_key], Map(),
-                key => key.set("label", label))
+                key => key.withMutations( key =>{
+                    if( label ) key.set("label", label)
+                    if( index_address )
+                        key.set("index_address", true)
+                    
+                    if( private_key )
+                        key.set("private_wif", toString(private_key))
+                    
+                    return key
+                })
+            )
         )
         return true
     }
@@ -123,6 +163,39 @@ export default class ConfidentialWallet {
             return null
         
         return PublicKey.fromStringOrThrow( pubkey )
+    }
+    
+    /**
+        @arg {PublicKey|string} pubkey_or_label - public key string or object or label
+        @return {PrivateKey} or null
+    */
+    getPrivateKey( pubkey_or_label ) {
+        
+        this.assertLogin()
+        req(pubkey_or_label, "pubkey_or_label")
+        
+        let keys = this.keys()
+        let getPub = pubkey => {
+            let key = keys.get( pubkey )
+            if( ! key )
+                return null
+            
+            let wif = key.get("private_wif")
+            if( ! wif )
+                return null
+            return PrivateKey.fromWif( wif )
+        }
+        
+        if( pubkey_or_label.Q ) {
+            return getPub( pubkey_or_label.toString() )
+        }
+        try {
+            PublicKey.fromStringOrThrow( pubkey_or_label )
+            return getPub( pubkey_or_label )
+        } catch(error) {
+            // probably the slowest operation (last)
+            return this.getPublicKey( pubkey_or_label )
+        }
     }
     
     
@@ -380,64 +453,6 @@ export default class ConfidentialWallet {
 
 }
 
-// required
-function req(data, field_name) {
-    if( data == null ) throw "Missing required field: " + field_name
-    return data
-}
-
-function update(callback) {
-    let wallet = callback(this.wallet.wallet_object)
-    this.wallet.setState(wallet)
-}
-
-function assertLogin() {
-    if( ! this.wallet.private_key )
-        throw new Error("login")
-}
-
-var toString = data => data == null ? data :
-    data["toString"] ? data.toString() : data // Case for PublicKey.toString()
-
-let bufferToNumber = (buf, type = "Uint32") => 
-    new ByteBuffer.fromBinary(buf.toString("binary"))["read" + type]()
-
-// const blind_receipt = fromJS({
-//     date: null,
-//     from_key: null,
-//     from_label: null,
-//     to_key: null,
-//     to_label: null,
-//     amount: null,// serializer_operations::asset
-//     memo: null,// String
-//     authority: null,
-//     stealth_memo_data: null,
-//     used: false,
-//     stealth_confirmation: null // serializer_operations::stealth_confirmation
-// })
-
-function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
-    var return_pubkeys = []
-    let keys = this.keys()
-    if(pubkeys) {
-        for(let pubkey of pubkeys) {
-            let key = keys.get(pubkey)
-            if(key && key.has("private_wif")) {
-                return_pubkeys.push(pubkey)
-            }
-        }
-    }
-    if(addys) {
-        for (let addy of addys) {
-            var pubkey = this.addressIndex.getPublicKey(addy)
-            return_pubkeys.push(pubkey)
-        }
-    }
-    return return_pubkeys
-}
-
-
-
 // receive_blind_transfer( string confirmation_receipt, string opt_from, string opt_memo )
 // {
 //    FC_ASSERT( !is_locked() );
@@ -519,3 +534,61 @@ function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
 // 
 //    return result;
 // }
+
+// required
+function req(data, field_name) {
+    if( data == null ) throw "Missing required field: " + field_name
+    return data
+}
+
+function update(callback) {
+    let wallet = callback(this.wallet.wallet_object)
+    this.wallet.setState(wallet)
+}
+
+function assertLogin() {
+    if( ! this.wallet.private_key )
+        throw new Error("login")
+}
+
+var toString = data => data == null ? data :
+    data["toWif"] ? data.toWif() : // Case for PrivateKey.toWif()
+    data["toString"] ? data.toString() : // Case for PublicKey.toString()
+    data
+
+let bufferToNumber = (buf, type = "Uint32") => 
+    new ByteBuffer.fromBinary(buf.toString("binary"))["read" + type]()
+
+// const blind_receipt = fromJS({
+//     date: null,
+//     from_key: null,
+//     from_label: null,
+//     to_key: null,
+//     to_label: null,
+//     amount: null,// serializer_operations::asset
+//     memo: null,// String
+//     authority: null,
+//     stealth_memo_data: null,
+//     used: false,
+//     stealth_confirmation: null // serializer_operations::stealth_confirmation
+// })
+
+function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
+    var return_pubkeys = []
+    let keys = this.keys()
+    if(pubkeys) {
+        for(let pubkey of pubkeys) {
+            let key = keys.get(pubkey)
+            if(key && key.has("private_wif")) {
+                return_pubkeys.push(pubkey)
+            }
+        }
+    }
+    if(addys) {
+        for (let addy of addys) {
+            var pubkey = this.addressIndex.getPublicKey(addy)
+            return_pubkeys.push(pubkey)
+        }
+    }
+    return return_pubkeys
+}

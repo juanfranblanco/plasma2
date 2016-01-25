@@ -196,7 +196,6 @@ export default class WalletStorage {
         }
         
         this.private_key = private_key
-        
         return this.notifyResolve( this.sync(private_key) )
     }
     

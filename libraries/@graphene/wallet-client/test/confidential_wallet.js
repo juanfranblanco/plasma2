@@ -51,6 +51,17 @@ describe('Confidential Wallet', () => {
         assert.equal( cw.getKeyLabel(public_key), "label2", "fetch label")
         assert.equal( cw.getPublicKey("label2"), public_key, "fetch key")
         
+        {
+            let key = PrivateKey.fromSeed("seed")
+            assert( cw.setKeyLabel( key, "seed label" ), "add unlabeled private key")
+            assert.equal(wallet.wallet_object
+                .getIn( ["keys", key.toPublicKey().toString()] )
+                .get("private_wif"), key.toWif())
+            assert( cw.getPrivateKey( key.toPublicKey() ))
+            assert( cw.getPrivateKey( key.toPublicKey().toString() ))
+            assert( cw.getPrivateKey( "seed label" ))
+        }
+        
         assert( cw.getKeyLabel("") === null, "fetch label should return null")
         assert( cw.getPublicKey("") === null, "fetch key should return null")
     })
@@ -95,12 +106,15 @@ describe('Confidential Wallet', () => {
         
         create("alice", "alice-brain-key")
         create("bob", "bob-brain-key")
+        let key = PrivateKey.fromSeed("")
+        cw.setKeyLabel( PrivateKey.fromSeed("nathan") )
         
         return cw.transferToBlind( "nathan", "CORE", [["alice",1],["bob",1]], true ).then( tx =>{
             if( tx ) console.log("tx", JSON.stringify(tx))
         })
         
     })
+    
     
     it("Crypto matches witness_node", ()=> {
         let one_time_private = PrivateKey.fromHex("8fdfdde486f696fd7c6313325e14d3ff0c34b6e2c390d1944cbfe150f4457168")

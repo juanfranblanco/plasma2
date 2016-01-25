@@ -19,7 +19,7 @@ module.exports = _this = {
         }
     },
     
-    /** Attempt to auto-set a few properties for known chain IDs. */
+    /** Set a few properties for known chain IDs. */
     setChainId: function(chain_id) {
         
         var i, len, network, network_name, ref;
