@@ -2,7 +2,6 @@ import { List } from "immutable"
 import { key } from "@graphene/ecc"
 import { chain_config } from "@graphene/chain"
 import LocalStoragePersistence from "./LocalStoragePersistence"
-var AddressIndexWorker = require("worker!./AddressIndexWorker")
 
 /**
     Cache (for performance) for legacy addresses used for BTS 1.0 shorts and balance claims.
@@ -23,8 +22,11 @@ export default class AddressIndex {
         return new Promise( (resolve, reject) =>{
             let addresses = this.storage.getState()
             pubkeys = List(pubkeys).filterNot( pubkey => addresses.has(pubkey))
-            var worker = new AddressIndexWorker
-            if( worker.postMessage ) {
+            this.indexing = true
+            try {
+                // much faster
+                var AddressIndexWorker = require("worker!./AddressIndexWorker")
+                var worker = new AddressIndexWorker
                 // browser
                 worker.postMessage({ pubkeys: pubkeys.toJS(), address_prefix: chain_config.address_prefix })
                 worker.onmessage = event => {
@@ -38,6 +40,7 @@ export default class AddressIndex {
                             // console.log("AddressIndex loaded", addresses.size)
                             
                         })
+                        this.indexing = false
                         this.storage.setState( addresses )
                         resolve()
                     } catch( e ) {
@@ -45,7 +48,7 @@ export default class AddressIndex {
                         reject(e)
                     }
                 }
-            } else {
+            } catch( error ) {
                 // nodejs
                 pubkeys.forEach( pubkey => {
                     var address_array = key.addresses(pubkey)// S L O W
@@ -53,6 +56,7 @@ export default class AddressIndex {
                 })
                 pubkeys = pubkeys.mutateIn
                 this.storage.setState( addresses )
+                this.indexing = false
                 resolve()
             }
         })
