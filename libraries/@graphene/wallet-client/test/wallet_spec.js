@@ -45,7 +45,7 @@ describe('Single Wallet', () => {
         wallet.keepRemoteCopy(true, code)
         
         let create = wallet
-            .login(email, username, password)
+            .login(email, username, password, "abcdef")
             // create the initial wallet
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )
             // update the wallet
@@ -66,7 +66,7 @@ describe('Single Wallet', () => {
         // Create a local wallet
         wallet.keepLocalCopy(true)
         let create = wallet
-            .login(email, username, password)
+            .login(email, username, password, "abcdef")
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )// create
             .then(()=> wallet.setState({ test_wallet: 'secret2'}) )// update
         
@@ -93,7 +93,7 @@ describe('Single Wallet', () => {
         // keepLocalCopy false may not be necessary (off is the default), however it will also delete anything on disk
         wallet.keepLocalCopy(false)
         let create = wallet
-            .login(email, username, password)
+            .login(email, username, password, "abcdef")
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )// create
             .then(()=> wallet.setState({ test_wallet: 'secret2'}) )// update
         
@@ -118,7 +118,7 @@ describe('Single Wallet', () => {
         wallet.keepRemoteCopy(true, code)
         
         let create = wallet
-            .login(email, username, password)
+            .login(email, username, password, "abcdef")
             .then(()=> wallet.setState([]) )// create
         
         return create.then(()=> {
@@ -139,14 +139,14 @@ describe('Single Wallet', () => {
                 initWallet()
                 wallet.useBackupServer(remote_url)
                 
-                return wallet.login(email, username, password, "").then(()=>
+                return wallet.login(email, username, password, "abcdef").then(()=>
                 
                     // now the wallet is not modified, the local copy matches the server
                     wallet.changePassword(email, username, password, "new_"+password).then(()=> {
                         
                         // check the new login
                         wallet.logout()
-                        return wallet.login(email, username, "new_"+password, "")
+                        return wallet.login(email, username, "new_"+password, "abcdef")
                         
                     })
                     
@@ -160,7 +160,7 @@ describe('Single Wallet', () => {
         wallet.useBackupServer(remote_url)
         wallet.keepRemoteCopy(true, code)
         
-        let create = wallet.login(email, username, password, "")
+        let create = wallet.login(email, username, password, "abcdef")
             // create the initial wallet
             .then(()=> wallet.setState({ test_wallet: 'secret'}) )
         
@@ -328,7 +328,7 @@ function remoteWallet(emailParam = email) {
     let wallet = newWallet()
     wallet.useBackupServer(remote_url)
     wallet.keepRemoteCopy(true, code)
-    return wallet.login(emailParam, username, password, "").then(()=> wallet )
+    return wallet.login(emailParam, username, password, "abcdef").then(()=> wallet )
 }
 
 function assertNoServerWallet(walletParam) {

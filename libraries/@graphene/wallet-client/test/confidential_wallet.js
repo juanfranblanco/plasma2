@@ -1,6 +1,7 @@
 import assert from "assert"
 import { Map, List } from "immutable"
 import { PublicKey, PrivateKey, hash } from "@graphene/ecc"
+import { ChainStore } from "@graphene/chain"
 import { Apis } from "@graphene/chain"
 
 import LocalStoragePersistence from "../src/LocalStoragePersistence"
@@ -32,6 +33,7 @@ describe('Confidential Wallet', () => {
     
     // Establish connection fully, obtain Chain ID
     before(()=> Apis.instance("ws://localhost:8090").init_promise)
+    before(()=> ChainStore.init())
     
     // afterEach(()=> wallet.logout())
 
@@ -119,7 +121,7 @@ describe('Confidential Wallet', () => {
         cw.setKeyLabel( PrivateKey.fromSeed("nathan") )
         this.timeout(30 * 1000)
         
-        return cw.transferToBlind( "nathan", "CORE", [["alice",1]], true ).then( tx =>{ //
+        return cw.transferToBlind( "nathan", "CORE", [["alice",1]], true ).then( tx =>{ // , ["bob",1]
             if( tx ) console.log("tx", JSON.stringify(tx))
         })
         

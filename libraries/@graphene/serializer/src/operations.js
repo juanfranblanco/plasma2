@@ -38,7 +38,9 @@ module.exports["operation"] = operation;
 var Serializer=function(operation_name, serilization_types_object){
     var s = new SerializerImpl(operation_name, serilization_types_object);
     return module.exports[operation_name] = s;
-};
+}
+
+// Custom-types follow Generated code:
 
 // ##  Generated code follows
 // # programs/js_operation_serializer > npm i -g decaffeinate
@@ -1051,22 +1053,8 @@ var signed_transaction = new Serializer(
 //#  Generated code end
 //# -------------------------------
 
+// Custom Types
 
-
-// var { bytes, optional, int64, uint32, protocol_id_type } = ser.types
-// var asset = new Serializer( "asset", {
-//     amount: int64,
-//     asset_id: protocol_id_type("asset")
-// })
-// 
-// var authority = new Serializer( "authority", {
-//     weight_threshold: uint32,
-//     account_auths: map (protocol_id_type( "account"), uint16),
-//     key_auths: map (public_key, uint16),
-//     address_auths: map (address, uint16)
-// })
-// 
-// 
 var stealth_memo_data = new Serializer(
     "stealth_memo_data", {
     from: optional( public_key ),
@@ -1075,15 +1063,13 @@ var stealth_memo_data = new Serializer(
     commitment: bytes(33),
     check: uint32
 })
-// 
 // var stealth_confirmation = new Serializer(
 //     "stealth_confirmation", {
 //     one_time_key: public_key,
 //     to: optional( public_key ),
 //     encrypted_memo: stealth_memo_data
 // })
-// 
-// 
+
 // var transfer_to_blind = new Serializer("transfer_to_blind", {
 //   fee: asset,
 //   amount: asset,
@@ -1091,18 +1077,10 @@ var stealth_memo_data = new Serializer(
 //   blinding_factor: bytes(32),
 //   outputs: array(blind_output)
 // })
-// 
-// // // export var transfer_from_blind = new Serializer( "transfer_from_blind", {
-// // //     amount: asset,
-// // //     to: protocol_id_type("account"),
-// // //     blinding_factor: bytes(32),
-// // //     inputs: array blind_input
-// // // })
-// // {
-// // 
-// // 
-// //    asset                 fee;
-// //    asset                 amount;
-// //    account_id_type       from;
-// //    blind_factor_type     blinding_factor;
-// //    vector<blind_output>  outputs;
+
+// var transfer_from_blind = new Serializer( "transfer_from_blind", {
+//     amount: asset,
+//     to: protocol_id_type("account"),
+//     blinding_factor: bytes(32),
+//     inputs: array blind_input
+// })

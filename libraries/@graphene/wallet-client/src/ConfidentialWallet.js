@@ -347,16 +347,19 @@ export default class ConfidentialWallet {
                             decrypted_memo: {
                                 amount: { amount, asset_id: asset.get("id") },
                                 blinding_factor: blind_factor,
-                                commitment: out.commitment,
-                                check: bufferToNumber(secret.slice(0, 4)),
+                                commitment: new Buffer(out.commitment, "hex"),
+                                check: bufferToNumber(secret.slice(0, 4)) 
                             },
                             confirmation: {
                                 one_time_key: one_time_private.toPublicKey().toString(),
                                 to: to_public.toString(),
                             }
                         }
+                        
                         let memo = stealth_memo_data.toBuffer( conf_output.decrypted_memo )
+                        console.log("ENC hash",hash.sha256(memo).toString("hex"));
                         conf_output.confirmation.encrypted_memo = Aes.fromBuffer(secret).encrypt( memo )
+                        console.log("ENC",Aes.fromBuffer(secret).encrypt( memo ).toString('hex'));
                         conf_output.confirmation_receipt = conf_output.confirmation
                         
                         bop.outputs.push( out )
@@ -365,12 +368,6 @@ export default class ConfidentialWallet {
                     
                 )
             }
-            // transfer_to_blind
-            // fee: asset,
-            // amount: asset,
-            // from: protocol_id_type("account"),
-            // blinding_factor: bytes(32),
-            // outputs: array(blind_output)
             
             return Promise.all(promises).then(()=>{
                 
@@ -383,10 +380,6 @@ export default class ConfidentialWallet {
                     let tr = new TransactionBuilder()
                     bop.outputs = bop.outputs.sort((a, b)=> a.commitment > b.commitment)
                     tr.add_type_operation("transfer_to_blind", bop)
-                    
-                    // TODO In unit testing ChainStore did not provide the head_block_time_string
-                    // Hack the expiration date:
-                    tr.set_expire_seconds( Math.round(Date.now() / 1000 + 10) )
                     
                     return tr.process_transaction(this, null, broadcast).then(()=> {
                         
@@ -434,8 +427,7 @@ export default class ConfidentialWallet {
         //    stealth_confirmation conf(confirmation_receipt);
         let conf = confirmation_receipt
         assert( conf.to, "to is required")
-        // 
-        //    blind_receipt result;
+        
         // const blind_receipt = fromJS({
         //     date: null,
         //     from_key: null,
@@ -449,9 +441,10 @@ export default class ConfidentialWallet {
         //     used: false,
         //     stealth_confirmation: null // serializer_operations::stealth_confirmation
         // })
+        
         let result = { conf }
         //    result.conf = conf;
-        // 
+        
         //    auto to_priv_key_itr = my->_keys.find( *conf.to );
         let to_private = this.getPrivateKey( conf.to )
         assert( to_private, "No private key for receiver: " + JSON.stringify( conf ))
@@ -463,6 +456,7 @@ export default class ConfidentialWallet {
         // 
         //    auto secret       = to_priv_key->get_shared_secret( conf.one_time_key );
         let secret = to_private.get_shared_secret( conf.one_time_key )
+        console.log("secret2", secret.toString("hex"))
         //    auto child        = fc::sha256::hash( secret );
         // 
         //    auto child_priv_key = to_priv_key->child( child );
@@ -474,13 +468,13 @@ export default class ConfidentialWallet {
         // 
         //    auto plain_memo = fc::aes_decrypt( secret, conf.encrypted_memo );
         assert( Buffer.isBuffer( conf.encrypted_memo ), "Expecting buffer for confirmation_receipt.encrypted_memo")
+        console.log("ENC2",conf.encrypted_memo.toString('hex'));
+        // ff047585012cd171eb24699f470092b0eb0223211b78575d6216595088dbc982e39dc43173161333b4a387fad74712d43c7ca4758717ccb7f37bd1b51f14cd7f9db6f4a4558314a1cd4e1eeb98b80776
         let plain_memo = Aes.fromBuffer(secret).decrypt( conf.encrypted_memo )
-        
-        
+        console.log("plain_memo", hash.sha256(plain_memo).toString("hex"))
         //    auto memo = fc::raw::unpack<stealth_confirmation::memo_data>( plain_memo );
         let memo = stealth_memo_data.fromBuffer( plain_memo )
-        
-        console.log("memo", stealth_memo_data.toObject(memo))
+        memo = stealth_memo_data.toObject(memo)
         
         //    result.to_key   = *conf.to;
         //    result.to_label = get_key_label( result.to_key );
@@ -517,51 +511,52 @@ export default class ConfidentialWallet {
         //    result.memo = opt_memo;
         // 
         
-        let memoString = () => JSON.stringify(stealth_memo_data.toObject(memo))
+        let memoString = () => JSON.stringify(memo)
         
         //    // confirm the amount matches the commitment (verify the blinding factor)
         //    auto commtiment_test = fc::ecc::blind( memo.blinding_factor, memo.amount.amount.value );
         return Apis
-        .crypto("blind", memo.blinding_factor, memo.amount.amount.toString())
+        .crypto("blind", memo.blinding_factor, memo.amount.amount)
         .then( commtiment_test =>
-    //    FC_ASSERT( fc::ecc::verify_sum( {commtiment_test}, {memo.commitment}, 0 ) );
-            Apis.crypto("verify_sum", [commtiment_test], [memo.commitment.toString("hex")], 0)
-            .then( result => assert(result, "verify_sum"))
+            // FC_ASSERT( fc::ecc::verify_sum( {commtiment_test}, {memo.commitment}, 0 ) );
             // auto bbal = my->_remote_db->get_blinded_balances( {memo.commitment} );
-            .then( ()=> Apis.db("get_blinded_balances", [ memo.commitment.toString("hex") ]))
-            .then( bbal => assert( bbal.length, "commitment not found in blockchain " + memoString()))
-    //    FC_ASSERT( bbal.size(), "commitment not found in blockchain", ("memo",memo) );
-    // 
-    //    blind_balance bal;
-    //    bal.amount = memo.amount;
-    //    bal.to     = *conf.to;
-    //    if( memo.from ) bal.from   = *memo.from;
-    //    bal.one_time_key = conf.one_time_key;
-    //    bal.blinding_factor = memo.blinding_factor;
-    //    bal.commitment = memo.commitment;
-    //    bal.used = false;
-    // 
-    //    result.control_authority = bbal.front().owner;
-    //    result.data = memo;
-    // 
-    // 
-    //    auto child_key_itr = bbal.front().owner.key_auths.find( child_priv_key.get_public_key() );
-    // 
-    //    if( child_key_itr != bbal.front().owner.key_auths.end() )
-    //       my->_keys[child_key_itr->first] = key_to_wif( child_priv_key );
-    // 
-    // 
-    //    // my->_wallet.blinded_balances[memo.amount.asset_id][bal.to].push_back( bal );
-    // 
-    //    result.date = fc::time_point::now();
-    //    my->_wallet.blind_receipts.insert( result );
-    //    my->_keys[child_priv_key.get_public_key()] = key_to_wif( child_priv_key );
-    // 
-    //    save_wallet_file();
-    // 
-    //    return result;
-    // }
-            //)
+            Apis.crypto("verify_sum", [commtiment_test], [memo.commitment], 0)
+            // .then( result => assert(result, "verify_sum")) // FIXME
+            .then( ()=> Apis.db("get_blinded_balances", [ memo.commitment ])) // FIXME
+            .then( bbal => assert( bbal.length, "commitment not found in blockchain " + memoString())) // FIXME
+            .then( ()=> {
+                // let bal = {}
+                // bal.amount = memo.amount
+                // bal.to = conf.to
+                // if( memo.from ) bal.from = memo.from
+                // bal.one_time_key = conf.one_time_key
+                // bal.blinding_factor = memo.blinding_factor
+                // bal.commitment = memo.commitment
+                // bal.used = false
+                // my->_wallet.blinded_balances[memo.amount.asset_id][bal.to].push_back( bal )
+                
+                // result.control_authority = bbal[0].owner// FIXME
+                result.data = memo
+                
+                let child_public = child_private.toPublicKey()
+                
+                // TODO same as `my->_keys[child_priv_key.get_public_key()] = key_to_wif( child_priv_key )` below?
+                // console.log("pubkey,bbal", pubkey,bbal)
+                // for(let pubkey in bbal[0].owner.key_auths) {
+                //     if( pubkey === child_public.toString() ) {
+                //         this.setKeyLabel( child_private )
+                //         break
+                //     }
+                // }
+                
+                //    result.date = fc::time_point::now();
+                result.date = Date.now()
+                this.setKeyLabel( child_private )
+                return this.update( wallet =>
+                    wallet.getIn(["blind_receipts"], List()).push( result )
+                )
+                    .then(()=> result)
+            })
         )
     }
 
@@ -578,6 +573,7 @@ export default class ConfidentialWallet {
         @return blind_confirmation
     */
     transferFromBlind( from_blind_account_key_or_label, to_account_id_or_name, amount, asset_symbol, broadcast = false ){
+        
         this.assertLogin()
         
     }
@@ -606,7 +602,7 @@ function req(data, field_name) {
 
 function update(callback) {
     let wallet = callback(this.wallet.wallet_object)
-    this.wallet.setState(wallet)
+    return this.wallet.setState(wallet)
 }
 
 function assertLogin() {
@@ -620,7 +616,7 @@ var toString = data => data == null ? data :
     data
 
 let bufferToNumber = (buf, type = "Uint32") => 
-    new ByteBuffer.fromBinary(buf.toString("binary"))["read" + type]()
+    ByteBuffer.fromBinary(buf.toString("binary"), ByteBuffer.LITTLE_ENDIAN)["read" + type]()
 
 // let indexableKeys = keys => keys
 //     .reduce( (r, key, pubkey) => key.get("index_address") ? r.push(pubkey) : r, List())

@@ -43,7 +43,7 @@ class ChainWebSocket {
     call(params) {
         
         if(SOCKET_DEBUG)
-            console.log("[ChainWebSocket] >>--- call -----> id:",this.current_callback_id+1, params);
+            console.log("[ChainWebSocket] >---- call ----->  \"id\":" + (this.current_callback_id+1), JSON.stringify(params));
         
         this.current_callback_id += 1;
         var self = this;
@@ -94,7 +94,7 @@ class ChainWebSocket {
 
     listener(response) {
         if(SOCKET_DEBUG)
-            console.log("[ChainWebSocket] <---- reply ---<<", response);
+            console.log("[ChainWebSocket] <---- reply ----<", JSON.stringify(response));
         
         let sub = false,
             callback = null;
