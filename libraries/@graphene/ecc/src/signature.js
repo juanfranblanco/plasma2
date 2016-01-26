@@ -82,7 +82,7 @@ class Signature {
           if (lenR === 32 && lenS === 32) {
             i = ecdsa.calcPubKeyRecoveryParam(curve, e, ecsignature, private_key.toPublicKey().Q);
             i += 4;  // compressed
-            i += 24; // compact
+            i += 27; // compact  //  24 or 27 :( forcing odd-y 2nd key candidate)
             break;
           }
           if (nonce % 10 === 0) {

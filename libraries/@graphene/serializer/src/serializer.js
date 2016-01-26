@@ -126,6 +126,11 @@ class Serializer {
         return this.fromByteBuffer(b);
     }
     
+    fromBuffer(buffer){
+        var b = ByteBuffer.fromBinary(buffer.toString(), ByteBuffer.LITTLE_ENDIAN);
+        return this.fromByteBuffer(b);
+    }
+    
     toHex(object) {
         var b=this.toByteBuffer(object);
         return b.toHex();

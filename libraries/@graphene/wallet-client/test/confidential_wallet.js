@@ -33,7 +33,7 @@ describe('Confidential Wallet', () => {
     // Establish connection fully, obtain Chain ID
     before(()=> Apis.instance("ws://localhost:8090").init_promise)
     
-    afterEach(()=> wallet.logout())
+    // afterEach(()=> wallet.logout())
 
     it('Keys', ()=> {
         
@@ -109,7 +109,7 @@ describe('Confidential Wallet', () => {
         
     })
     
-    it("Transfer", ()=> {
+    it("Transfer", function () {
         
         wallet.login(username, password, email, Apis.chainId())
         
@@ -117,15 +117,16 @@ describe('Confidential Wallet', () => {
         create("bob", "bob-brain-key")
         let key = PrivateKey.fromSeed("")
         cw.setKeyLabel( PrivateKey.fromSeed("nathan") )
+        this.timeout(30 * 1000)
         
-        return cw.transferToBlind( "nathan", "CORE", [["alice",1],["bob",1]], true ).then( tx =>{
+        return cw.transferToBlind( "nathan", "CORE", [["alice",1]], true ).then( tx =>{ //
             if( tx ) console.log("tx", JSON.stringify(tx))
         })
         
     })
     
-    
     it("Crypto matches witness_node", ()=> {
+        
         let one_time_private = PrivateKey.fromHex("8fdfdde486f696fd7c6313325e14d3ff0c34b6e2c390d1944cbfe150f4457168")
         let to_public = PublicKey.fromStringOrThrow("GPH7vbxtK1WaZqXsiCHPcjVFBewVj8HFRd5Z5XZDpN6Pvb2dZcMqK")
         let secret = one_time_private.get_shared_secret( to_public )
@@ -137,12 +138,13 @@ describe('Confidential Wallet', () => {
         let nonce = hash.sha256( one_time_private.toBuffer() )
         assert.equal(nonce.toString('hex'), "462f6c19ece033b5a3dba09f1e1d7935a5302e4d1eac0a84489cdc8339233fbf")
         
-        // let blind_factor = hash.sha256( child )
         
-        
-        
-        // let auth_public = to_public.child( child )
-        // assert.equal(auth_public.toString(), "GPH6XA72XARQCain961PCJnXiKYdEMrndNGago2PV5bcUiVyzJ6iL")
+        return Apis
+            .crypto("child", to_public.toHex(), child)
+            .then( child_public => assert.equal(
+                child_public,
+                PublicKey.fromStringOrThrow("GPH6XA72XARQCain961PCJnXiKYdEMrndNGago2PV5bcUiVyzJ6iL").toHex())
+            )
     })
         
     

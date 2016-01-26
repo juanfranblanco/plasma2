@@ -47,8 +47,8 @@ export default class TransactionBuilder {
         @arg {boolean} [broadcast = false]
     */
     process_transaction(cwallet, signer_pubkeys = null, broadcast = false) {
+
         let wallet_object = cwallet.wallet.wallet_object
-        console.log("wallet_object", wallet_object)
         if(Apis.instance().chain_id !== wallet_object.get("chain_id"))
             return Promise.reject("Mismatched chain_id; expecting " +
                 wallet_object.get("chain_id") + ", but got " +
@@ -113,8 +113,13 @@ export default class TransactionBuilder {
     /** Typically this is called automatically just prior to signing.  Once finalized this transaction can not be changed. */
     finalize(){
         return new Promise((resolve, reject)=> {
+            
             if (this.tr_buffer) { throw new Error("already finalized"); }
-            //@expiration ||= base_expiration_sec() + chain_config.expire_in_secs
+            
+            console.log("this.expiration", this.expiration)
+            if( this.expiration === 0 )
+                this.expiration = base_expiration_sec() + chain_config.expire_in_secs
+            
             resolve(Apis.instance().db_api().exec("get_objects", [["2.1.0"]]).then((r) => {
                 this.ref_block_num = r[0].head_block_number & 0xFFFF;
                 this.ref_block_prefix =  new Buffer(r[0].head_block_id, 'hex').readUInt32LE(4);
@@ -351,15 +356,17 @@ var base_expiration_sec = ()=> {
 
 function _broadcast(was_broadcast_callback){
     return new Promise((resolve, reject)=> {
+        
         if (!this.signed) { this.sign(); }
         if (!this.tr_buffer) { throw new Error("not finalized"); }
         if (!this.signatures.length) { throw new Error("not signed"); }
         if (!this.operations.length) { throw new Error("no operations"); }
+        
         var tr_object = ops.signed_transaction.toObject(this);
         // console.log('... broadcast_transaction_with_callback !!!')
         Apis.instance().network_api().exec( "broadcast_transaction_with_callback", [ function(res) { return resolve(res); } ,tr_object]).then(function(){
             //console.log('... broadcast success, waiting for callback')
-            was_broadcast_callback();
+            if(was_broadcast_callback) was_broadcast_callback();
             return;
         }
         ).catch( (error)=> {
