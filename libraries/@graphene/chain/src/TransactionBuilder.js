@@ -116,7 +116,6 @@ export default class TransactionBuilder {
             
             if (this.tr_buffer) { throw new Error("already finalized"); }
             
-            console.log("this.expiration", this.expiration)
             if( this.expiration === 0 )
                 this.expiration = base_expiration_sec() + chain_config.expire_in_secs
             

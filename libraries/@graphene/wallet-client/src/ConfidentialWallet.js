@@ -357,9 +357,7 @@ export default class ConfidentialWallet {
                         }
                         
                         let memo = stealth_memo_data.toBuffer( conf_output.decrypted_memo )
-                        console.log("ENC hash",hash.sha256(memo).toString("hex"));
                         conf_output.confirmation.encrypted_memo = Aes.fromBuffer(secret).encrypt( memo )
-                        console.log("ENC",Aes.fromBuffer(secret).encrypt( memo ).toString('hex'));
                         conf_output.confirmation_receipt = conf_output.confirmation
                         
                         bop.outputs.push( out )
@@ -424,7 +422,6 @@ export default class ConfidentialWallet {
         console.log("confirmation_receipt", confirmation_receipt)
 
         this.assertLogin()
-        //    stealth_confirmation conf(confirmation_receipt);
         let conf = confirmation_receipt
         assert( conf.to, "to is required")
         
@@ -443,99 +440,52 @@ export default class ConfidentialWallet {
         // })
         
         let result = { conf }
-        //    result.conf = conf;
         
-        //    auto to_priv_key_itr = my->_keys.find( *conf.to );
         let to_private = this.getPrivateKey( conf.to )
         assert( to_private, "No private key for receiver: " + JSON.stringify( conf ))
-        //    FC_ASSERT( to_priv_key_itr != my->_keys.end(), "No private key for receiver", ("conf",conf) );
-        // 
-        // 
-        //    auto to_priv_key = wif_to_key( to_priv_key_itr->second );
-        //    FC_ASSERT( to_priv_key );
-        // 
-        //    auto secret       = to_priv_key->get_shared_secret( conf.one_time_key );
+
         let secret = to_private.get_shared_secret( conf.one_time_key )
-        console.log("secret2", secret.toString("hex"))
-        //    auto child        = fc::sha256::hash( secret );
-        // 
-        //    auto child_priv_key = to_priv_key->child( child );
+
         let child = hash.sha256( secret )
         let child_private = PrivateKey.fromBuffer( child )
         let blind_factor = hash.sha256( child )
-        //    //auto blind_factor = fc::sha256::hash( child );
         
-        // 
-        //    auto plain_memo = fc::aes_decrypt( secret, conf.encrypted_memo );
         assert( Buffer.isBuffer( conf.encrypted_memo ), "Expecting buffer for confirmation_receipt.encrypted_memo")
-        console.log("ENC2",conf.encrypted_memo.toString('hex'));
-        // ff047585012cd171eb24699f470092b0eb0223211b78575d6216595088dbc982e39dc43173161333b4a387fad74712d43c7ca4758717ccb7f37bd1b51f14cd7f9db6f4a4558314a1cd4e1eeb98b80776
         let plain_memo = Aes.fromBuffer(secret).decrypt( conf.encrypted_memo )
-        console.log("plain_memo", hash.sha256(plain_memo).toString("hex"))
-        //    auto memo = fc::raw::unpack<stealth_confirmation::memo_data>( plain_memo );
+
         let memo = stealth_memo_data.fromBuffer( plain_memo )
         memo = stealth_memo_data.toObject(memo)
         
-        //    result.to_key   = *conf.to;
-        //    result.to_label = get_key_label( result.to_key );
         result.to_key = conf.to
         result.to_label = this.getKeyLabel( result.to_key)
         if( memo.from ) {
-        //    if( memo.from ) 
-        //    {
-        //       result.from_key = *memo.from;
             result.from_key = memo.from
             result.from_label = this.getKeyLabel( result.from_key )
             if( result.from_label ) {
                 result.from_label = opt_from
                 this.setKeyLabel( result.from_key, result.from_label )
             }
-        //       result.from_label = get_key_label( result.from_key );
-        //       if( result.from_label == string() )
-        //       {
-        //          result.from_label = opt_from;
-        //          set_key_label( result.from_key, result.from_label );
-        //       }
-        //    }
         } else {
             result.from_label = opt_from
         }
-                
-        //    else
-        //    {
-        //       result.from_label = opt_from;
-        //    }
         result.amount = memo.amount
         result.memo = opt_memo
-        //    result.amount = memo.amount;
-        //    result.memo = opt_memo;
-        // 
         
         let memoString = () => JSON.stringify(memo)
         
-        //    // confirm the amount matches the commitment (verify the blinding factor)
-        //    auto commtiment_test = fc::ecc::blind( memo.blinding_factor, memo.amount.amount.value );
+        // confirm the amount matches the commitment (verify the blinding factor)
         return Apis
         .crypto("blind", memo.blinding_factor, memo.amount.amount)
         .then( commtiment_test =>
-            // FC_ASSERT( fc::ecc::verify_sum( {commtiment_test}, {memo.commitment}, 0 ) );
-            // auto bbal = my->_remote_db->get_blinded_balances( {memo.commitment} );
             Apis.crypto("verify_sum", [commtiment_test], [memo.commitment], 0)
-            // .then( result => assert(result, "verify_sum")) // FIXME
-            .then( ()=> Apis.db("get_blinded_balances", [ memo.commitment ])) // FIXME
-            .then( bbal => assert( bbal.length, "commitment not found in blockchain " + memoString())) // FIXME
-            .then( ()=> {
-                // let bal = {}
-                // bal.amount = memo.amount
-                // bal.to = conf.to
-                // if( memo.from ) bal.from = memo.from
-                // bal.one_time_key = conf.one_time_key
-                // bal.blinding_factor = memo.blinding_factor
-                // bal.commitment = memo.commitment
-                // bal.used = false
-                // my->_wallet.blinded_balances[memo.amount.asset_id][bal.to].push_back( bal )
+            .then( result => assert(result, "verify_sum"))
+            .then( ()=> Apis.db("get_blinded_balances", [ memo.commitment ]))
+            .then( bbal => {
                 
-                // result.control_authority = bbal[0].owner// FIXME
+                assert( bbal.length, "commitment not found in blockchain " + memoString())
+                
+                console.log("bbal[0].owner", bbal[0].owner, child_private.toPublicKey().toString())
+                result.control_authority = bbal[0].owner
                 result.data = memo
                 
                 let child_public = child_private.toPublicKey()
@@ -550,7 +500,7 @@ export default class ConfidentialWallet {
                 // }
                 
                 //    result.date = fc::time_point::now();
-                result.date = Date.now()
+                result.date = new Date().toISOString()
                 this.setKeyLabel( child_private )
                 return this
                     .update( wallet => wallet.getIn(["blind_receipts"], List()).push( result ) )
