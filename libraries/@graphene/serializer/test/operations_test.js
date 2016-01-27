@@ -7,7 +7,6 @@ var types = require('../src/types');
 var ops = require('../src/operations');
 
 var {
-    //id_type,
     //varint32,
     uint8, uint16, uint32, int64, uint64,
     string, bytes, bool, array, fixed_array,
@@ -16,7 +15,7 @@ var {
     static_variant, map, set,
     public_key, address,
     time_point_sec,
-    optional,
+    optional
 } = types
 
 var { asset, account_name_eq_lit_predicate } = ops
@@ -32,10 +31,13 @@ let AllTypes = new Serilizer("all_types", {
     set: set(uint8),
     
     public_key, address,
-    time_point_sec
+    
+    time_optional: optional( time_point_sec ),
+    time_point_sec1: time_point_sec,
+    time_point_sec2: time_point_sec,
 })
 
-// Serializable types only.  Must stay in sync with AllTypes above.
+// Must stay in sync with AllTypes above.
 let allTypes = {
     
     uint8: Math.pow(2,8)-1, uint16: Math.pow(2,16)-1, uint32: Math.pow(2,32)-1,
@@ -51,7 +53,9 @@ let allTypes = {
     public_key: PrivateKey.fromSeed("").toPublicKey().toString(),
     address: Address.fromPublic(PrivateKey.fromSeed("").toPublicKey()).toString(),
     
-    time_point_sec: Math.floor(Date.now()/1000)
+    time_optional: undefined,
+    time_point_sec1: new Date(),
+    time_point_sec2: Math.floor(Date.now()/1000),
 }
 
 describe("operations", function() {
@@ -72,6 +76,7 @@ describe("operations", function() {
         
         it("to object", ()=> {
             assert(toObject(allTypes), "serializable" )
+            assert.deepEqual(toObject(allTypes), toObject(allTypes), "serializable (single to)" )
             assert.deepEqual(toObject(toObject(allTypes)), toObject(allTypes), "serializable (double to)" )
             assert.deepEqual(toObject(fromObject(allTypes)), toObject(allTypes), "non-serializable" )
             assert.deepEqual(toObject(fromObject(fromObject(allTypes))), toObject(allTypes), "non-serializable (double from)")

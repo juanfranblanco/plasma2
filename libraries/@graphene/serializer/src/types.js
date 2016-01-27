@@ -333,15 +333,15 @@ Types.time_point_sec = {
         
         v.required(object)
         
+        if(typeof object === "string")
+            return object
+        
         if(object.getTime)
             return object.toISOString().split('.')[0]
         
-        if(object === "string")
-            return object
-        
         var int = parseInt(object);
         v.require_range(0,0xFFFFFFFF,int, `uint32 ${object}`);
-        return (new Date(int*1000)).toISOString().split('.')[0];
+        return (new Date( int * 1000 )).toISOString().split('.')[0];
     }
 }
 
