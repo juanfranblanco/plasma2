@@ -474,8 +474,7 @@ export default class ConfidentialWallet {
         let memoString = () => JSON.stringify(memo)
         
         // confirm the amount matches the commitment (verify the blinding factor)
-        return Apis
-        .crypto("blind", memo.blinding_factor, memo.amount.amount)
+        return Apis.crypto("blind", memo.blinding_factor, memo.amount.amount)
         .then( commtiment_test =>
             Apis.crypto("verify_sum", [commtiment_test], [memo.commitment], 0)
             .then( result => assert(result, "verify_sum"))
@@ -484,31 +483,27 @@ export default class ConfidentialWallet {
                 
                 assert( bbal.length, "commitment not found in blockchain " + memoString())
                 
-                console.log("bbal[0].owner", bbal[0].owner, child_private.toPublicKey().toString())
                 result.control_authority = bbal[0].owner
                 result.data = memo
                 
                 let child_public = child_private.toPublicKey()
                 
-                // TODO same as `my->_keys[child_priv_key.get_public_key()] = key_to_wif( child_priv_key )` below?
-                // console.log("pubkey,bbal", pubkey,bbal)
-                // for(let pubkey in bbal[0].owner.key_auths) {
+                // for(let key_pair of bbal[0].owner.key_auths) {
+                //     let pubkey = key_pair[0]
                 //     if( pubkey === child_public.toString() ) {
                 //         this.setKeyLabel( child_private )
                 //         break
                 //     }
                 // }
                 
-                //    result.date = fc::time_point::now();
-                result.date = new Date().toISOString()
                 this.setKeyLabel( child_private )
+                result.date = new Date().toISOString()
                 return this
                     .update( wallet => wallet.getIn(["blind_receipts"], List()).push( result ) )
                     .then(()=> result)
             })
         )
     }
-
 
 
     /**
