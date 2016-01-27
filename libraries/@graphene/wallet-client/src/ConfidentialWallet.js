@@ -552,9 +552,8 @@ export default class ConfidentialWallet {
                 //    result.date = fc::time_point::now();
                 result.date = Date.now()
                 this.setKeyLabel( child_private )
-                return this.update( wallet =>
-                    wallet.getIn(["blind_receipts"], List()).push( result )
-                )
+                return this
+                    .update( wallet => wallet.getIn(["blind_receipts"], List()).push( result ) )
                     .then(()=> result)
             })
         )

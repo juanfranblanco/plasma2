@@ -301,26 +301,49 @@ Types.array = function(st_operation){
     };
 };
 
-Types.time_point_sec =
-    {fromByteBuffer(b){ return b.readUint32(); },
+Types.time_point_sec = {
+    fromByteBuffer(b){ return b.readUint32(); },
     appendByteBuffer(b, object){
+        if(typeof object !== "number")
+            object = Types.time_point_sec.fromObject(object)
+        
         b.writeUint32(object);
         return;
     },
     fromObject(object){
-        v.required(object);
-        return Math.round( (new Date(object)).getTime() / 1000 );
+        v.required(object)
+        
+        if(typeof object === "number")
+            return object
+            
+        if(object.getTime)
+            return Math.floor( object.getTime() / 1000 );
+        
+        if(typeof object !== "string")
+            throw new Error("Unknown date type: " + object)
+        
+        // if(typeof object === "string" && !/Z$/.test(object))
+        //     object = object + "Z"
+        
+        return Math.floor( new Date(object).getTime() / 1000 );
     },
     toObject(object, debug = {}){
-        if (debug.use_default && object === undefined) {
+        if (debug.use_default && object === undefined)
             return (new Date(0)).toISOString().split('.')[0];
-        }
-        v.required(object);
+        
+        v.required(object)
+        
+        if(object.getTime)
+            return object.toISOString().split('.')[0]
+        
+        if(object === "string")
+            return object
+        
         var int = parseInt(object);
         v.require_range(0,0xFFFFFFFF,int, `uint32 ${object}`);
         return (new Date(int*1000)).toISOString().split('.')[0];
     }
-    };
+}
 
 Types.set = function(st_operation){
     return {validate(array){
@@ -459,7 +482,7 @@ var id_type = function(reserved_spaces, object_type){
         if (/^[0-9]+\.[0-9]+\.[0-9]+$/.test(object)) {
             object = v.get_instance(reserved_spaces, object_type, object);
         }
-        b.writeVarint32(object);
+        b.writeVarint32(v.to_number(object));
         return;
     },
     fromObject(object){
@@ -493,6 +516,7 @@ var id_type = function(reserved_spaces, object_type){
 };
 
 Types.protocol_id_type = function(name){
+    v.required(name, "name")
     return id_type(chain_types.reserved_spaces.protocol_ids, name);
 };
 
@@ -537,31 +561,42 @@ Types.vote_id =
     },
     appendByteBuffer(b, object){
         v.required(object);
+        if(object === "string")
+            object = Types.vote_id.fromObject(object)
+        
         var value = object.id << 8 | object.type
         b.writeUint32(value);
         return;
     },
     fromObject(object){
         v.required(object, "(type vote_id)");
+        if(typeof object === "object") {
+            v.required(object.type, "type")
+            v.required(object.id, "id")
+            return object
+        }
         v.require_test(/^[0-9]+:[0-9]+$/, object, `vote_id format ${object}`); 
         var [type, id] = object.split(':');
         v.require_range(0,0xff,type,`vote type ${object}`);
         v.require_range(0,0xffffff,id,`vote id ${object}`);
-        return {type:type,
-        id:id
-        };
+        return { type, id };
     },
     toObject(object, debug = {}){
         if (debug.use_default && object === undefined) {
             return "0:0";
         }
         v.required(object);
+        if(typeof object === "string")
+            object = Types.vote_id.fromObject(object)
+        
         return object.type + ":" + object.id;
     },
     compare(a, b) {
+        if(typeof a !== "object") a = Types.vote_id.fromObject(a)
+        if(typeof b !== "object") b = Types.vote_id.fromObject(b)
         return parseInt(a.id) - parseInt(b.id);
     }
-    };
+};
 
 Types.optional = function(st_operation){
     v.required(st_operation, "st_operation");
@@ -701,17 +736,15 @@ Types.map = function(key_st_operation, value_st_operation){
     },
     fromObject(object){
         v.required(object);
-        return this.validate(((() => {
-            var result = [];
-            for (var i = 0, o; i < object.length; i++) {
-                o = object[i];
-                result.push([
-                    key_st_operation.fromObject(o[0]),
-                    value_st_operation.fromObject(o[1])
-                ]);
-            }
-            return result;
-        })()));
+        var result = [];
+        for (var i = 0, o; i < object.length; i++) {
+            o = object[i];
+            result.push([
+                key_st_operation.fromObject(o[0]),
+                value_st_operation.fromObject(o[1])
+            ]);
+        }
+        return this.validate(result)
     },
     toObject(object, debug = {}){
         if (debug.use_default && object === undefined) {
@@ -723,17 +756,15 @@ Types.map = function(key_st_operation, value_st_operation){
             ];
         }
         v.required(object);
-        return this.validate(((() => {
-            var result = [];
-            for (var i = 0, o; i < object.length; i++) {
-                o = object[i];
-                result.push([
-                    key_st_operation.toObject(o[0], debug),
-                    value_st_operation.toObject(o[1], debug)
-                ]);
-            }
-            return result;
-        })()));
+        var result = [];
+        for (var i = 0, o; i < object.length; i++) {
+            o = object[i];
+            result.push([
+                key_st_operation.toObject(o[0], debug),
+                value_st_operation.toObject(o[1], debug)
+            ]);
+        }
+        return this.validate(result)
     }
     };
 };
@@ -788,8 +819,8 @@ Types.address =
         }
         return Types.address._to_address(object).toString();
     }
-    };
+}
 
 let sort = (array, st_operation) => st_operation.compare ?
-    array.sort((a,b)=>st_operation.compare(a,b)) :
-    array.sort((a,b)=> a > b)
+    array.sort((a,b)=>st_operation.compare(a,b)) : // custom compare operation
+    array.sort((a,b)=> typeof a === "number" && typeof b === "number" ? a - b : a > b)

@@ -1,9 +1,10 @@
 import { fromJS } from "immutable"
-import { PrivateKey, PublicKey } from "@graphene/ecc"
+import { PrivateKey, PublicKey, Address } from "@graphene/ecc"
 import { Long } from "bytebuffer"
 var assert = require('assert');
 var Serilizer = require("../src/serializer")
 var types = require('../src/types');
+var ops = require('../src/operations');
 
 var {
     //id_type,
@@ -11,38 +12,46 @@ var {
     uint8, uint16, uint32, int64, uint64,
     string, bytes, bool, array, fixed_array,
     protocol_id_type, object_id_type, vote_id,
-    future_extensions,
+    // future_extensions,
     static_variant, map, set,
     public_key, address,
     time_point_sec,
     optional,
 } = types
 
+var { asset, account_name_eq_lit_predicate } = ops
+
 // Must stay in sync with allTypes below.
 let AllTypes = new Serilizer("all_types", {
     uint8, uint16, uint32, int64, uint64,
-    
     string, bytes: bytes(1), bool, array: array(uint8), fixed_array: fixed_array(2, uint8),
+    protocol_id_type: protocol_id_type("account"), object_id_type, //vote_id,
     
-    public_key
+    static_variant: array(static_variant( [asset, account_name_eq_lit_predicate] )),
+    map: map(uint8, uint8),
+    set: set(uint8),
+    
+    public_key, address,
+    time_point_sec
 })
 
 // Serializable types only.  Must stay in sync with AllTypes above.
 let allTypes = {
     
-    uint8: Math.pow(2,8)-1,
-    uint16: Math.pow(2,16)-1,
-    uint32: Math.pow(2,32)-1,
-    int64: "9223372036854775807",
-    uint64: "9223372036854775807",
+    uint8: Math.pow(2,8)-1, uint16: Math.pow(2,16)-1, uint32: Math.pow(2,32)-1,
+    int64: "9223372036854775807", uint64: "9223372036854775807",
     
-    string: "test",
-    bytes: "ff",
-    bool: true,
-    array: [2, 1],
-    fixed_array: [1, 0],
+    string: "test", bytes: "ff", bool: true, array: [2, 1], fixed_array: [1, 0],
+    protocol_id_type: "1.2.2222", object_id_type: "1.1.1", //vote_id: "2:1",
     
-    public_key: PrivateKey.fromSeed("").toPublicKey().toString()
+    static_variant: [ [1, {account_id: "1.2.1", name: "abc"}],[0, { amount: "1", asset_id: "1.3.0" }] ],
+    map: [[4,3], [2,1]],
+    set: [2,1],
+    
+    public_key: PrivateKey.fromSeed("").toPublicKey().toString(),
+    address: Address.fromPublic(PrivateKey.fromSeed("").toPublicKey()).toString(),
+    
+    time_point_sec: Math.floor(Date.now()/1000)
 }
 
 describe("operations", function() {
@@ -62,10 +71,10 @@ describe("operations", function() {
         })
         
         it("to object", ()=> {
-            assert.deepEqual(toObject(allTypes), allTypes, "serializable" )
-            assert.deepEqual(toObject(toObject(allTypes)), allTypes, "serializable (double to)" )
-            assert.deepEqual(toObject(fromObject(allTypes)), allTypes, "non-serializable" )
-            assert.deepEqual(toObject(fromObject(fromObject(allTypes))), allTypes, "non-serializable (double from)")
+            assert(toObject(allTypes), "serializable" )
+            assert.deepEqual(toObject(toObject(allTypes)), toObject(allTypes), "serializable (double to)" )
+            assert.deepEqual(toObject(fromObject(allTypes)), toObject(allTypes), "non-serializable" )
+            assert.deepEqual(toObject(fromObject(fromObject(allTypes))), toObject(allTypes), "non-serializable (double from)")
         })
         
         it("to buffer", ()=>{
@@ -79,8 +88,8 @@ describe("operations", function() {
         })
         
         it("from buffer", ()=> {
-            assert.deepEqual(toObject(fromBuffer(toBuffer(allTypes))), allTypes, "serializable" )
-            assert.deepEqual(toObject(fromBuffer(toBuffer(fromObject(allTypes)))), allTypes, "non-serializable" )
+            assert.deepEqual(toObject(fromBuffer(toBuffer(allTypes))), toObject(allTypes), "serializable" )
+            assert.deepEqual(toObject(fromBuffer(toBuffer(fromObject(allTypes)))), toObject(allTypes), "non-serializable" )
         })
         
         it("visual check", ()=> {
