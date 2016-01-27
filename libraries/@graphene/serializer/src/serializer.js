@@ -127,7 +127,7 @@ class Serializer {
     }
     
     fromBuffer(buffer){
-        var b = ByteBuffer.fromBinary(buffer.toString(), ByteBuffer.LITTLE_ENDIAN);
+        var b = ByteBuffer.fromBinary(buffer.toString("binary"), ByteBuffer.LITTLE_ENDIAN);
         return this.fromByteBuffer(b);
     }
     

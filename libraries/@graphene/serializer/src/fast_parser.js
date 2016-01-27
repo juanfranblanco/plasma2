@@ -3,21 +3,23 @@ import { PublicKey } from "@graphene/ecc"
 class FastParser {
     
     static fixed_data(b, len, buffer) {
-        if (!b) { return } ;
+        if (!b) {
+            return;
+        }
         if (buffer) {
-            var data = buffer.slice(0, len).toString('binary');
+            let data = buffer.slice(0, len).toString('binary');
             b.append(data, 'binary');
             while (len-- > data.length) {
                 b.writeUint8(0);
             }
-            return;
         } else {
-            var b_copy;
-            b_copy = b.copy(b.offset, b.offset + len), b.skip(len);
+            let b_copy = b.copy(b.offset, b.offset + len);
+            b.skip(len);
             return new Buffer(b_copy.toBinary(), 'binary');
         }
     }
-    
+        
+
     static public_key(b, public_key) {
         if (!b) { return; }
         if (public_key) {
