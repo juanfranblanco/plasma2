@@ -59,17 +59,17 @@ describe('Confidential Wallet', () => {
             assert.equal(wallet.wallet_object
                 .getIn( ["keys", key.toPublicKey().toString()] )
                 .get("private_wif"), key.toWif())
-            assert( cw.getPrivateKey( key.toPublicKey() ))
-            assert( cw.getPrivateKey( key.toPublicKey().toString() ))
+            assert( cw.getPrivateKey( key.toPublicKey() ).d )
+            assert( cw.getPrivateKey( key.toPublicKey().toString() ).d )
         }
         {
             let key = PrivateKey.fromSeed("seed2")
             let index_address = true
             assert( cw.setKeyLabel( key, "seed2 label", index_address, key.toPublicKey() ), "add labeled private key")
             assert.equal( cw.addressIndex.storage.state.size, 1, "expecting addresses");
-            assert( cw.getPrivateKey( key.toPublicKey() ))
-            assert( cw.getPrivateKey( key.toPublicKey().toString() ))
-            assert( cw.getPrivateKey( "seed2 label" ))
+            assert( cw.getPrivateKey( key.toPublicKey() ).d )
+            assert( cw.getPrivateKey( key.toPublicKey().toString() ).d )
+            assert( cw.getPrivateKey( "seed2 label" ).d )
             
         }
         
@@ -119,23 +119,31 @@ describe('Confidential Wallet', () => {
         create("bob", "bob-brain-key")
         
         let key = PrivateKey.fromSeed("")
-        cw.setKeyLabel( PrivateKey.fromSeed("nathan") )
+        cw.setKeyLabel( PrivateKey.fromSeed("nathan"), "nathan" )
         
         // must wait for a blocks...
         this.timeout(30 * 1000)
         
-        return cw.transferToBlind( "nathan", "CORE", [["alice",1000]], true ).then( tx =>{ // , ["bob",1]
-            // if( tx ) console.log("tx", JSON.stringify(tx))
-            assert(tx.outputs, "tx.outputs")
-            return cw.getBlindBalances("alice")
-                .then( balances => assert.deepEqual(balances.toJS(), { "1.3.0": "1000" }) )
-                .then( ()=> cw.blindHistory("alice") )
-                .then( receipts => assert.equal(receipts.size, 1, "expecting 1 receipt") )
-                .then( ()=> cw.transferFromBlind("alice", "nathan", 1, "CORE", true) )
-                .then( res => {
-                    console.log("res", res)
-                })
-        })
+        return Promise.resolve()
+        
+            // .then( () => cw.transferToBlind( "nathan", "CORE", [["alice",1000]], true ))
+            // .then( tx => assert(tx.outputs, "tx.outputs") )
+            
+            .then( () => cw.transferToBlind( "nathan", "CORE", [["alice",100], ["bob",10]], true ))
+            .then( tx => assert(tx.outputs, "tx.outputs") )
+            
+            .then( () => cw.getBlindBalances("alice") )
+            .then( balances => assert.deepEqual(balances.toJS(), { "1.3.0": "110" }) )
+            
+            .then( ()=> cw.blindHistory("alice") )
+            .then( receipts => assert(receipts.size > 0, "expecting receipt(s)") )
+            
+            .then( ()=> cw.transferFromBlind("alice", "nathan", 1, "CORE", true) )
+            .then( tx => assert(tx.outputs, "tx.outputs") )
+            
+            .then( ()=> cw.blindTransfer("alice", "bob", 1, "CORE", true) )
+            
+            .then( res => console.log("work-in-progress result", res) )
         
     })
     

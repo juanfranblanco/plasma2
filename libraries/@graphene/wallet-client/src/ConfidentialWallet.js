@@ -184,7 +184,7 @@ export default class ConfidentialWallet {
         req(pubkey_or_label, "pubkey_or_label")
         
         let keys = this.keys()
-        let getPub = pubkey => {
+        let priv = pubkey => {
             let key = keys.get( pubkey )
             if( ! key )
                 return null
@@ -196,14 +196,15 @@ export default class ConfidentialWallet {
         }
         
         if( pubkey_or_label.Q ) {
-            return getPub( pubkey_or_label.toString() )
+            return priv( pubkey_or_label.toString() )
         }
         try {
             PublicKey.fromStringOrThrow( pubkey_or_label )
-            return getPub( pubkey_or_label )
+            return priv(pubkey_or_label)
         } catch(error) {
-            // probably the slowest operation (last)
-            return this.getPublicKey( pubkey_or_label )
+            // slowest operation last
+            let pubkey = this.keys().findKey( key => key.get("label") === pubkey_or_label )
+            return pubkey ? priv( pubkey ) : null
         }
     }
     
@@ -559,7 +560,6 @@ export default class ConfidentialWallet {
             
             let blind_in = longAdd(from_blind.fee, amount)
             
-            // let conf = this.
             return this.blind_transfer_help(
                 from_blind_account_key_or_label,
                 from_blind_account_key_or_label, 
@@ -572,10 +572,7 @@ export default class ConfidentialWallet {
                 from_blind.amount = { amount, asset_id: asset.get("id") }
                 let decrypted_memo = conf.outputs[conf.outputs.length - 1].decrypted_memo
                 
-                // from_blind.blinding_factor = conf.outputs.back().decrypted_memo.blinding_factor;
                 from_blind.blinding_factor = decrypted_memo.blinding_factor
-                
-                // from_blind.inputs.push_back( {conf.outputs.back().decrypted_memo.commitment, authority() } );
                 from_blind.inputs.push({
                     commitment: decrypted_memo.commitment,
                     authority: authority()
@@ -598,8 +595,9 @@ export default class ConfidentialWallet {
         @arg {boolean} [broadcast = false]
         @return blind_confirmation
     */
-    blindTransfer( from_key_or_label, to_key_or_label, amount, asset_symbol, broadcast = false ){
+    blindTransfer( from_key_or_label, to_key_or_label, amount, asset_symbol, broadcast = false) {
         this.assertLogin()
+        return this.blind_transfer_help(from_key_or_label, to_key_or_label, amount, asset_symbol, broadcast)
     }
 
 }
@@ -834,7 +832,12 @@ function blind_transfer_help(
                         
                         let tr = new TransactionBuilder()
                         tr.add_type_operation("blind_transfer", blind_tr)
+                        let signer = this.getPrivateKey(from_key_or_label)
+                        if( signer )
+                            tr.add_signer( signer )
                         
+                        
+                        // console.log("this.getPrivateKey(from_key_or_label)", this.getPrivateKey(from_key_or_label))
                         return tr.process_transaction(this, null, broadcast).then(()=> {
                             
                             let promises = []

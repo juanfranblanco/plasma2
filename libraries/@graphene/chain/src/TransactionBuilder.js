@@ -294,7 +294,7 @@ export default class TransactionBuilder {
         });
     }
 
-    add_signer(private_key, public_key){
+    add_signer(private_key, public_key = private_key.toPublicKey()){
         if (this.signed) { throw new Error("already signed"); }
         if (!public_key.Q) {
             public_key = PublicKey.fromPublicKeyString(public_key);
