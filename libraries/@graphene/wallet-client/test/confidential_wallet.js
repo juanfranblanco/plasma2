@@ -111,19 +111,30 @@ describe('Confidential Wallet', () => {
         
     })
     
-    it("Transfer", function () {
+    it("Blind transfers", function () {
         
         wallet.login(username, password, email, Apis.chainId())
         
         create("alice", "alice-brain-key")
         create("bob", "bob-brain-key")
+        
         let key = PrivateKey.fromSeed("")
         cw.setKeyLabel( PrivateKey.fromSeed("nathan") )
+        
+        // must wait for a blocks...
         this.timeout(30 * 1000)
         
-        return cw.transferToBlind( "nathan", "CORE", [["alice",1]], true ).then( tx =>{ // , ["bob",1]
+        return cw.transferToBlind( "nathan", "CORE", [["alice",1000]], true ).then( tx =>{ // , ["bob",1]
             // if( tx ) console.log("tx", JSON.stringify(tx))
-            cw.getBlindBalances("alice")
+            assert(tx.outputs, "tx.outputs")
+            return cw.getBlindBalances("alice")
+                .then( balances => assert.deepEqual(balances.toJS(), { "1.3.0": "1000" }) )
+                .then( ()=> cw.blindHistory("alice") )
+                .then( receipts => assert.equal(receipts.size, 1, "expecting 1 receipt") )
+                .then( ()=> cw.transferFromBlind("alice", "nathan", 1, "CORE", true) )
+                .then( res => {
+                    console.log("res", res)
+                })
         })
         
     })

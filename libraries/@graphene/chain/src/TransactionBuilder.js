@@ -218,8 +218,7 @@ export default class TransactionBuilder {
             promises.push(Apis.instance().db_api().exec( "get_required_fees", [operations, "1.3.0"]));
         }
 
-        return Promise.all(promises)
-        .then( (results)=> {
+        return Promise.all(promises).then( (results)=> {
             var fees = results[0];
 
             if (asset_id !== "1.3.0") {

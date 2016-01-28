@@ -310,7 +310,7 @@ describe('Multi Wallet', () => {
 })
 
 let assertSubscribe = (expected, label) => wallet =>{
-    console.log("assertWalletEqual",label, expected)
+    // console.log("assertWalletEqual",label, expected)
     assert(wallet, 'wallet ' + label)
     assert(wallet.wallet_object, 'wallet_object ' + label)
     assert.equal(wallet.wallet_object.get("test_wallet"), expected, label)

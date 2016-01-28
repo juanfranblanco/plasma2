@@ -1069,18 +1069,3 @@ var stealth_memo_data = new Serializer(
 //     to: optional( public_key ),
 //     encrypted_memo: stealth_memo_data
 // })
-
-// var transfer_to_blind = new Serializer("transfer_to_blind", {
-//   fee: asset,
-//   amount: asset,
-//   from: protocol_id_type("account"),
-//   blinding_factor: bytes(32),
-//   outputs: array(blind_output)
-// })
-
-// var transfer_from_blind = new Serializer( "transfer_from_blind", {
-//     amount: asset,
-//     to: protocol_id_type("account"),
-//     blinding_factor: bytes(32),
-//     inputs: array blind_input
-// })
