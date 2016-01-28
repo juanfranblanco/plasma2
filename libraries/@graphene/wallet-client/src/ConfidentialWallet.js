@@ -49,6 +49,7 @@ export default class ConfidentialWallet {
         
         // Convenience function to access this object (ensures an empty Map)
         this.keys = () => this.wallet.wallet_object.getIn(["keys"], Map())
+        this.blind_receipts = () => this.wallet.wallet_object.getIn(["blind_receipts"], List())
         
         // BTS 1.0 addresses for shorts and balance claims
         this.addressIndex = new AddressIndex()
@@ -140,7 +141,8 @@ export default class ConfidentialWallet {
         this.assertLogin()
         public_key = toString(req(public_key, "public_key"))
         
-        let key = this.wallet.wallet_object.getIn(["keys", public_key])
+        let key = this.keys().get(public_key)
+        // let key = this.wallet.wallet_object.getIn(["keys", public_key])
         return key ? key.get("label") : null
     }
     
@@ -246,12 +248,14 @@ export default class ConfidentialWallet {
         @return {Set<asset>} the total balance of all blinded commitments that can be claimed by given account key or label
     */
     getBlindBalances(pubkey_or_label) {
+        
         this.assertLogin()
         let public_key
         try {
             public_key = PublicKey.fromStringOrThrow(pubkey_or_label)
         } catch(e) { /* label */ }
         
+        console.log("this.blind_receipts()", this.blind_receipts().toJS())
     }
 
     /**
@@ -357,7 +361,7 @@ export default class ConfidentialWallet {
                         }
                         
                         let memo = stealth_memo_data.toBuffer( conf_output.decrypted_memo )
-                        conf_output.confirmation.encrypted_memo = Aes.fromBuffer(secret).encrypt( memo )
+                        conf_output.confirmation.encrypted_memo = Aes.fromBuffer(secret).encrypt( memo ).toString("hex")
                         conf_output.confirmation_receipt = conf_output.confirmation
                         
                         bop.outputs.push( out )
@@ -450,8 +454,8 @@ export default class ConfidentialWallet {
         let child_private = PrivateKey.fromBuffer( child )
         let blind_factor = hash.sha256( child )
         
-        assert( Buffer.isBuffer( conf.encrypted_memo ), "Expecting buffer for confirmation_receipt.encrypted_memo")
-        let plain_memo = Aes.fromBuffer(secret).decrypt( conf.encrypted_memo )
+        assert( typeof conf.encrypted_memo === "string", "Expecting HEX string for confirmation_receipt.encrypted_memo")
+        let plain_memo = Aes.fromBuffer(secret).decryptHexToText( conf.encrypted_memo )
 
         let memo = stealth_memo_data.fromBuffer( plain_memo )
         memo = stealth_memo_data.toObject(memo)
@@ -499,7 +503,7 @@ export default class ConfidentialWallet {
                 this.setKeyLabel( child_private )
                 result.date = new Date().toISOString()
                 return this
-                    .update( wallet => wallet.getIn(["blind_receipts"], List()).push( result ) )
+                    .update( wallet => wallet.updateIn( ["blind_receipts"], List(), r => r.push( result ) ))
                     .then(()=> result)
             })
         )

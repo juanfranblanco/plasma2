@@ -122,7 +122,8 @@ describe('Confidential Wallet', () => {
         this.timeout(30 * 1000)
         
         return cw.transferToBlind( "nathan", "CORE", [["alice",1]], true ).then( tx =>{ // , ["bob",1]
-            if( tx ) console.log("tx", JSON.stringify(tx))
+            // if( tx ) console.log("tx", JSON.stringify(tx))
+            cw.getBlindBalances("alice")
         })
         
     })
