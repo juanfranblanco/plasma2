@@ -245,17 +245,30 @@ export default class ConfidentialWallet {
     
     /**
         @arg {string} public key or label
-        @return {Set<asset>} the total balance of all blinded commitments that can be claimed by given account key or label
+        @return {Promise<Set<asset>>} the total balance of all blinded commitments that can be claimed by given account key or label
     */
     getBlindBalances(pubkey_or_label) {
         
         this.assertLogin()
-        let public_key
-        try {
-            public_key = PublicKey.fromStringOrThrow(pubkey_or_label)
-        } catch(e) { /* label */ }
+        let public_key = this.getPublicKey( pubkey_or_label )
+        assert( public_key, "missing pubkey_or_label " + pubkey_or_label)
         
-        console.log("this.blind_receipts()", this.blind_receipts().toJS())
+        let commitments = this.blind_receipts()
+            .reduce( (r, receipt) => r.push(receipt.getIn(["data", "commitment"])), List())
+        
+        if( ! commitments.size )
+            return Promise.resolve()
+        
+        console.log("this.blind_receipts()", commitments.toJS(), this.blind_receipts().toJS())
+        
+        Apis.db("get_blinded_balances", commitments.toJS()).then( bbal => {
+            console.log("bbal.length", bbal.length)
+            
+        })
+        // forEach( rec => {
+        //     let commitment = rec.getIn(["conf", "data", "commitment"])
+        // })
+        
     }
 
     /**
@@ -503,7 +516,7 @@ export default class ConfidentialWallet {
                 this.setKeyLabel( child_private )
                 result.date = new Date().toISOString()
                 return this
-                    .update( wallet => wallet.updateIn( ["blind_receipts"], List(), r => r.push( result ) ))
+                    .update( wallet => wallet.updateIn( ["blind_receipts"], List(), r => r.push( fromJS(result) ) ))
                     .then(()=> result)
             })
         )
