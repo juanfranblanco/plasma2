@@ -556,7 +556,7 @@ export default class ConfidentialWallet {
                 }
             }
             
-            from_blind.fee = { amount: 1, asset_id: asset.get("id") } // fees->calculate_fee( from_blind, asset_obj->options.core_exchange_rate )
+            from_blind.fee = { amount: 1500000, asset_id: "1.3.0" } // fees->calculate_fee( from_blind, asset_obj->options.core_exchange_rate )
             
             let blind_in = longAdd(from_blind.fee, amount)
             
@@ -682,9 +682,9 @@ function blind_transfer_help(
         let total_amount = Long.ZERO
         let blinding_factors = []
         
-        blind_tr.fee  = {amount: 1, asset_id: asset.get("id") } // fees->calculate_fee( blind_tr, asset_obj->options.core_exchange_rate )
+        blind_tr.fee  = {amount: 1500000, asset_id: "1.3.0" } // fees->calculate_fee( blind_tr, asset_obj->options.core_exchange_rate )
         let amount_with_fee = longAdd(amount, blind_tr.fee)
-        let used = [] // commitment_type
+        let used = []
         
         let p1 = this.fetch_blinded_balances( (bal, receipt, commitment) =>{
             
@@ -717,19 +717,20 @@ function blind_transfer_help(
             
             let change = longSub(longSub(total_amount, amount), blind_tr.fee)
             let change_blind_factor
-            let to_blind_factor
             let bf_promise
             
-            if( longCmp(change, 0) > 0) {
+            let has_change = longCmp(change, 0) > 0
+            if( has_change ) {
                 blinding_factors.push( blind_factor.toString("hex") )
                 // there is change, don't include the last blinding factor
                 bf_promise = Apis
                     .crypto("blind_sum", blinding_factors, blinding_factors.length - 1)
-                    .then( change_bf => change_blind_factor = change_bf )
+                    .then( bf => change_blind_factor = bf )
             } else {
                 bf_promise = Apis
                     .crypto("blind_sum", blinding_factors, blinding_factors.length )
                     .then( bf => blind_factor = bf )
+                    .then( () => blinding_factors.push_back( blind_factor ))
             }
             
             return bf_promise.then(()=> {
@@ -746,11 +747,12 @@ function blind_transfer_help(
                 .then( ret => to_out.commitment = ret )
                 
                 .then( ()=>{
-                    let rp_promise = Promise.resolve()
                     
-                    if( blind_tr.outputs.length > 1) {
+                    let rp_promise
+                    
+                    if( has_change ) {
                         
-                        let change_out
+                        let change_out = {}
                         
                         rp_promise = Apis.crypto( "range_proof_sign",
                             0, to_out.commitment, blind_factor,
@@ -780,6 +782,7 @@ function blind_transfer_help(
                                 decrypted_memo: {},
                                 confirmation: {}
                             }
+                            
                             conf_output.label = from_key_or_label
                             conf_output.pub_key = from_key.toString()
                             conf_output.decrypted_memo.from = from_key.toString()
@@ -800,6 +803,7 @@ function blind_transfer_help(
                             
                         })
                     } else {
+                        rp_promise = Promise.resolve()
                         to_out.range_proof = ""
                     }
                     
@@ -832,12 +836,10 @@ function blind_transfer_help(
                         
                         let tr = new TransactionBuilder()
                         tr.add_type_operation("blind_transfer", blind_tr)
+                        
                         let signer = this.getPrivateKey(from_key_or_label)
-                        if( signer )
-                            tr.add_signer( signer )
+                        if( signer ) tr.add_signer( signer )
                         
-                        
-                        // console.log("this.getPrivateKey(from_key_or_label)", this.getPrivateKey(from_key_or_label))
                         return tr.process_transaction(this, null, broadcast).then(()=> {
                             
                             let promises = []
@@ -916,10 +918,10 @@ function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
 }
 
 let long = (operation, arg1, arg2) => new Long(arg1)[operation]( new Long(arg2) )
-let longSub = (a, b) => long("subtract", a, b)
 let longAdd = (a, b) => long("add", a, b)
 let longCmp = (a, b) => long("compare", a, b)
+let longSub = (a, b) => long("subtract", a, b)
 
-let authority = data => fromJS(
-    { weight_threshold: 1, key_auths: [], account_auths: [], address_auths: []}
-    ).merge(data).toJS()
+let authority = (data, weight_threshold = data ? 1 : 0)  =>
+    fromJS({ weight_threshold, key_auths: [], account_auths: [], address_auths: [] })
+    .merge(data).toJS()
