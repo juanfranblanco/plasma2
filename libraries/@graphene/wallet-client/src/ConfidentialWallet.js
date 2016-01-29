@@ -1,13 +1,14 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
 import { PrivateKey, PublicKey, Aes, brainKey, hash, key } from "@graphene/ecc"
-import { fetchChain, config, Apis, TransactionBuilder, toImpliedDecimal } from "@graphene/chain"
+import { fetchChain, config, Apis, TransactionBuilder, number_utils } from "@graphene/chain"
 import { ops } from "@graphene/serializer"
 import AddressIndex from "./AddressIndex"
 
 import ByteBuffer from "bytebuffer"
 
 let { stealth_memo_data, transfer_from_blind } = ops
+let { toImpliedDecimal } = number_utils
 let Long = ByteBuffer.Long
 
 // /**
@@ -561,14 +562,22 @@ export default class ConfidentialWallet {
                 }
             }
             
-            from_blind.fee = { amount: 1500000, asset_id: "1.3.0" } // fees->calculate_fee( from_blind, asset_obj->options.core_exchange_rate )
+            let blind_in
             
-            let blind_in = longAdd(from_blind.fee.amount, amount)
+            return Promise.resolve()
             
-            return this.blind_transfer_help(
-                from_blind_account_key_or_label,
-                from_blind_account_key_or_label, 
-                blind_in, asset_symbol, false, true )
+            .then( ()=> get_transfer_from_blind_fee(asset.get("id")) )
+            .then( fee =>{
+                from_blind.fee = fee
+                blind_in = longAdd(fee.amount, amount)
+            })
+            
+            .then( ()=>
+                this.blind_transfer_help(
+                    from_blind_account_key_or_label, from_blind_account_key_or_label,
+                    blind_in, asset_symbol, false, true
+                )
+            )
             .then( conf => {
 
                 assert( conf.outputs.length > 0 )
@@ -672,7 +681,7 @@ function blind_transfer_help(
     
     let promises = []
     promises.push(fetchChain("getAsset", asset_symbol))
-    
+
     return Promise.all(promises).then( res =>{
         
         let [ asset ] = res
@@ -685,15 +694,20 @@ function blind_transfer_help(
             inputs: []
         }
         
-        let total_amount = Long.ZERO
+        let available_amount = Long.ZERO
         let blinding_factors = []
         
-        blind_tr.fee  = { amount: 1500000, asset_id: "1.3.0" } // fees->calculate_fee( blind_tr, asset_obj->options.core_exchange_rate )
-        let amount_with_fee = longAdd(amount, blind_tr.fee.amount)
         let used = []
+        let amount_with_fee
         
-        let p1 = this.fetch_blinded_balances( (bal, receipt, commitment) =>{
-            
+        return Promise.resolve()
+        
+        .then( ()=> get_transfer_from_blind_fee( asset.get("id")) )
+        .then( fee => blind_tr.fee = fee )
+        
+        .then( ()=>{ amount_with_fee = longAdd(amount, blind_tr.fee.amount) })
+        .then( ()=> this.fetch_blinded_balances( (bal, receipt, commitment) =>{
+                
             receipt = receipt.toJS()
             
             let control_authority = receipt.control_authority
@@ -701,15 +715,17 @@ function blind_transfer_help(
             blind_tr.inputs.push({ commitment, owner: control_authority })
             blinding_factors.push( receipt.data.blinding_factor )
             
-            total_amount = longAdd(total_amount, receipt.amount.amount)
+            console.log("receipt.amount.amount", receipt.amount.amount)
+            available_amount = longAdd(available_amount, receipt.amount.amount)
             
             // return false to "break"
-            return longCmp(total_amount, amount_with_fee) < 0
-        })
-        
-        return p1.then(()=> {
+            return longCmp(available_amount, amount_with_fee) < 0
             
-            assert( longCmp(total_amount, amount_with_fee) >= 0, "Insufficent Balance")
+        }) )
+        .then(()=> {
+            
+            // console.log("available_amount.toString(),amount_with_fee.toString()", available_amount.toString(),amount_with_fee.toString(),longCmp(available_amount, amount_with_fee))
+            assert( longCmp(available_amount, amount_with_fee) >= 0, "Insufficent Balance")
             
             let one_time_private = key.get_random_key()
             let secret = one_time_private.get_shared_secret( to_key )
@@ -721,7 +737,7 @@ function blind_transfer_help(
             let from_child = hash.sha256( from_secret )
             let from_nonce = hash.sha256( nonce )
             
-            let change = longSub(longSub(total_amount, amount), blind_tr.fee.amount)
+            let change = longSub(longSub(available_amount, amount), blind_tr.fee.amount)
             let change_blind_factor
             let bf_promise
             
@@ -888,6 +904,13 @@ function update(callback) {
     })
 }
 
+function get_transfer_from_blind_fee(asset_id) {
+    let tr = new TransactionBuilder()
+    let fee_object = transfer_from_blind.toObject({}, {use_default: true})
+    tr.add_type_operation("transfer_from_blind", fee_object)
+    return tr.set_required_fees(asset_id).then(()=> tr.operations[0][1].fee)
+}
+
 let isDigits = value => value === "numeric" || /^[0-9]+$/.test(value)
 
 function assertLogin() {
@@ -906,6 +929,7 @@ let bufferToNumber = (buf, type = "Uint32") =>
 // let indexableKeys = keys => keys
 //     .reduce( (r, key, pubkey) => key.get("index_address") ? r.push(pubkey) : r, List())
 
+// TODO abstract enough to move to WalletStorage
 function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
     var return_pubkeys = []
     let keys = this.keys()

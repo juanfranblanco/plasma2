@@ -34,10 +34,10 @@ export default Apis = {
         return apis_instance;
     },
     chainId: ()=> Apis.instance().chain_id,
-    db: (method, ...args) => Apis.instance().db_api().exec(method, arrayToHex(args)),
-    network: (method, ...args) => Apis.instance().network_api().exec(method, arrayToHex(args)),
-    history: (method, ...args) => Apis.instance().history_api().exec(method, arrayToHex(args)),
-    crypto: (method, ...args) => Apis.instance().crypto_api().exec(method, arrayToHex(args))
+    db: (method, ...args) => Apis.instance().db_api().exec(method, toStrings(args)),
+    network: (method, ...args) => Apis.instance().network_api().exec(method, toStrings(args)),
+    history: (method, ...args) => Apis.instance().history_api().exec(method, toStrings(args)),
+    crypto: (method, ...args) => Apis.instance().crypto_api().exec(method, toStrings(args))
 };
 
 class ApisInstance {
@@ -132,6 +132,11 @@ class ApisInstance {
     
 }
 
-let arrayToHex = array => List(array)
-    .reduce( (r, p) => r.push(Buffer.isBuffer(p) ? p.toString("hex") : p), List())
+let toStrings = array => List(array)
+    .reduce( (r, p) => r.push(
+        Buffer.isBuffer(p) ? p.toString("hex") :
+        p.high !== undefined ? p.toString() : // Long.toString()
+        p.Q !== undefined ? p.toString() : // PublicKey.toString()
+        p
+    ), List())
     .toJS()

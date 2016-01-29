@@ -213,8 +213,9 @@ export default class TransactionBuilder {
         ];
 
         if (asset_id !== "1.3.0") {
-            var asset = ChainStore.getAsset(asset_id);
-            var fee_pool = asset.getIn(["dynamic", "fee_pool"]);
+            // Never DO this, ChainStore.getAsset can return "undefined"
+            // var asset = ChainStore.getAsset(asset_id);
+            // var fee_pool = asset.getIn(["dynamic", "fee_pool"]);
             promises.push(Apis.instance().db_api().exec( "get_required_fees", [operations, "1.3.0"]));
         }
 

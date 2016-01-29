@@ -12,9 +12,11 @@ export function toImpliedDecimal(number, precision) {
     if(typeof number === "number") {
         assert(number <= 9007199254740991, "overflow")
         number = ""+number;
-    }
+    } else
+        if( number.toString )
+            number = number.toString()
     
-    assert(typeof number === "string", "number should be an actual number or string")
+    assert(typeof number === "string", "number should be an actual number or string: " + (typeof number))
     number = number.trim()
     assert(/^[0-9]*\.?[0-9]*$/.test(number), "Invalid decimal number " + number)
     

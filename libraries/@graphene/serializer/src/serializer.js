@@ -92,7 +92,11 @@ class Serializer {
         return result;
     }
     
-    toObject(serialized_object, debug = {}){
+    /**
+        @arg {boolean} [debug.use_default = false] - more template friendly
+        @arg {boolean} [debug.annotate = false] - add user-friendly information
+    */
+    toObject(serialized_object = {}, debug = { use_default: false, annotate: false }){
         var result = {};
         var field = null;
         try {
