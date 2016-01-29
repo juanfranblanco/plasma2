@@ -295,20 +295,7 @@ export default class ConfidentialWallet {
         assert(Array.isArray( to_amounts ), "to_amounts should be an array")
 
         let idx = 0
-        // Validate to_amounts, lookup or parse destination public_key or key label (from_key_or_label)
-        for( let to_amount of to_amounts) {
-             assert(Array.isArray( to_amount ), 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
-             assert.equal(typeof to_amount[0], "string", 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
-             assert.equal(typeof to_amount[1], "number", 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
-             
-             let public_key
-             try { public_key = PublicKey.fromStringOrThrow(to_amount[0]) }
-                catch(error) { public_key = this.getPublicKey(to_amount[0]) }
-            
-             assert(public_key, "Unknown to_amounts[" + (idx++) + "][0] (from_key_or_label): " + to_amount[0])
-             to_amount[3] = public_key
-        }
-         
+        
         let promises = []
         promises.push(fetchChain("getAccount", from_account_id_or_name))
         promises.push(fetchChain("getAsset", asset_symbol))
@@ -318,7 +305,26 @@ export default class ConfidentialWallet {
             let [ account, asset ] = res
             if( ! account ) return Promise.reject("unknown_from_account")
             if( ! asset ) return Promise.reject("unknown_asset")
-
+            
+            let multiplier = Math.pow(10, asset.get("precision"))
+            
+            // Validate to_amounts, lookup or parse destination public_key or key label (from_key_or_label)
+            for( let to_amount of to_amounts) {
+                 assert(Array.isArray( to_amount ), 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
+                 assert.equal(typeof to_amount[0], "string", 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
+                 assert.equal(typeof to_amount[1], "number", 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
+                 
+                 to_amount[1] = longMul(to_amount[1], multiplier)
+                 
+                 let public_key
+                 try { public_key = PublicKey.fromStringOrThrow(to_amount[0]) }
+                    catch(error) { public_key = this.getPublicKey(to_amount[0]) }
+                
+                 assert(public_key, "Unknown to_amounts[" + (idx++) + "][0] (from_key_or_label): " + to_amount[0])
+                 to_amount[3] = public_key
+            }
+         
+        
             let promises = []
             let total_amount = 0
             let blinding_factors = []
@@ -343,7 +349,7 @@ export default class ConfidentialWallet {
                 let blind_factor = hash.sha256( child )
                 
                 blinding_factors.push( blind_factor.toString("hex") )
-                total_amount += amount
+                total_amount = longAdd(total_amount, amount)
                 
                 let out = {}, conf_output
                 
@@ -354,12 +360,12 @@ export default class ConfidentialWallet {
                         out.owner = { weight_threshold: 1, key_auths: [[ derived_child.toString(), 1 ]],
                             account_auths: [], address_auths: []}
                     })
-                    .then( ()=> Apis.crypto("blind", blind_factor, amount))
+                    .then( ()=> Apis.crypto("blind", blind_factor, amount.toString()))
                     .then( ret =>{ out.commitment = ret })
                     .then( ()=>
                         to_amounts.length > 1 ?
                             Apis
-                            .crypto( "range_proof_sign", 0, out.commitment, blind_factor, nonce, 0, 0, amount )
+                            .crypto( "range_proof_sign", 0, out.commitment, blind_factor, nonce, 0, 0, amount.toString() )
                             .then( res => out.range_proof = res)
                         :
                             out.range_proof = ""
@@ -369,7 +375,7 @@ export default class ConfidentialWallet {
                             label,
                             pub_key: to_public.toString(),
                             decrypted_memo: {
-                                amount: { amount, asset_id: asset.get("id") },
+                                amount: { amount: amount.toString(), asset_id: asset.get("id") },
                                 blinding_factor: blind_factor,
                                 commitment: new Buffer(out.commitment, "hex"),
                                 check: bufferToNumber(secret.slice(0, 4)) 
@@ -393,7 +399,7 @@ export default class ConfidentialWallet {
             
             return Promise.all(promises).then(()=>{
                 
-                bop.amount = { amount: total_amount, asset_id: asset.get("id") }
+                bop.amount = { amount: total_amount.toString(), asset_id: asset.get("id") }
                 
                 return Apis.crypto("blind_sum", blinding_factors, blinding_factors.length)
                 .then( res => bop.blinding_factor = res )
@@ -548,6 +554,8 @@ export default class ConfidentialWallet {
             let [ to_account, asset ] = res
             if( ! to_account ) return Promise.reject("unknown_to_account")
             if( ! asset ) return Promise.reject("unknown_asset")
+            let precision = Math.pow( 10, asset.get("precision"))
+            amount = longMul(amount, precision)
             
             let from_blind = {
                 inputs: [],
@@ -558,7 +566,7 @@ export default class ConfidentialWallet {
             
             from_blind.fee = { amount: 1500000, asset_id: "1.3.0" } // fees->calculate_fee( from_blind, asset_obj->options.core_exchange_rate )
             
-            let blind_in = longAdd(from_blind.fee, amount)
+            let blind_in = longAdd(from_blind.fee.amount, amount)
             
             return this.blind_transfer_help(
                 from_blind_account_key_or_label,
@@ -569,7 +577,7 @@ export default class ConfidentialWallet {
                 assert( conf.outputs.length > 0 )
                 
                 from_blind.to = to_account.get("id")
-                from_blind.amount = { amount, asset_id: asset.get("id") }
+                from_blind.amount = { amount: amount.toString(), asset_id: asset.get("id") }
                 let decrypted_memo = conf.outputs[conf.outputs.length - 1].decrypted_memo
                 
                 from_blind.blinding_factor = decrypted_memo.blinding_factor
@@ -673,6 +681,7 @@ function blind_transfer_help(
         
         let [ asset ] = res
         if( ! asset ) return Promise.reject("unknown_asset")
+        amount = longMul(amount, Math.pow(10, asset.get("precision")))
         
         var blind_tr = {
             outputs: [],
@@ -682,8 +691,8 @@ function blind_transfer_help(
         let total_amount = Long.ZERO
         let blinding_factors = []
         
-        blind_tr.fee  = {amount: 1500000, asset_id: "1.3.0" } // fees->calculate_fee( blind_tr, asset_obj->options.core_exchange_rate )
-        let amount_with_fee = longAdd(amount, blind_tr.fee)
+        blind_tr.fee  = { amount: 1500000, asset_id: "1.3.0" } // fees->calculate_fee( blind_tr, asset_obj->options.core_exchange_rate )
+        let amount_with_fee = longAdd(amount, blind_tr.fee.amount)
         let used = []
         
         let p1 = this.fetch_blinded_balances( (bal, receipt, commitment) =>{
@@ -697,8 +706,8 @@ function blind_transfer_help(
             
             total_amount = longAdd(total_amount, receipt.amount.amount)
             
-            // return false is a "break"
-            return longCmp(total_amount, amount_with_fee) <= 0
+            // return false to "break"
+            return longCmp(total_amount, amount_with_fee) < 0
         })
         
         return p1.then(()=> {
@@ -715,7 +724,7 @@ function blind_transfer_help(
             let from_child = hash.sha256( from_secret )
             let from_nonce = hash.sha256( nonce )
             
-            let change = longSub(longSub(total_amount, amount), blind_tr.fee)
+            let change = longSub(longSub(total_amount, amount), blind_tr.fee.amount)
             let change_blind_factor
             let bf_promise
             
@@ -919,6 +928,7 @@ function getPubkeys_having_PrivateKey( pubkeys, addys = null ) {
 
 let long = (operation, arg1, arg2) => new Long(arg1)[operation]( new Long(arg2) )
 let longAdd = (a, b) => long("add", a, b)
+let longMul = (a, b) => long("multiply", a, b)
 let longCmp = (a, b) => long("compare", a, b)
 let longSub = (a, b) => long("subtract", a, b)
 
