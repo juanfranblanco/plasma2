@@ -1,10 +1,12 @@
 import { List } from "immutable"
 
 module.exports = {
-    chain_config: require("./src/config"),
     Apis: require("./src/ApiInstances").default,
     ChainStore: require("./src/ChainStore").default,
     TransactionBuilder: require("./src/TransactionBuilder").default,
+    
+    number_utils: require("./src/number_utils"),
+    chain_config: require("./src/config"),
     
     /** 
     */

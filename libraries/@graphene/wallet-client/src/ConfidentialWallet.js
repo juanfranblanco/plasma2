@@ -1,7 +1,7 @@
 import assert from "assert"
 import { fromJS, Map, List } from "immutable"
 import { PrivateKey, PublicKey, Aes, brainKey, hash, key } from "@graphene/ecc"
-import { fetchChain, config, Apis, TransactionBuilder } from "@graphene/chain"
+import { fetchChain, config, Apis, TransactionBuilder, toImpliedDecimal } from "@graphene/chain"
 import { ops } from "@graphene/serializer"
 import AddressIndex from "./AddressIndex"
 
@@ -306,15 +306,13 @@ export default class ConfidentialWallet {
             if( ! account ) return Promise.reject("unknown_from_account")
             if( ! asset ) return Promise.reject("unknown_asset")
             
-            let multiplier = Math.pow(10, asset.get("precision"))
-            
             // Validate to_amounts, lookup or parse destination public_key or key label (from_key_or_label)
             for( let to_amount of to_amounts) {
                  assert(Array.isArray( to_amount ), 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
                  assert.equal(typeof to_amount[0], "string", 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
                  assert.equal(typeof to_amount[1], "number", 'to_amounts parameter should look like: [["alice",1],["bob",1]]')
                  
-                 to_amount[1] = longMul(to_amount[1], multiplier)
+                 to_amount[1] = toImpliedDecimal(to_amount[1], asset.get("precision"))
                  
                  let public_key
                  try { public_key = PublicKey.fromStringOrThrow(to_amount[0]) }
@@ -543,7 +541,6 @@ export default class ConfidentialWallet {
     transferFromBlind( from_blind_account_key_or_label, to_account_id_or_name, amount, asset_symbol, broadcast = false ){
         
         this.assertLogin()
-        assert(isDigits(amount), "amount should be digits")
         
         let promises = []
         promises.push(fetchChain("getAccount", to_account_id_or_name))
@@ -554,8 +551,8 @@ export default class ConfidentialWallet {
             let [ to_account, asset ] = res
             if( ! to_account ) return Promise.reject("unknown_to_account")
             if( ! asset ) return Promise.reject("unknown_asset")
-            let precision = Math.pow( 10, asset.get("precision"))
-            amount = longMul(amount, precision)
+            
+            amount = toImpliedDecimal(amount, asset.get("precision"))
             
             let from_blind = {
                 inputs: [],
@@ -665,7 +662,6 @@ function blind_transfer_help(
     amount, asset_symbol, broadcast = false, to_temp = false
 ) {
     this.assertLogin()
-    assert(isDigits(amount), "amount")
     
     let confirm = {
         outputs: []
@@ -681,7 +677,8 @@ function blind_transfer_help(
         
         let [ asset ] = res
         if( ! asset ) return Promise.reject("unknown_asset")
-        amount = longMul(amount, Math.pow(10, asset.get("precision")))
+        
+        amount = toImpliedDecimal(amount, asset.get("precision"))
         
         var blind_tr = {
             outputs: [],
@@ -763,9 +760,11 @@ function blind_transfer_help(
                         
                         let change_out = {}
                         
-                        rp_promise = Apis.crypto( "range_proof_sign",
+                        rp_promise = Apis.crypto(
+                            "range_proof_sign",
                             0, to_out.commitment, blind_factor,
-                            nonce, 0, 0, amount.toString() )
+                            nonce, 0, 0, amount.toString()
+                        )
                         .then( res => to_out.range_proof = res)
                         
                         .then( ()=> Apis.crypto("child", from_key.toHex(), from_child) )
@@ -777,7 +776,8 @@ function blind_transfer_help(
                         .then( ()=> Apis.crypto("blind", change_blind_factor, change.toString()) )
                         .then( res => change_out.commitment = res )
                         
-                        .then( ()=> Apis.crypto( "range_proof_sign",
+                        .then( ()=> Apis.crypto(
+                            "range_proof_sign",
                             0, change_out.commitment, change_blind_factor,
                             from_nonce, 0, 0, change.toString() )
                         )
