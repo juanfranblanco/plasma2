@@ -25,6 +25,7 @@ REST was replaced by websockets .. Unless there is a reason to have a REST fall-
 // /**
 //     Middleware for the Express Js GET requests.  The Express JS URL pattern needs to have
 //     a methodName variable.
+        // "express": "^4.13.3",
 //     
 //     @param {object} api - methods on this API are involved in response to matching GET requests
 //     @param {object} dispatch - function that accepts the `sugared` return value from your API's return value.

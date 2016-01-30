@@ -610,8 +610,16 @@ export default class ConfidentialWallet {
         @return blind_confirmation
     */
     blindTransfer( from_key_or_label, to_key_or_label, amount, asset_symbol, broadcast = false) {
+        
         this.assertLogin()
-        return this.blind_transfer_help(from_key_or_label, to_key_or_label, amount, asset_symbol, broadcast)
+        
+        return Promise.resolve()
+        .then( ()=> fetchChain("getAsset", asset_symbol) )
+        .then( asset => {
+            if( ! asset ) return Promise.reject("unknown_asset")
+            amount = toImpliedDecimal(amount, asset.get("precision"))
+            return this.blind_transfer_help(from_key_or_label, to_key_or_label, amount, asset_symbol, broadcast)
+        })
     }
 
 }
@@ -661,7 +669,7 @@ function fetch_blinded_balances(callback) {
     
     @arg {string} from_key_or_label
     @arg {string} to_key_or_label
-    @arg {string} amount
+    @arg {string} amount - The implied decimal places amount
     @arg {string} asset_symbol
     @arg {boolean} broadcast
     @arg {boolean} to_temp
@@ -671,6 +679,7 @@ function blind_transfer_help(
     amount, asset_symbol, broadcast = false, to_temp = false
 ) {
     this.assertLogin()
+    assert(isDigits(amount)) //not prefect, but would some invalid calls
     
     let confirm = {
         outputs: []
@@ -686,8 +695,6 @@ function blind_transfer_help(
         
         let [ asset ] = res
         if( ! asset ) return Promise.reject("unknown_asset")
-        
-        amount = toImpliedDecimal(amount, asset.get("precision"))
         
         var blind_tr = {
             outputs: [],
@@ -709,7 +716,7 @@ function blind_transfer_help(
         .then( ()=> this.fetch_blinded_balances( (bal, receipt, commitment) =>{
                 
             receipt = receipt.toJS()
-            
+            console.log("blind_tr.fee.amount", blind_tr.fee.amount, amount.toString())
             let control_authority = receipt.control_authority
             
             blind_tr.inputs.push({ commitment, owner: control_authority })
@@ -725,7 +732,7 @@ function blind_transfer_help(
         .then(()=> {
             
             // console.log("available_amount.toString(),amount_with_fee.toString()", available_amount.toString(),amount_with_fee.toString(),longCmp(available_amount, amount_with_fee))
-            assert( longCmp(available_amount, amount_with_fee) >= 0, "Insufficent Balance")
+            assert( longCmp(available_amount, amount_with_fee) >= 0, `Insufficent Balance, available ${available_amount.toString()}, transfer amount plus fees ${amount_with_fee.toString()}`)
             
             let one_time_private = key.get_random_key()
             let secret = one_time_private.get_shared_secret( to_key )
@@ -789,14 +796,14 @@ function blind_transfer_help(
                                 authority({ key_auths: [[ PublicKey.fromHex(res).toString(), 1 ]] })
                          )
                         
-                        .then( ()=> Apis.crypto("blind", change_blind_factor, change.toString()) )
+                        .then( ()=> Apis.crypto("blind", change_blind_factor, change) )
                         .then( res => change_out.commitment = res )
                         
                         .then( ()=> Apis.crypto(
                             "range_proof_sign",
                             0, change_out.commitment, change_blind_factor,
-                            from_nonce, 0, 0, change.toString() )
-                        )
+                            from_nonce, 0, 0, change
+                        ))
                         .then( res => change_out.range_proof = res )
                         
                         .then( ()=>{
